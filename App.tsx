@@ -2,7 +2,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { MainNavigator } from './src/router';
+import { AuthNavigator, MainNavigator } from './src/router';
 // import { auth, onAuthStateChanged } from './firebase.config';
 // import { AuthNavigator, MainNavigator } from './src/router';
 
@@ -25,7 +25,7 @@ function App() {
       <View style={styles.container}>
         <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
         <NavigationContainer>
-          {isLoading ? <MainNavigator /> : <></>}
+          {isLoading ? <AuthNavigator /> : <MainNavigator /> }
         </NavigationContainer>
       </View>
     </SafeAreaProvider>

@@ -1,3 +1,4 @@
+import AuthNavigator from './AuthNavigator';
 import ContactNavigator from './ContactNavigator';
 import MainNavigator from './MainNavigator';
 import MessageNavigator from './MessageNavigator';
@@ -10,4 +11,5 @@ export {
   MessageNavigator,
   ProfileNavigator,
   TabNavigator,
+  AuthNavigator
 };

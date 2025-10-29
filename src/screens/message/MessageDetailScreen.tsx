@@ -7,7 +7,7 @@ import {
   Setting2,
   Video,
 } from 'iconsax-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { FlatList } from 'react-native';
 import {
   SafeAreaView,
@@ -27,8 +27,10 @@ import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
 
 const MessageDetailScreen = ({ route }: any) => {
-  const { type } = route.params;
   const insets = useSafeAreaInsets();
+  const { type } = route.params;
+  const [value, setValue] = useState('');
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -137,8 +139,8 @@ const MessageDetailScreen = ({ route }: any) => {
               placeholder="Nhập tin nhắn"
               placeholderTextColor={colors.gray2}
               color={colors.background}
-              value={''}
-              onChange={val => val}
+              value={value}
+              onChange={val => setValue(val)}
             />
             <SpaceComponent width={16} />
             <Microphone2

@@ -1,8 +1,12 @@
 import AvatarComponent from './AvatarComponent';
 import AvatarGroupComponent from './AvatarGroupComponent';
+import BtnShadowLinearComponent from './BtnShadowLinearComponent';
+import ButtonComponent from './ButtonComponent';
+import CheckedButtonComponent from './CheckedButtonComponent';
 import Container from './Container';
 import FriendItemComponent from './FriendItemComponent';
 import InputComponent from './InputComponent';
+import KeyboardAwareScrollViewComponent from './KeyboardAwareScrollViewComponent';
 import MessageContentComponent from './MessageContentComponent';
 import MessageItemComponent from './MessageItemComponent';
 import RowComponent from './RowComponent';
@@ -15,8 +19,13 @@ import TextComponent from './TextComponent';
 export {
   AvatarComponent,
   AvatarGroupComponent,
+  BtnShadowLinearComponent,
+  ButtonComponent,
+  CheckedButtonComponent,
   Container,
+  FriendItemComponent,
   InputComponent,
+  KeyboardAwareScrollViewComponent,
   MessageContentComponent,
   MessageItemComponent,
   RowComponent,
@@ -24,6 +33,5 @@ export {
   SectionComponent,
   SpaceComponent,
   SpinnerComponent,
-  FriendItemComponent,
   TextComponent,
 };

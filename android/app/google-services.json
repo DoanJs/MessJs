@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "978637318783",
+    "project_id": "messjs",
+    "storage_bucket": "messjs.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:978637318783:android:51e280ed6431392ba76d4a",
+        "android_client_info": {
+          "package_name": "com.messjs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDT_8BuwVR8YaxLJ2uNb4CtBIdxwKxlNGQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
