@@ -1,21 +1,11 @@
-// import {
-//     addDoc,
-//     collection,
-//     serverTimestamp,
-//   } from '@react-native-firebase/firestore';
+import { updateProfile } from '@react-native-firebase/auth';
+import { serverTimestamp } from '@react-native-firebase/firestore';
 import { ArrowLeft, Lock, User } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
 import { ImageBackground, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Feather from 'react-native-vector-icons/Feather';
 import Fontisto from 'react-native-vector-icons/Fontisto';
-//   import {
-//     auth,
-//     createUserWithEmailAndPassword,
-//     db,
-//   } from '../../../firebase.config';
-//   import createAccountPng from '../../assets/images/createAccount.png';
-import { updateProfile } from '@react-native-firebase/auth';
-import { serverTimestamp } from '@react-native-firebase/firestore';
 import { auth, createUserWithEmailAndPassword } from '../../../firebase.config';
 import {
   BtnShadowLinearComponent,
@@ -30,7 +20,6 @@ import { colors } from '../../constants/colors';
 import { setDocData } from '../../constants/firebase/setDocData';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 const Register = ({ navigation }: any) => {
   const [fullName, setFullName] = useState('Nguyễn Trường An');
@@ -63,21 +52,20 @@ const Register = ({ navigation }: any) => {
           });
 
           setDocData({
-            nameCollect: "users",
+            nameCollect: 'users',
             id: user.uid,
             valueUpdate: {
               id: user.uid,
+              displayName: fullName,
+              photoURL:
+                'https://cdn.pixabay.com/photo/2019/10/30/16/19/fox-4589927_1280.jpg',
+              phoneNumber: phone,
               email: email,
-              fullName: fullName,
-              shortName: fullName,
-              avatar: "https://cdn.pixabay.com/photo/2019/10/30/16/19/fox-4589927_1280.jpg",
-              phone: phone,
-              birth: serverTimestamp(),
-              role: "teacher",
-              position: 'Chuyên viên Tâm lý',
-
-              createAt: serverTimestamp(),
-              updateAt: serverTimestamp(),
+              status: '',
+              lastOnlineAt: serverTimestamp(),
+              friendCount: 0,
+              blockeds: [],
+              fcmToken: '',
             },
           });
         })
@@ -97,7 +85,9 @@ const Register = ({ navigation }: any) => {
         imageStyle={{ resizeMode: 'cover' }}
         style={{ flex: 1, alignItems: 'center' }}
       >
-        <SectionComponent styles={{ backgroundColor: 'transparent', top: '6%' }}>
+        <SectionComponent
+          styles={{ backgroundColor: 'transparent', top: '6%' }}
+        >
           <RowComponent styles={{ width: '100%' }}>
             <ArrowLeft
               size={28}
@@ -198,7 +188,7 @@ const Register = ({ navigation }: any) => {
                 paddingHorizontal: 26,
                 borderRadius: 5,
               }}
-              placeholder='Password'
+              placeholder="Password"
               placeholderTextColor={colors.gray}
               prefix={<Lock color={colors.text} size={26} />}
               color={colors.background}

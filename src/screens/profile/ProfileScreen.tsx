@@ -1,5 +1,5 @@
 import { ArrowRight2, Camera, Logout, UserSquare } from 'iconsax-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import { Image, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -12,8 +12,22 @@ import {
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
+import { signOut } from '@react-native-firebase/auth';
+import { auth } from '../../../firebase.config';
 
 const ProfileScreen = () => {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoading(true);
+
+    await signOut(auth);
+    // await GoogleSignin.signOut();
+    // await GoogleSignin.revokeAccess()
+
+    setIsLoading(false);
+  };
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -97,7 +111,7 @@ const ProfileScreen = () => {
             <ArrowRight2 size={sizes.title} color={colors.textBold} />
           </RowComponent>
           <SpaceComponent height={16 } />
-          <RowComponent onPress={() => {}}>
+          <RowComponent onPress={handleLogout}>
             <Logout size={sizes.title} color={colors.textBold} />
             <SpaceComponent width={16} />
             <TextComponent

@@ -1,10 +1,11 @@
 import { Add, ScanBarcode, SearchNormal1 } from 'iconsax-react-native';
-import React, { useState } from 'react';
-import { FlatList, RefreshControl, ScrollView } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { FlatList, RefreshControl } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { auth } from '../../../firebase.config';
 import {
   Container,
   MessageItemComponent,
@@ -14,11 +15,25 @@ import {
   TextComponent,
 } from '../../components';
 import { colors } from '../../constants/colors';
+import { getDocData } from '../../constants/firebase/getDocData';
 import { sizes } from '../../constants/sizes';
+import { useUserStore } from '../../zustand';
 
 const MessageScreen = () => {
+  const userServer = auth.currentUser;
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
+  const { setUser } = useUserStore();
+
+  useEffect(() => {
+    if (userServer) {
+      getDocData({
+        id: userServer.uid,
+        nameCollect: 'users',
+        setData: setUser,
+      });
+    }
+  }, [userServer]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -51,14 +66,14 @@ const MessageScreen = () => {
               size={sizes.bigTitle}
               color={colors.background}
               onPress={() => {}}
-              variant='Bold'
+              variant="Bold"
             />
             <SpaceComponent width={16} />
             <Add
               size={sizes.bigTitle}
               color={colors.background}
               onPress={() => {}}
-              variant='Bold'
+              variant="Bold"
             />
           </RowComponent>
         }
