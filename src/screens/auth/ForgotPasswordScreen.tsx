@@ -1,18 +1,35 @@
-import { ArrowLeft } from 'iconsax-react-native'
-import React, { useEffect, useState } from 'react'
-import { Alert, ImageBackground, TouchableOpacity, View } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import Fontisto from 'react-native-vector-icons/Fontisto'
-// import { auth, db } from '../../../firebase.config'
-import { BtnShadowLinearComponent, InputComponent, KeyboardAwareScrollViewComponent, RowComponent, SectionComponent, SpaceComponent, TextComponent } from '../../components'
-import { colors } from '../../constants/colors'
-import { fontFamillies } from '../../constants/fontFamilies'
-import { sizes } from '../../constants/sizes'
-import { validateEmail } from '../../constants/validateEmailPhone'
-import { sendPasswordResetEmail } from '@react-native-firebase/auth'
+import { ArrowLeft } from 'iconsax-react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, ImageBackground, View } from 'react-native';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
+import Fontisto from 'react-native-vector-icons/Fontisto';
+import { sendPasswordResetEmail } from '@react-native-firebase/auth';
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from '@react-native-firebase/firestore';
+import { auth, db } from '../../../firebase.config';
+import {
+  BtnShadowLinearComponent,
+  InputComponent,
+  KeyboardAwareScrollViewComponent,
+  RowComponent,
+  SectionComponent,
+  SpaceComponent,
+  TextComponent,
+} from '../../components';
+import { colors } from '../../constants/colors';
+import { fontFamillies } from '../../constants/fontFamilies';
+import { sizes } from '../../constants/sizes';
+import { validateEmail } from '../../constants/validateEmailPhone';
 
 const ForgotPasswordScreen = ({ navigation }: any) => {
-  const insets = useSafeAreaInsets()
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [disable, setDisable] = useState(true);
 
@@ -25,18 +42,23 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
   }, [email]);
 
   const handleResetPassword = async () => {
-    // const snapshot = await getDocs(query(collection(db, 'users'), where('email', '==', email)))
-    // console.log(snapshot)
-    // try {
-    //   sendPasswordResetEmail(auth, email).then(result => {
-    //     Alert.alert('Check your email', 'We sent you a password reset link.');
-    //     setEmail('')
-    //     console.log(result)
-    //   })
-    // } catch (error: any) {
-    //   console.error(error);
-    //   Alert.alert('Error', error.message);
-    // }
+    try {
+      const snapshot = await getDocs(
+        query(collection(db, 'users'), where('email', '==', email)),
+      );
+      if (snapshot.docs.length > 0) {
+        sendPasswordResetEmail(auth, email).then(result => {
+          Alert.alert('Check your email', 'We sent you a password reset link.');
+          setEmail('');
+          console.log(result);
+        });
+      }else {
+        Alert.alert('Account not found', 'Check email again for account.');
+      }
+    } catch (error: any) {
+      console.error(error);
+      Alert.alert('Error', error.message);
+    }
   };
   return (
     <SafeAreaView style={{ flex: 1 }} edges={['bottom']}>
@@ -47,7 +69,9 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
         imageStyle={{ resizeMode: 'cover' }}
         style={{ flex: 1, alignItems: 'center' }}
       >
-        <SectionComponent styles={{ backgroundColor: 'transparent', top: '6%' }}>
+        <SectionComponent
+          styles={{ backgroundColor: 'transparent', top: '6%' }}
+        >
           <RowComponent styles={{ width: '100%' }}>
             <ArrowLeft
               size={28}
@@ -75,13 +99,15 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
             borderRadius: 10,
           }}
         >
-          <KeyboardAwareScrollViewComponent styles={{ paddingBottom: insets.bottom + 80 }}>
+          <KeyboardAwareScrollViewComponent
+            styles={{ paddingBottom: insets.bottom + 80 }}
+          >
             <View
               style={{
                 justifyContent: 'center',
                 alignItems: 'center',
                 height: '35%',
-                marginVertical: 20
+                marginVertical: 20,
               }}
             >
               <TextComponent
@@ -127,12 +153,11 @@ const ForgotPasswordScreen = ({ navigation }: any) => {
               title="Send link"
               onPress={handleResetPassword}
             />
-            {/* </SectionComponent> */}
           </KeyboardAwareScrollViewComponent>
         </View>
       </ImageBackground>
     </SafeAreaView>
-  )
-}
+  );
+};
 
-export default ForgotPasswordScreen
+export default ForgotPasswordScreen;

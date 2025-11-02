@@ -35,6 +35,7 @@ const MessageScreen = () => {
     }
   }, [userServer]);
 
+
   const onRefresh = () => {
     setRefreshing(true);
     try {

@@ -1,6 +1,6 @@
-import { Profile2User, SearchNormal1, UserAdd } from 'iconsax-react-native';
+import { SearchNormal1, UserAdd } from 'iconsax-react-native';
 import React, { useState } from 'react';
-import { TouchableOpacity, View } from 'react-native';
+import { TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Container,
@@ -12,11 +12,12 @@ import {
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
-import ContactPrivate from './ContactPrivate';
 import ContactGroup from './ContactGroup';
+import ContactPrivate from './ContactPrivate';
 
 const ContactScreen = () => {
   const [type, setType] = useState('Bạn bè');
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -37,7 +38,7 @@ const ContactScreen = () => {
               size={sizes.bigTitle}
               color={colors.background}
               onPress={() => {}}
-              variant='Bold'
+              variant="Bold"
             />
           </RowComponent>
         }
@@ -74,7 +75,6 @@ const ContactScreen = () => {
           <SpaceComponent height={10} />
 
           {type === 'Bạn bè' ? <ContactPrivate /> : <ContactGroup />}
-
         </SectionComponent>
       </Container>
     </SafeAreaView>

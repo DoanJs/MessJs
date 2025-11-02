@@ -1,13 +1,9 @@
 import { ArrowLeft, Lock } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
-import {
-  ImageBackground,
-  Platform,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ImageBackground, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Fontisto from 'react-native-vector-icons/Fontisto';
-// import { auth, signInWithEmailAndPassword } from '../../../firebase.config';
+import { auth, signInWithEmailAndPassword } from '../../../firebase.config';
 import {
   BtnShadowLinearComponent,
   CheckedButtonComponent,
@@ -21,9 +17,6 @@ import {
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-// import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const Login = ({ navigation }: any) => {
   const [email, setEmail] = useState('demo01@gmail.com');
@@ -45,20 +38,20 @@ const Login = ({ navigation }: any) => {
       setErrorText('');
       setIsLoading(true);
 
-      // await signInWithEmailAndPassword(auth, email, password)
-      //   .then(async userCredential => {
-      //     // Signed in
-      //     setIsLoading(false);
-      //     const user = userCredential.user;
-      //     if (remember) {
-      //       // await AsyncStorage.setItem('user', user.email as string);
-      //     }
-      //   })
-      //   .catch((error: any) => {
-      //     console.log(error);
-      //     setIsLoading(false);
-      //     setErrorText(error.message);
-      //   });
+      await signInWithEmailAndPassword(auth, email, password)
+        .then(async userCredential => {
+          // Signed in
+          setIsLoading(false);
+          const user = userCredential.user;
+          if (remember) {
+            // await AsyncStorage.setItem('user', user.email as string);
+          }
+        })
+        .catch((error: any) => {
+          console.log(error);
+          setIsLoading(false);
+          setErrorText(error.message);
+        });
     }
   };
 
@@ -71,7 +64,9 @@ const Login = ({ navigation }: any) => {
         imageStyle={{ resizeMode: 'cover' }}
         style={{ flex: 1, alignItems: 'center' }}
       >
-        <SectionComponent styles={{ backgroundColor: 'transparent', top: '6%' }}>
+        <SectionComponent
+          styles={{ backgroundColor: 'transparent', top: '6%' }}
+        >
           <RowComponent styles={{ width: '100%' }}>
             <ArrowLeft
               size={28}
@@ -211,7 +206,6 @@ const Login = ({ navigation }: any) => {
                 />
               </TouchableOpacity>
             </RowComponent>
-
           </KeyboardAwareScrollViewComponent>
         </View>
       </ImageBackground>

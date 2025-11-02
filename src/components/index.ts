@@ -1,3 +1,4 @@
+import ActivityLoadingComponent from './ActivityLoadingComponent';
 import AvatarComponent from './AvatarComponent';
 import AvatarGroupComponent from './AvatarGroupComponent';
 import BtnShadowLinearComponent from './BtnShadowLinearComponent';
@@ -17,6 +18,7 @@ import SpinnerComponent from './SpinnerComponent';
 import TextComponent from './TextComponent';
 
 export {
+  ActivityLoadingComponent,
   AvatarComponent,
   AvatarGroupComponent,
   BtnShadowLinearComponent,

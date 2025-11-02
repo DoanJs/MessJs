@@ -1,20 +1,36 @@
+import { where } from '@react-native-firebase/firestore';
 import { Profile2User } from 'iconsax-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  ActivityLoadingComponent,
   FriendItemComponent,
   RowComponent,
   SpaceComponent,
   TextComponent,
 } from '../../components';
 import { colors } from '../../constants/colors';
+import { getDocsData } from '../../constants/firebase/getDocsData';
 import { sizes } from '../../constants/sizes';
+import { useUserStore } from '../../zustand';
 
 const ContactPrivate = () => {
-  const [type, setType] = useState('Tất cả');
   const insets = useSafeAreaInsets();
+  const { user } = useUserStore();
+  const [type, setType] = useState('Tất cả');
+  const [friends, setFriends] = useState([]);
   const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
+
+  useEffect(() => {
+    if (user) {
+      getDocsData({
+        nameCollect: 'users',
+        condition: [where('email', '!=', user?.email)],
+        setData: setFriends,
+      });
+    }
+  }, [user]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -27,6 +43,8 @@ const ContactPrivate = () => {
       setRefreshing(false);
     }
   };
+
+  if (!user) return <ActivityLoadingComponent />;
   return (
     <View>
       <RowComponent>
@@ -62,11 +80,11 @@ const ContactPrivate = () => {
         {[
           {
             title: 'Tất cả',
-            quantity: 300,
+            quantity: friends.length,
           },
           {
             title: 'Bạn mới',
-            quantity: 3,
+            quantity: 0,
           },
         ].map((_, index) => (
           <RowComponent
@@ -98,8 +116,8 @@ const ContactPrivate = () => {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         showsVerticalScrollIndicator={false}
-        data={Array.from({ length: 20 })}
-        renderItem={({ item }) => <FriendItemComponent />}
+        data={friends}
+        renderItem={({ item }) => <FriendItemComponent friend={item} />}
         ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
       />
     </View>

@@ -1,7 +1,7 @@
 import { TimeAtModel } from '.';
 
 export interface ContactModel {
-  id: string;
+  id: string; //dung makeContactId function
   userA: string;
   userB: string;
   status: string; // "accepted" | "pending" | "blocked"

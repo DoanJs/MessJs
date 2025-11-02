@@ -1,12 +1,14 @@
 import { ArrowRight2, Camera, Logout, UserSquare } from 'iconsax-react-native';
 import React, { useState } from 'react';
-import { Image, View } from 'react-native';
+import { ActivityIndicator, Image, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
+  ActivityLoadingComponent,
   Container,
   RowComponent,
   SectionComponent,
   SpaceComponent,
+  SpinnerComponent,
   TextComponent,
 } from '../../components';
 import { colors } from '../../constants/colors';
@@ -14,10 +16,13 @@ import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
 import { signOut } from '@react-native-firebase/auth';
 import { auth } from '../../../firebase.config';
+import { useUserStore } from '../../zustand';
 
 const ProfileScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const {user} = useUserStore()
 
+  console.log(user)
   const handleLogout = async () => {
     setIsLoading(true);
 
@@ -28,6 +33,7 @@ const ProfileScreen = () => {
     setIsLoading(false);
   };
 
+  if(!user) return <ActivityLoadingComponent />
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -56,7 +62,7 @@ const ProfileScreen = () => {
             >
               <Image
                 source={{
-                  uri: 'https://cdn.pixabay.com/photo/2019/10/30/16/19/fox-4589927_1280.jpg',
+                  uri: user.photoURL ?? 'https://cdn.pixabay.com/photo/2019/10/30/16/19/fox-4589927_1280.jpg',
                 }}
                 style={{
                   resizeMode: 'cover',
@@ -79,11 +85,11 @@ const ProfileScreen = () => {
               </View>
             </View>
             <TextComponent
-              text={`user.name`}
+              text={user.displayName ?? user.email}
               font={fontFamillies.poppinsSemiBold}
               size={sizes.bigText}
             />
-            <TextComponent text={`user.email`} color={colors.text} />
+            <TextComponent text={user.email} color={colors.text} />
           </View>
         </SectionComponent>
 
