@@ -7,19 +7,22 @@ import {
   TextComponent,
 } from '.';
 import { colors } from '../constants/colors';
+import { MessageModel } from '../models';
+import { useUserStore } from '../zustand';
 
 interface Props {
-  position: 'left' | 'right';
+  msg: MessageModel;
 }
 
 const MessageContentComponent = (props: Props) => {
-  const { position } = props;
+  const { user } = useUserStore();
+  const { msg } = props;
   return (
     <RowComponent
-      justify={position === 'left' ? 'flex-start' : 'flex-end'}
-      styles={{ alignItems: 'flex-start', marginBottom: 10 }}
+      justify={user?.id === msg.senderId ? 'flex-end' : 'flex-start'}
+      styles={{ alignItems: 'flex-start' }}
     >
-      {position === 'left' && (
+      {user?.id !== msg.senderId && (
         <>
           <AvatarComponent size={30} />
           <SpaceComponent width={10} />
@@ -34,22 +37,26 @@ const MessageContentComponent = (props: Props) => {
           styles={{
             flexDirection: 'column',
             backgroundColor:
-              position === 'left' ? colors.gray + '80' : colors.primaryBold,
+              user?.id !== msg.senderId
+                ? colors.gray + '80'
+                : colors.primaryBold,
             padding: 10,
             borderRadius: 10,
           }}
         >
           <TextComponent
-            text="Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, enim earum eius accusantium ullam quasi quam! Omnis ipsa provident a qui deleniti reiciendis ut atque adipisci, doloribus dicta corrupti enim."
+            text={msg.text}
             styles={{ textAlign: 'justify' }}
           />
         </RowComponent>
-        <SpaceComponent height={4} />
-        <RowComponent
+        <SpaceComponent height={8} />
+        {/* <RowComponent
           styles={{
             flexDirection: 'column',
             backgroundColor:
-              position === 'left' ? colors.gray + '80' : colors.primaryBold,
+              user?.id !== msg.senderId
+                ? colors.gray + '80'
+                : colors.primaryBold,
             padding: 10,
             borderRadius: 10,
           }}
@@ -58,7 +65,7 @@ const MessageContentComponent = (props: Props) => {
             text="Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, enim earum eius accusantium ullam quasi quam! Omnis ipsa provident a qui deleniti reiciendis ut atque adipisci, doloribus dicta corrupti enim."
             styles={{ textAlign: 'justify' }}
           />
-        </RowComponent>
+        </RowComponent> */}
       </View>
     </RowComponent>
   );

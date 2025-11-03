@@ -40,13 +40,14 @@ const FriendItemComponent = (props: Props) => {
         navigation.navigate('MessageDetailScreen', {
           type: 'private',
           friend,
+          chatRoomId: makeContactId(user?.id as string, friend.id),
         });
       });
     } catch (error) {
       console.log(error);
     }
   };
-  
+
   return (
     <RowComponent justify="space-between" styles={{ marginVertical: 10 }}>
       <RowComponent onPress={onNavigateDetail}>

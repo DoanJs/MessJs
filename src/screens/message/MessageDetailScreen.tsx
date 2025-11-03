@@ -3,6 +3,11 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
+  increment,
+  onSnapshot,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -17,9 +22,8 @@ import {
   Setting2,
   Video,
 } from 'iconsax-react-native';
-import moment from 'moment';
-import React, { useState } from 'react';
-import { FlatList } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -35,6 +39,10 @@ import {
   SpinnerComponent,
   TextComponent,
 } from '../../components';
+import {
+  createNewBatch,
+  shouldCreateNewBatch,
+} from '../../constants/checkNewBatch';
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { makeContactId } from '../../constants/makeContactId';
@@ -44,65 +52,199 @@ import { useUserStore } from '../../zustand';
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
-  const { type, friend } = route.params;
+  const { type, friend, chatRoomId } = route.params;
   const [value, setValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [lastBatchId, setLastBatchId] = useState<string | null>(null);
+  const [messages, setMessages] = useState([]);
+
+  const [loadingOld, setLoadingOld] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+
+  useEffect(() => {
+    if (chatRoomId) {
+      getCurrentBatch();
+    }
+  }, [chatRoomId]);
+
+  // 🧩 Lắng nghe thay đổi lastBatchId trong chatRoom
+  useEffect(() => {
+    if (!chatRoomId) return;
+    const chatRoomRef = doc(db, 'chatRooms', chatRoomId);
+
+    const unsubRoom = onSnapshot(chatRoomRef, snap => {
+      const data = snap.data();
+      if (!data) return;
+
+      if (data.lastBatchId && data.lastBatchId !== lastBatchId) {
+        console.log('🔄 Chuyển batch:', data.lastBatchId);
+        setLastBatchId(data.lastBatchId); // tự động chuyển sang batch mới
+      }
+    });
+
+    return () => unsubRoom();
+  }, [chatRoomId, lastBatchId]);
+
+  useEffect(() => {
+    if (!chatRoomId || !lastBatchId) return;
+
+    const messagesRef = collection(
+      db,
+      'chatRooms',
+      chatRoomId,
+      'batches',
+      lastBatchId,
+      'messages',
+    );
+
+    const q = query(messagesRef, orderBy('createAt', 'asc'));
+
+    // 🔥 Đăng ký lắng nghe realtime
+    const unsubscribe = onSnapshot(q, snapshot => {
+      const msgs = snapshot.docs.map((doc: any) => {
+        const data = doc.data();
+
+        // convert createdAt nếu có
+        const createdAt = data.createdAt
+          ? data.createdAt.toDate?.() // nếu là Timestamp
+          : new Date(); // fallback khi chưa có
+
+        return {
+          id: doc.id,
+          ...data,
+          createdAt,
+        };
+      });
+      // setMessages(msgs);
+      // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ
+      setMessages((prevMessages): any => {
+        // 1️⃣ Lấy danh sách id hiện có
+        const existingIds = prevMessages.map((m: any) => m.id);
+
+        // 2️⃣ Lọc ra những tin nhắn mới chưa có trong danh sách
+        const newMessages = msgs.filter(
+          (m: any) => !existingIds.includes(m.id),
+        );
+
+        // 3️⃣ Ghép hai mảng lại
+        const allMessages = [...prevMessages, ...newMessages];
+
+        // 4️⃣ Sắp xếp lại theo thời gian
+        allMessages.sort((a, b) => a.createdAt - b.createdAt);
+
+        // 5️⃣ Trả về mảng mới để React cập nhật state
+        return allMessages;
+      });
+    });
+
+    console.log('Listening to batch:', lastBatchId);
+
+    // 🧹 Hủy đăng ký khi batchId đổi hoặc component unmount
+    return () => {
+      console.log('Unsubscribed from batch:', lastBatchId);
+      unsubscribe();
+    };
+  }, [chatRoomId, lastBatchId]); // <– dependency quan trọng
+
+  const getCurrentBatch = async () => {
+    const snapshot = await getDoc(doc(db, 'chatRooms', chatRoomId));
+
+    if (snapshot.exists()) {
+      setLastBatchId(snapshot.data()?.lastBatchId);
+    }
+  };
 
   const handleSendMessage = async () => {
     setIsLoading(true);
     const id = makeContactId(user?.id as string, friend.id);
-    try {
-      const docSnap = await getDoc(doc(db, 'chatRooms', id));
-      if (docSnap.exists()) {
-        await addDoc(
-          collection(
-            db,
-            `chatRooms/${id}/batches/${docSnap.data()?.lastBatchId}/messages`,
-          ),
-          {
-            senderId: user?.id,
-            type: 'text',
-            text: value,
-            mediaURL: '',
-            createAt: serverTimestamp(),
-            status: 'pending',
-          },
-        );
 
-        await updateDoc(doc(db, `chatRooms/${id}/batches`, docSnap.data()?.lastBatchId), {
-          batchInfo: {
-            count: 2,
-            date:  moment().format('YYYY-MM-DD'),
+    if (type === 'private') {
+      try {
+        const docSnap = await getDoc(doc(db, 'chatRooms', id));
+
+        if (docSnap.exists()) {
+          //check xem batch nay qua ngay moi hoac day chua
+          const docSnapBatch = await getDoc(
+            doc(db, `chatRooms/${id}/batches`, docSnap.data()?.lastBatchId),
+          );
+          let batchInfo = {
+            id: docSnapBatch.id,
+            messageCount: docSnapBatch.data()?.messageCount,
+          };
+
+          if (shouldCreateNewBatch(batchInfo)) {
+            batchInfo = createNewBatch(batchInfo);
+            // Tạo batch tiep theo
+            await setDoc(
+              doc(db, `chatRooms/${id}/batches`, batchInfo.id),
+              {
+                id: batchInfo.id,
+                messageCount: 0,
+                preBatchId: `${batchInfo.id.slice(0, 10)}-${String(
+                  Number(batchInfo.id.slice(-2)) - 1,
+                ).padStart(2, '0')}`,
+                nextBatchId: null,
+              },
+              { merge: true },
+            );
+
+            await updateDoc(
+              doc(
+                db,
+                `chatRooms/${id}/batches`,
+                `${batchInfo.id.slice(0, 10)}-${String(
+                  Number(batchInfo.id.slice(-2)) - 1,
+                ).padStart(2, '0')}`,
+              ),
+              {
+                nextBatchId: batchInfo.id,
+              },
+            );
           }
-        })
-        
-        await updateDoc(doc(db, `chatRooms`, id), {
-          lastMessageText: value, 
-          lastMessageAt: serverTimestamp(),
-          lastSenderId: user?.id
-        })
 
+          await addDoc(
+            collection(db, `chatRooms/${id}/batches/${batchInfo.id}/messages`),
+            {
+              senderId: user?.id,
+              type: 'text',
+              text: value,
+              mediaURL: '',
+              createAt: serverTimestamp(),
+              status: 'pending',
+            },
+          );
 
+          await updateDoc(doc(db, `chatRooms/${id}/batches`, batchInfo.id), {
+            messageCount: increment(1),
+          });
 
-      } else {
-        const batchId = `${moment().format('YYYY-MM-DD')}-01`;
-        const dataChatRoom = {
-          type: 'private',
-          name: '',
-          avatarURL: '',
-          description: '',
-          createdBy: user?.id,
-          createAt: serverTimestamp(),
-          lastMessageText: value,
-          lastMessageAt: serverTimestamp(),
-          lastSenderId: user?.id,
-          memberCount: 2,
-          lastBatchId: batchId,
-          // readStatus: ,
-        };
+          await updateDoc(doc(db, `chatRooms`, id), {
+            lastMessageText: value,
+            lastMessageAt: serverTimestamp(),
+            lastSenderId: user?.id,
+            lastBatchId: batchInfo.id,
+          });
+        } else {
+          const batchInfo = createNewBatch(null);
 
-        setDoc(doc(db, 'chatRooms', id), dataChatRoom, { merge: true }).then(
-          () => {
+          setDoc(
+            doc(db, 'chatRooms', id),
+            {
+              type: 'private',
+              name: '',
+              avatarURL: '',
+              description: '',
+              createdBy: user?.id,
+              createAt: serverTimestamp(),
+              lastMessageText: value,
+              lastMessageAt: serverTimestamp(),
+              lastSenderId: user?.id,
+              memberCount: 2,
+              lastBatchId: batchInfo.id,
+              // readStatus: ,
+            },
+            { merge: true },
+          ).then(() => {
             // Tạo members
             const members = [
               {
@@ -127,19 +269,24 @@ const MessageDetailScreen = ({ route }: any) => {
             Promise.all(promiseMember);
 
             // Tạo batch đầu tiên
+
             setDoc(
-              doc(db, `chatRooms/${id}/batches`, batchId),
+              doc(db, `chatRooms/${id}/batches`, batchInfo.id),
               {
-                id: batchId,
-                batchInfo: {
-                  count: 1,
-                  date: moment().format('YYYY-MM-DD'),
-                },
+                id: batchInfo.id,
+                messageCount: 1,
+                preBatchId: null,
+                nextBatchId: `${batchInfo.id.slice(0, 10)}-${String(
+                  Number(batchInfo.id.slice(-2)) + 1,
+                ).padStart(2, '0')}`,
               },
               { merge: true },
             ).then(() => {
               addDoc(
-                collection(db, `chatRooms/${id}/batches/${batchId}/messages`),
+                collection(
+                  db,
+                  `chatRooms/${id}/batches/${batchInfo.id}/messages`,
+                ),
                 {
                   senderId: user?.id,
                   type: 'text',
@@ -150,17 +297,19 @@ const MessageDetailScreen = ({ route }: any) => {
                 },
               );
             });
-          },
-        );
-      }
+          });
+        }
 
-      setIsLoading(false);
-    } catch (error) {
-      setIsLoading(false);
-      console.log(error);
+        setIsLoading(false);
+      } catch (error) {
+        setIsLoading(false);
+        console.log(error);
+      }
+    } else {
+      console.log('group');
     }
 
-    setValue('')
+    setValue('');
   };
 
   return (
@@ -242,10 +391,8 @@ const MessageDetailScreen = ({ route }: any) => {
             contentContainerStyle={{
               paddingBottom: insets.bottom + 80,
             }}
-            data={Array.from({ length: 10 })}
-            renderItem={({ item }) => (
-              <MessageContentComponent position="left" />
-            )}
+            data={messages}
+            renderItem={({ item }) => <MessageContentComponent msg={item} />}
           />
         </SectionComponent>
         <SectionComponent
@@ -273,6 +420,7 @@ const MessageDetailScreen = ({ route }: any) => {
               color={colors.background}
               value={value}
               onChange={val => setValue(val)}
+              onSubmitEditing={handleSendMessage}
             />
             <SpaceComponent width={16} />
             {value === '' ? (
