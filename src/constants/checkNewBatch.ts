@@ -13,7 +13,7 @@ export const shouldCreateNewBatch = (currentBatch: BatchInfo): Boolean => {
   const batchDate = currentBatch.id.slice(0, 10); // "2025-11-02"
 
   const isNewDay = batchDate !== today;
-  const isFull = currentBatch.messageCount >= 5;
+  const isFull = currentBatch.messageCount >= 500;
   
   return isNewDay || isFull;
 };

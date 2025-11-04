@@ -1,8 +1,23 @@
-import { collection, query } from '@react-native-firebase/firestore';
+import {
+  collection,
+  doc,
+  orderBy,
+  query,
+  where,
+} from '@react-native-firebase/firestore';
 import { db } from '../../../../firebase.config';
 
-export const query_fields = query(collection(db, 'fields'));
-export const query_targets = query(collection(db, 'targets'));
-export const query_suggests = query(collection(db, 'suggests'));
-export const query_children = query(collection(db, 'children'));
-export const query_interventions = query(collection(db, 'interventions'));
+export const q_chatRoomsWithMember = (id: string) =>
+  query(collection(db, 'chatRooms'), where('memberIds', 'array-contains', id));
+export const q_chatRoomId = (id: string) => doc(db, 'chatRooms', id);
+export const q_messagesASC = ({
+  chatRoomId,
+  batchId,
+}: {
+  chatRoomId: string;
+  batchId: string;
+}) =>
+  query(
+    collection(db, 'chatRooms', chatRoomId, 'batches', batchId, 'messages'),
+    orderBy('createAt', 'asc'),
+  );

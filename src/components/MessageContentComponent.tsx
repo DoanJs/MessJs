@@ -9,6 +9,7 @@ import {
 import { colors } from '../constants/colors';
 import { MessageModel } from '../models';
 import { useUserStore } from '../zustand';
+import { sizes } from '../constants/sizes';
 
 interface Props {
   msg: MessageModel;
@@ -46,10 +47,17 @@ const MessageContentComponent = (props: Props) => {
         >
           <TextComponent
             text={msg.text}
-            styles={{ textAlign: 'justify' }}
+            styles={{
+              textAlign: 'justify',
+              color:
+                user?.id !== msg.senderId ? colors.text : colors.background,
+            }}
           />
         </RowComponent>
-        <SpaceComponent height={8} />
+        <RowComponent justify='flex-end'>
+          <TextComponent text="Đã gửi" size={sizes.extraComment} />
+        </RowComponent>
+        <SpaceComponent height={6} />
         {/* <RowComponent
           styles={{
             flexDirection: 'column',

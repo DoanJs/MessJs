@@ -1,3 +1,6 @@
+import {
+  onSnapshot
+} from '@react-native-firebase/firestore';
 import { Add, ScanBarcode, SearchNormal1 } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
@@ -16,25 +19,44 @@ import {
 } from '../../components';
 import { colors } from '../../constants/colors';
 import { getDocData } from '../../constants/firebase/getDocData';
+import { q_chatRoomsWithMember } from '../../constants/firebase/query';
 import { sizes } from '../../constants/sizes';
 import { useUserStore } from '../../zustand';
 
 const MessageScreen = () => {
-  const userServer = auth.currentUser;
   const insets = useSafeAreaInsets();
-  const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
+  const userServer = auth.currentUser;
   const { setUser } = useUserStore();
+  const [rooms, setRooms] = useState([]);
+  const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
 
   useEffect(() => {
-    if (userServer) {
-      getDocData({
-        id: userServer.uid,
-        nameCollect: 'users',
-        setData: setUser,
-      });
-    }
-  }, [userServer]);
+    if (!userServer) return;
+    // Gộp phần setUser trong zustand ở đây luôn
+    getDocData({
+      id: userServer.uid,
+      nameCollect: 'users',
+      setData: setUser,
+    });
 
+    // Lắng nghe realtime
+    const unsubscribe = onSnapshot(
+      q_chatRoomsWithMember(userServer.uid),
+      snapshot => {
+        const data = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setRooms(data);
+      },
+      error => {
+        console.error('Error listening chatRooms:', error);
+      },
+    );
+
+    // Cleanup listener khi component unmount
+    return () => unsubscribe();
+  }, [userServer]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -47,6 +69,7 @@ const MessageScreen = () => {
       setRefreshing(false);
     }
   };
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -94,8 +117,10 @@ const MessageScreen = () => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
-            data={Array.from({ length: 20 })}
-            renderItem={({ item }) => <MessageItemComponent type={'group'} />}
+            data={rooms}
+            renderItem={({ item: chatRoom }) => (
+              <MessageItemComponent chatRoom={chatRoom} />
+            )}
           />
         </SectionComponent>
       </Container>

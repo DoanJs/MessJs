@@ -1,8 +1,8 @@
-import { BatchModel, MemberModel, ReadStatusModel, TimeAtModel } from '.';
+import { BatchModel, ReadStatusModel, TimeAtModel } from '.';
 
 export interface ChatRoomModel {
   id: string;
-  type: string
+  type: string;
   name: string;
   avatarURL: string;
   description: string;
@@ -11,12 +11,11 @@ export interface ChatRoomModel {
   lastMessageText: string;
   lastMessageAt: TimeAtModel;
   lastSenderId: string;
-  memberCount: number;
+
   lastBatchId: string;
+  memberCount: number;
+  memberIds: string[];
 
-  //    membersRef?: CollectionReference<MemberModel>;
-
-  members?: MemberModel[];
   batches?: BatchModel[];
   readStatus?: ReadStatusModel[];
 }

@@ -88,6 +88,7 @@ const InputComponent = (props: Props) => {
             keyboardType={keyboardType ?? 'default'}
             onSubmitEditing={onSubmitEditing}
             submitBehavior="submit"
+            autoFocus
           />
         </View>
         {affix && affix}
