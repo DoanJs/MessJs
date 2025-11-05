@@ -1,3 +1,4 @@
+import { FieldValue } from '@react-native-firebase/firestore';
 import { TimeAtModel } from '.';
 
 export interface MessageModel {
@@ -6,6 +7,6 @@ export interface MessageModel {
   type: string;
   text: string;
   mediaURL: string;
-  createAt: TimeAtModel;
-  status: string;
+  createAt: TimeAtModel | FieldValue;
+  status: string; //"pending" | "sent" | "fail"
 }

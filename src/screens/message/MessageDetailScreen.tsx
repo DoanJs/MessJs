@@ -1,6 +1,4 @@
 import {
-  addDoc,
-  collection,
   doc,
   getDoc,
   increment,
@@ -21,10 +19,12 @@ import {
 } from 'iconsax-react-native';
 import React, { useEffect, useRef, useState } from 'react';
 import { FlatList } from 'react-native';
+import 'react-native-get-random-values';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../../firebase.config';
 import {
   Container,
@@ -46,18 +46,26 @@ import { q_chatRoomId, q_messagesASC } from '../../constants/firebase/query';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
-import { useMessageStore, useUserStore } from '../../zustand';
+import { useChatStore, useUserStore } from '../../zustand';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
   const { type, friend, chatRoomId } = route.params;
   const [value, setValue] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
-  const [messages, setMessages] = useState([]);
-  // const { messages, setMessages } = useMessageStore();
+  const { messagesByRoom, pendingMessages } = useChatStore();
+  const messages = [
+    ...(messagesByRoom[chatRoomId] || []),
+    ...(pendingMessages[chatRoomId] || []),
+  ];
   const flatListRef = useRef<FlatList>(null);
+  const {
+    addPendingMessage,
+    updatePendingStatus,
+    removePendingMessage,
+    setMessagesForRoom,
+  } = useChatStore.getState();
 
   useEffect(() => {
     if (chatRoomId) {
@@ -110,26 +118,8 @@ const MessageDetailScreen = ({ route }: any) => {
             createdAt,
           };
         });
-        // setMessages(msgs);
         // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ
-        setMessages((prevMessages): any => {
-          // 1️⃣ Lấy danh sách id hiện có
-          const existingIds = prevMessages.map((m: any) => m.id);
-
-          // 2️⃣ Lọc ra những tin nhắn mới chưa có trong danh sách
-          const newMessages = msgs.filter(
-            (m: any) => !existingIds.includes(m.id),
-          );
-
-          // 3️⃣ Ghép hai mảng lại
-          const allMessages = [...prevMessages, ...newMessages];
-
-          // 4️⃣ Sắp xếp lại theo thời gian
-          allMessages.sort((a, b) => a.createdAt - b.createdAt);
-
-          // 5️⃣ Trả về mảng mới để React cập nhật state
-          return allMessages;
-        });
+        setMessagesForRoom(chatRoomId, msgs);
       },
     );
 
@@ -148,10 +138,22 @@ const MessageDetailScreen = ({ route }: any) => {
   };
   const handleSendMessage = async () => {
     if (user && friend) {
-      setIsLoading(true);
       const id = makeContactId(user?.id as string, friend.id);
+      const messageId = uuidv4();
 
       if (type === 'private') {
+        // Thêm tin nhắn ở local
+        addPendingMessage(id, {
+          id: messageId,
+          senderId: user?.id,
+          type: 'text',
+          text: value,
+          mediaURL: '',
+          createAt: serverTimestamp(),
+          status: 'pending',
+        });
+
+        // Xử lý phía firebase
         try {
           const docSnap = await getDoc(doc(db, 'chatRooms', id));
 
@@ -193,10 +195,11 @@ const MessageDetailScreen = ({ route }: any) => {
             }
 
             // Thêm tin nhắn vào subCollection messages
-            await addDoc(
-              collection(
+            await setDoc(
+              doc(
                 db,
                 `chatRooms/${id}/batches/${batchInfo.id}/messages`,
+                messageId,
               ),
               {
                 senderId: user?.id,
@@ -204,9 +207,16 @@ const MessageDetailScreen = ({ route }: any) => {
                 text: value,
                 mediaURL: '',
                 createAt: serverTimestamp(),
-                status: 'pending',
+                status: 'sent',
               },
+              { merge: true },
             );
+
+            // Cập nhật trạng thái
+            updatePendingStatus(id, messageId, 'sent');
+            // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
+            removePendingMessage(id, messageId);
+
             // Update số lượng tin nhắn trong batch (tăng thêm 1 nếu gửi tin nhắn thành công)
             await updateDoc(doc(db, `chatRooms/${id}/batches`, batchInfo.id), {
               messageCount: increment(1),
@@ -278,10 +288,11 @@ const MessageDetailScreen = ({ route }: any) => {
             );
 
             // Tạo messages subcollection cho batch/id
-            await addDoc(
-              collection(
+            await setDoc(
+              doc(
                 db,
                 `chatRooms/${id}/batches/${batchInfo.id}/messages`,
+                messageId,
               ),
               {
                 senderId: user?.id,
@@ -289,14 +300,18 @@ const MessageDetailScreen = ({ route }: any) => {
                 text: value,
                 mediaURL: '',
                 createAt: serverTimestamp(),
-                status: 'pending',
+                status: 'sent',
               },
+              { merge: true },
             );
-          }
 
-          setIsLoading(false);
+            // Cập nhật trạng thái
+            updatePendingStatus(id, messageId, 'sent');
+            // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
+            removePendingMessage(id, messageId);
+          }
         } catch (error) {
-          setIsLoading(false);
+          updatePendingStatus(id, messageId, 'failed');
           console.log(error);
         }
       } else {
@@ -389,7 +404,7 @@ const MessageDetailScreen = ({ route }: any) => {
               paddingBottom: insets.bottom + 80,
             }}
             data={messages}
-            renderItem={({ item }) => <MessageContentComponent msg={item} />}
+            renderItem={({ item }) => <MessageContentComponent msg={item} messages={messages}/>}
             ref={flatListRef}
           />
         </SectionComponent>
@@ -446,8 +461,6 @@ const MessageDetailScreen = ({ route }: any) => {
           </RowComponent>
         </SectionComponent>
       </Container>
-
-      <SpinnerComponent loading={isLoading} />
     </SafeAreaView>
   );
 };

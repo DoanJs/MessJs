@@ -7,17 +7,24 @@ import {
   TextComponent,
 } from '.';
 import { colors } from '../constants/colors';
+import { sizes } from '../constants/sizes';
 import { MessageModel } from '../models';
 import { useUserStore } from '../zustand';
-import { sizes } from '../constants/sizes';
 
 interface Props {
   msg: MessageModel;
+  messages: MessageModel[];
 }
 
 const MessageContentComponent = (props: Props) => {
   const { user } = useUserStore();
-  const { msg } = props;
+  const { msg, messages } = props;
+
+  // Tìm tin cuối cùng (cuối danh sách) mà người gửi là chính bạn
+  const lastSentByUser = [...messages]
+    .reverse()
+    .find(m => m.senderId === user?.id && m.status === 'sent');
+
   return (
     <RowComponent
       justify={user?.id === msg.senderId ? 'flex-end' : 'flex-start'}
@@ -54,10 +61,23 @@ const MessageContentComponent = (props: Props) => {
             }}
           />
         </RowComponent>
-        <RowComponent justify='flex-end'>
-          <TextComponent text="Đã gửi" size={sizes.extraComment} />
+        <RowComponent justify="flex-end">
+          {(msg.status === 'failed' ||
+            msg.status === 'pending' ||
+            (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
+            <TextComponent
+              text={
+                msg.status === 'failed'
+                  ? '❌ Lỗi gửi'
+                  : msg.status === 'pending'
+                  ? 'Đang gửi'
+                  : 'Đã gửi'
+              }
+              size={sizes.extraComment}
+            />
+          )}
         </RowComponent>
-        <SpaceComponent height={6} />
+        <SpaceComponent height={4} />
         {/* <RowComponent
           styles={{
             flexDirection: 'column',

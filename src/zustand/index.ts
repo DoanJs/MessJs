@@ -1,4 +1,4 @@
-import useMessageStore from './useMessageStore';
+import { useChatStore } from './useChatStore';
 import useUserStore from './useUserStore';
 
-export { useMessageStore, useUserStore };
+export { useChatStore, useUserStore };
