@@ -8,7 +8,10 @@ import {
 import { db } from '../../../../firebase.config';
 
 export const q_chatRoomsWithMember = (id: string) =>
-  query(collection(db, 'chatRooms'), where('memberIds', 'array-contains', id));
+  query(
+    collection(db, 'chatRooms'),
+    where('memberIds', 'array-contains', id),
+  );
 export const q_chatRoomId = (id: string) => doc(db, 'chatRooms', id);
 export const q_messagesASC = ({
   chatRoomId,

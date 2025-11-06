@@ -40,7 +40,9 @@ const FriendItemComponent = (props: Props) => {
         navigation.navigate('MessageDetailScreen', {
           type: 'private',
           friend,
-          chatRoomId: makeContactId(user?.id as string, friend.id),
+          chatRoom: {
+            id: makeContactId(user?.id as string, friend.id)
+          },
         });
       });
     } catch (error) {

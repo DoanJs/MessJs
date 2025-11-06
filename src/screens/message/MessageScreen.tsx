@@ -1,6 +1,4 @@
-import {
-  onSnapshot
-} from '@react-native-firebase/firestore';
+import { onSnapshot } from '@react-native-firebase/firestore';
 import { Add, ScanBarcode, SearchNormal1 } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
@@ -17,18 +15,22 @@ import {
   SpaceComponent,
   TextComponent,
 } from '../../components';
+import { AddRoomModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
 import { getDocData } from '../../constants/firebase/getDocData';
+import { getDocsData } from '../../constants/firebase/getDocsData';
 import { q_chatRoomsWithMember } from '../../constants/firebase/query';
 import { sizes } from '../../constants/sizes';
-import { useUserStore } from '../../zustand';
+import { useUsersStore, useUserStore } from '../../zustand';
 
 const MessageScreen = () => {
   const insets = useSafeAreaInsets();
   const userServer = auth.currentUser;
   const { setUser } = useUserStore();
+  const { setUsers } = useUsersStore();
   const [rooms, setRooms] = useState([]);
   const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
+  const [isVisibleAddRoom, setIsVisibleAddRoom] = useState(false);
 
   useEffect(() => {
     if (!userServer) return;
@@ -39,6 +41,10 @@ const MessageScreen = () => {
       setData: setUser,
     });
 
+    getDocsData({
+      nameCollect: 'users',
+      setData: setUsers,
+    });
     // Lắng nghe realtime
     const unsubscribe = onSnapshot(
       q_chatRoomsWithMember(userServer.uid),
@@ -47,7 +53,9 @@ const MessageScreen = () => {
           id: doc.id,
           ...doc.data(),
         }));
-        setRooms(data);
+        setRooms(
+          data.sort((a: any, b: any) => b.lastMessageAt - a.lastMessageAt),
+        );
       },
       error => {
         console.error('Error listening chatRooms:', error);
@@ -96,7 +104,7 @@ const MessageScreen = () => {
             <Add
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => setIsVisibleAddRoom(true)}
               variant="Bold"
             />
           </RowComponent>
@@ -124,6 +132,12 @@ const MessageScreen = () => {
           />
         </SectionComponent>
       </Container>
+
+      <AddRoomModal
+        visible={isVisibleAddRoom}
+        onChange={val => {}}
+        onClose={() => setIsVisibleAddRoom(false)}
+      />
     </SafeAreaView>
   );
 };

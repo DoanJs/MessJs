@@ -33,7 +33,6 @@ import {
   RowComponent,
   SectionComponent,
   SpaceComponent,
-  SpinnerComponent,
   TextComponent,
 } from '../../components';
 import {
@@ -51,13 +50,13 @@ import { useChatStore, useUserStore } from '../../zustand';
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
-  const { type, friend, chatRoomId } = route.params;
+  const { type, friend, chatRoom } = route.params;
   const [value, setValue] = useState('');
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const { messagesByRoom, pendingMessages } = useChatStore();
   const messages = [
-    ...(messagesByRoom[chatRoomId] || []),
-    ...(pendingMessages[chatRoomId] || []),
+    ...(messagesByRoom[chatRoom.id] || []),
+    ...(pendingMessages[chatRoom.id] || []),
   ];
   const flatListRef = useRef<FlatList>(null);
   const {
@@ -68,10 +67,10 @@ const MessageDetailScreen = ({ route }: any) => {
   } = useChatStore.getState();
 
   useEffect(() => {
-    if (chatRoomId) {
+    if (chatRoom) {
       getCurrentBatch();
     }
-  }, [chatRoomId]);
+  }, [chatRoom]);
   // scroll xuống dưới cùng khi vào phòng chat
   useEffect(() => {
     if (messages.length > 0) {
@@ -83,9 +82,9 @@ const MessageDetailScreen = ({ route }: any) => {
   }, [messages.length]);
   // Lắng nghe thay đổi lastBatchId trong chatRoom
   useEffect(() => {
-    if (!chatRoomId) return;
+    if (!chatRoom) return;
 
-    const unsubRoom = onSnapshot(q_chatRoomId(chatRoomId), snap => {
+    const unsubRoom = onSnapshot(q_chatRoomId(chatRoom.id), snap => {
       const data = snap.data();
       if (!data) return;
 
@@ -96,13 +95,13 @@ const MessageDetailScreen = ({ route }: any) => {
     });
 
     return () => unsubRoom();
-  }, [chatRoomId]);
+  }, [chatRoom]);
   useEffect(() => {
-    if (!chatRoomId || !lastBatchId) return;
+    if (!chatRoom || !lastBatchId) return;
 
     // 🔥 Đăng ký lắng nghe realtime
     const unsubscribe = onSnapshot(
-      q_messagesASC({ chatRoomId, batchId: lastBatchId }),
+      q_messagesASC({ chatRoomId: chatRoom.id, batchId: lastBatchId }),
       snapshot => {
         const msgs = snapshot.docs.map((doc: any) => {
           const data = doc.data();
@@ -119,7 +118,7 @@ const MessageDetailScreen = ({ route }: any) => {
           };
         });
         // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ
-        setMessagesForRoom(chatRoomId, msgs);
+        setMessagesForRoom(chatRoom.id, msgs);
       },
     );
 
@@ -127,21 +126,21 @@ const MessageDetailScreen = ({ route }: any) => {
     return () => {
       unsubscribe();
     };
-  }, [chatRoomId, lastBatchId]); // <– dependency quan trọng
+  }, [chatRoom, lastBatchId]); // <– dependency quan trọng
 
   const getCurrentBatch = async () => {
-    const snapshot = await getDoc(q_chatRoomId(chatRoomId));
+    const snapshot = await getDoc(q_chatRoomId(chatRoom.id));
 
     if (snapshot.exists()) {
       setLastBatchId(snapshot.data()?.lastBatchId);
     }
   };
   const handleSendMessage = async () => {
-    if (user && friend) {
-      const id = makeContactId(user?.id as string, friend.id);
+    if (user) {
       const messageId = uuidv4();
 
-      if (type === 'private') {
+      if (type === 'private' && friend) {
+        const id = makeContactId(user?.id as string, friend.id);
         // Thêm tin nhắn ở local
         addPendingMessage(id, {
           id: messageId,
@@ -315,7 +314,95 @@ const MessageDetailScreen = ({ route }: any) => {
           console.log(error);
         }
       } else {
-        console.log('group');
+        // Thêm tin nhắn ở local
+        addPendingMessage(chatRoom.id, {
+          id: messageId,
+          senderId: user?.id,
+          type: 'text',
+          text: value,
+          mediaURL: '',
+          createAt: serverTimestamp(),
+          status: 'pending',
+        });
+
+        try {
+          //check xem batch nay qua ngay moi hoac day chua
+          const docSnapBatch = await getDoc(
+            doc(db, `chatRooms/${chatRoom.id}/batches`, lastBatchId as string),
+          );
+          let batchInfo = {
+            id: docSnapBatch.id,
+            messageCount: docSnapBatch.data()?.messageCount,
+          };
+
+          if (shouldCreateNewBatch(batchInfo)) {
+            // Tạo batchInfo (chứa batchId) tiếp theo
+            batchInfo = createNewBatch(batchInfo);
+            // Tạo batch mới
+            await setDoc(
+              doc(db, `chatRooms/${chatRoom.id}/batches`, batchInfo.id),
+              {
+                id: batchInfo.id,
+                messageCount: 0,
+                preBatchId: convertBatchId(batchInfo, 'decrease'),
+                nextBatchId: null,
+              },
+              { merge: true },
+            );
+            // update lại nextBatchId cho batch cũ
+            await updateDoc(
+              doc(
+                db,
+                `chatRooms/${chatRoom.id}/batches`,
+                convertBatchId(batchInfo, 'decrease'),
+              ),
+              {
+                nextBatchId: batchInfo.id,
+              },
+            );
+          }
+
+          // Thêm tin nhắn vào subCollection messages
+          await setDoc(
+            doc(
+              db,
+              `chatRooms/${chatRoom.id}/batches/${batchInfo.id}/messages`,
+              messageId,
+            ),
+            {
+              senderId: user?.id,
+              type: 'text',
+              text: value,
+              mediaURL: '',
+              createAt: serverTimestamp(),
+              status: 'sent',
+            },
+            { merge: true },
+          );
+
+          // Cập nhật trạng thái
+          updatePendingStatus(chatRoom.id, messageId, 'sent');
+          // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
+          removePendingMessage(chatRoom.id, messageId);
+
+          // Update số lượng tin nhắn trong batch (tăng thêm 1 nếu gửi tin nhắn thành công)
+          await updateDoc(
+            doc(db, `chatRooms/${chatRoom.id}/batches`, batchInfo.id),
+            {
+              messageCount: increment(1),
+            },
+          );
+          // Update lại số thông tin cần thiết trong chatRoomId để hiện thị ngoài room
+          await updateDoc(doc(db, `chatRooms`, chatRoom.id), {
+            lastMessageText: value,
+            lastMessageAt: serverTimestamp(),
+            lastSenderId: user?.id,
+            lastBatchId: batchInfo.id,
+          });
+        } catch (error) {
+          updatePendingStatus(chatRoom.id, messageId, 'failed');
+          console.log(error);
+        }
       }
 
       setValue('');
@@ -342,14 +429,14 @@ const MessageDetailScreen = ({ route }: any) => {
             onPress={() => {}}
           >
             <TextComponent
-              text={friend.displayName}
+              text={type === 'private' ? friend.displayName : chatRoom.name}
               color={colors.background}
               size={sizes.bigText}
               font={fontFamillies.poppinsBold}
             />
             {type === 'group' && (
               <TextComponent
-                text="15 thành viên"
+                text={`${chatRoom.memberCount} thành viên`}
                 color={colors.background}
                 size={sizes.smallText}
               />
@@ -404,7 +491,9 @@ const MessageDetailScreen = ({ route }: any) => {
               paddingBottom: insets.bottom + 80,
             }}
             data={messages}
-            renderItem={({ item }) => <MessageContentComponent msg={item} messages={messages}/>}
+            renderItem={({ item }) => (
+              <MessageContentComponent msg={item} messages={messages} type={chatRoom.type}/>
+            )}
             ref={flatListRef}
           />
         </SectionComponent>
@@ -427,13 +516,13 @@ const MessageDetailScreen = ({ route }: any) => {
                 borderRadius: 5,
                 flex: 1,
               }}
-              allowClear
               placeholder="Nhập tin nhắn"
               placeholderTextColor={colors.gray2}
               color={colors.background}
               value={value}
-              onChange={val => setValue(val)}
-              onSubmitEditing={handleSendMessage}
+              onChangeText={setValue}
+              // onSubmitEditing={handleSendMessage}
+              multible
             />
             <SpaceComponent width={16} />
             {value === '' ? (

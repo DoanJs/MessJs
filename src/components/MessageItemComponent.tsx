@@ -1,3 +1,9 @@
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+} from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import {
@@ -8,14 +14,13 @@ import {
   SpaceComponent,
   TextComponent,
 } from '.';
+import { auth, db } from '../../firebase.config';
 import { colors } from '../constants/colors';
 import { convertTimeStampFirestore } from '../constants/convertData';
 import { getDocData } from '../constants/firebase/getDocData';
-import { makeContactId } from '../constants/makeContactId';
 import { sizes } from '../constants/sizes';
 import { UserModel } from '../models';
 import { ChatRoomModel } from '../models/ChatRoomModel';
-import { useUserStore } from '../zustand';
 
 interface Props {
   chatRoom: ChatRoomModel;
@@ -23,30 +28,45 @@ interface Props {
 const MessageItemComponent = (props: Props) => {
   const navigation: any = useNavigation();
   const { chatRoom } = props;
-  const { user } = useUserStore();
+  const userServer = auth.currentUser;
   const [friend, setFriend] = useState<UserModel>();
+  const [memberGroup, setMemberGroup] = useState([]);
   const [now, setNow] = useState(Date.now());
+
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
     return () => clearInterval(timer);
   }, []);
 
-
   useEffect(() => {
     if (chatRoom) {
-      const friendId = chatRoom.memberIds.filter(_ => _ !== user?.id)[0];
-      if (friendId) {
+      const friendId = chatRoom.memberIds.filter(_ => _ !== userServer?.uid)[0];
+      if (chatRoom.type === 'private' && friendId) {
         getDocData({
           nameCollect: 'users',
           id: friendId,
           setData: setFriend,
         });
+      } else {
+        getMemberGroup(chatRoom.memberIds);
       }
     }
   }, [chatRoom]);
 
-  if (!friend || !user) return <ActivityLoadingComponent />;
+  const getMemberGroup = async (memberIds: string[]) => {
+    const q = query(collection(db, 'users'), where('id', 'in', memberIds));
+
+    const snapshot = await getDocs(q);
+    const users = snapshot.docs.map((doc: any) => ({
+      id: doc.id,
+      ...doc.data(),
+    }));
+
+    setMemberGroup(users);
+  };
+
+  if (!userServer) return <ActivityLoadingComponent />;
   return (
     <RowComponent
       styles={{
@@ -57,15 +77,15 @@ const MessageItemComponent = (props: Props) => {
       onPress={() =>
         navigation.navigate('MessageDetailScreen', {
           type: chatRoom.type,
-          friend,
-          chatRoomId: makeContactId(user.id, friend.id),
+          friend: chatRoom.type === 'private' ? friend : null,
+          chatRoom
         })
       }
     >
       {chatRoom.type === 'group' ? (
-        <AvatarGroupComponent />
+        <AvatarGroupComponent memberGroup={memberGroup}/>
       ) : (
-        <AvatarComponent uri={friend.photoURL} />
+        <AvatarComponent uri={friend?.photoURL} />
       )}
       <SpaceComponent width={16} />
       <RowComponent
@@ -75,7 +95,12 @@ const MessageItemComponent = (props: Props) => {
           alignItems: 'flex-start',
         }}
       >
-        <TextComponent text={`${friend.displayName}`} size={sizes.bigText} />
+        <TextComponent
+          text={`${
+            chatRoom.type === 'private' ? friend?.displayName : chatRoom.name
+          }`}
+          size={sizes.bigText}
+        />
         <TextComponent
           text={chatRoom.lastMessageText}
           color={colors.gray3}
@@ -84,7 +109,9 @@ const MessageItemComponent = (props: Props) => {
       </RowComponent>
       <SpaceComponent width={10} />
       <TextComponent
-        text={`${convertTimeStampFirestore(chatRoom.lastMessageAt).timeAgo(now)}`}
+        text={`${convertTimeStampFirestore(chatRoom.lastMessageAt).timeAgo(
+          now,
+        )}`}
         color={colors.gray3}
         size={sizes.smallText}
       />

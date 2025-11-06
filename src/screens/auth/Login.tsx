@@ -122,7 +122,7 @@ const Login = ({ navigation }: any) => {
               placeholderTextColor={colors.gray}
               color={colors.background}
               value={email}
-              onChange={val => setEmail(val)}
+              onChangeText={setEmail}
             />
             <SpaceComponent height={10} />
             <InputComponent
@@ -141,7 +141,7 @@ const Login = ({ navigation }: any) => {
               textStyles={{
                 color: colors.text,
               }}
-              onChange={val => setPassword(val)}
+              onChangeText={setPassword}
             />
             <SpaceComponent height={10} />
 

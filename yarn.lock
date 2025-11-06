@@ -6453,6 +6453,13 @@ react-is@^19.1.0:
   resolved "https://registry.yarnpkg.com/react-is/-/react-is-19.2.0.tgz#ddc3b4a4e0f3336c3847f18b806506388d7b9973"
   integrity sha512-x3Ax3kNSMIIkyVYhWPyO09bu0uttcAIoecO/um/rKGQ4EltYWVYtyiGkS/3xMynrbVQdS69Jhlv8FXUEZehlzA==
 
+react-native-animatable@1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/react-native-animatable/-/react-native-animatable-1.4.0.tgz#05a259e1566081ce7d3f6fba1e92edc65f5c6160"
+  integrity sha512-DZwaDVWm2NBvBxf7I0wXKXLKb/TxDnkV53sWhCvei1pRyTX3MVFpkvdYBknNBqPrxYuAIlPxEp7gJOidIauUkw==
+  dependencies:
+    prop-types "^15.8.1"
+
 react-native-gesture-handler@^2.29.0:
   version "2.29.0"
   resolved "https://registry.yarnpkg.com/react-native-gesture-handler/-/react-native-gesture-handler-2.29.0.tgz#be9065d1f25e9bdf76340fa63825f15fb50b6e50"
@@ -6491,6 +6498,13 @@ react-native-loading-spinner-overlay@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/react-native-loading-spinner-overlay/-/react-native-loading-spinner-overlay-3.0.1.tgz#092481b8cce157d3af5ef942f845ad981f96bd36"
   integrity sha512-4GdR54HQnKg2HPSSisVizfTLuyhSh4splY9eb8mKiYF1Ihjn/5EmdNo5bN3S7uKPFRC3WLzIZIouX6G6fXfnjw==
+
+react-native-modal@^14.0.0-rc.1:
+  version "14.0.0-rc.1"
+  resolved "https://registry.yarnpkg.com/react-native-modal/-/react-native-modal-14.0.0-rc.1.tgz#d193af884c910ec34a4953508c7656b5fc83d7d4"
+  integrity sha512-v5pvGyx1FlmBzdHyPqBsYQyS2mIJhVmuXyNo5EarIzxicKhuoul6XasXMviGcXboEUT0dTYWs88/VendojPiVw==
+  dependencies:
+    react-native-animatable "1.4.0"
 
 react-native-safe-area-context@^5.6.1:
   version "5.6.1"

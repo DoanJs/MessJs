@@ -8,31 +8,57 @@ import {
 } from '.';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
-import { MessageModel } from '../models';
-import { useUserStore } from '../zustand';
+import { MessageModel, UserModel } from '../models';
+import { useUsersStore, useUserStore } from '../zustand';
+import { convertInfoUserFromID } from '../constants/convertData';
 
 interface Props {
   msg: MessageModel;
   messages: MessageModel[];
+  type: string
 }
 
 const MessageContentComponent = (props: Props) => {
   const { user } = useUserStore();
-  const { msg, messages } = props;
+  const { users } = useUsersStore();
+  const { msg, messages, type } = props;
 
   // Tìm tin cuối cùng (cuối danh sách) mà người gửi là chính bạn
   const lastSentByUser = [...messages]
     .reverse()
     .find(m => m.senderId === user?.id && m.status === 'sent');
 
+  // Tìm tin hiển thị avatar đối với 2 tin liên tiếp
+  const showAvatar = () => {
+    const index = messages.findIndex(_ => _.id === msg.id);
+    const nextMessage = messages[index + 1];
+    const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
+
+    return isShow;
+  };
+  const showDisplayName = () => {
+    const index = messages.findIndex(_ => _.id === msg.id);
+    const nextMessage = messages[index - 1];
+    const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
+
+    return isShow;
+  };
+
   return (
     <RowComponent
       justify={user?.id === msg.senderId ? 'flex-end' : 'flex-start'}
-      styles={{ alignItems: 'flex-start' }}
+      styles={{ alignItems: showAvatar() ? 'center' : 'flex-start' }}
     >
       {user?.id !== msg.senderId && (
         <>
-          <AvatarComponent size={30} />
+          {showAvatar() ? (
+            <AvatarComponent
+              size={26}
+              uri={convertInfoUserFromID(msg.senderId, users)?.photoURL}
+            />
+          ) : (
+            <SpaceComponent height={26} width={26} />
+          )}
           <SpaceComponent width={10} />
         </>
       )}
@@ -41,6 +67,18 @@ const MessageContentComponent = (props: Props) => {
           maxWidth: '70%',
         }}
       >
+        {type === 'group' && user?.id !== msg.senderId && showDisplayName() && (
+          <RowComponent justify="flex-start" styles={{ width: '100%' }}>
+            <TextComponent
+              text={
+                convertInfoUserFromID(msg.senderId, users)
+                  ?.displayName as string
+              }
+              size={sizes.smallText}
+              color="coral"
+            />
+          </RowComponent>
+        )}
         <RowComponent
           styles={{
             flexDirection: 'column',

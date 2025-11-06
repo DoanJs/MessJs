@@ -22,7 +22,6 @@ const ProfileScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const {user} = useUserStore()
 
-  console.log(user)
   const handleLogout = async () => {
     setIsLoading(true);
 

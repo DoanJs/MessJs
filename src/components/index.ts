@@ -3,6 +3,7 @@ import AvatarComponent from './AvatarComponent';
 import AvatarGroupComponent from './AvatarGroupComponent';
 import BtnShadowLinearComponent from './BtnShadowLinearComponent';
 import ButtonComponent from './ButtonComponent';
+import CheckboxUserComponent from './CheckboxUserComponent';
 import CheckedButtonComponent from './CheckedButtonComponent';
 import Container from './Container';
 import FriendItemComponent from './FriendItemComponent';
@@ -35,5 +36,5 @@ export {
   SectionComponent,
   SpaceComponent,
   SpinnerComponent,
-  TextComponent,
+  TextComponent,CheckboxUserComponent
 };

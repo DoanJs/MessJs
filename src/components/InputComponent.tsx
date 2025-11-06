@@ -16,7 +16,7 @@ import { globalStyles } from '../styles/globalStyles';
 
 interface Props {
   value: string;
-  onChange: (val: string) => void;
+  onChangeText: (val: string) => void;
   keyboardType?: KeyboardTypeOptions;
   placeholder?: string;
   placeholderTextColor?: string;
@@ -30,14 +30,15 @@ interface Props {
   textStyles?: StyleProp<TextStyle>;
   color?: string;
   editable?: boolean;
-  onSubmitEditing?: () => void;
+  // onSubmitEditing?: () => void;
+  autoFocus?:boolean
 }
 
 const InputComponent = (props: Props) => {
   const {
     color,
     value,
-    onChange,
+    onChangeText,
     keyboardType,
     placeholder,
     placeholderTextColor,
@@ -50,7 +51,8 @@ const InputComponent = (props: Props) => {
     styles,
     textStyles,
     editable,
-    onSubmitEditing,
+    // onSubmitEditing,
+    autoFocus
   } = props;
   const [showPass, setShowPass] = useState(false);
 
@@ -75,27 +77,32 @@ const InputComponent = (props: Props) => {
           }}
         >
           <TextInput
-            style={[globalStyles.text, { margin: 0, padding: 10 }, textStyles]}
+            style={[
+              globalStyles.text,
+              { margin: 0, padding: 10, minHeight: 46, maxHeight: 100 },
+              textStyles,
+            ]}
             placeholder={placeholder ?? ''}
             placeholderTextColor={placeholderTextColor ?? '#676767'}
             value={value}
-            onChangeText={val => onChange(val)}
+            onChangeText={onChangeText}
             multiline={multible}
             numberOfLines={numberOfLine}
             secureTextEntry={isPassword ? !showPass : false}
             autoCapitalize="none"
             editable={editable ?? true}
             keyboardType={keyboardType ?? 'default'}
-            onSubmitEditing={onSubmitEditing}
+            // onSubmitEditing={onSubmitEditing} phải bỏ đi không là bị lỗi double tin nhắn
             submitBehavior="submit"
-            autoFocus
+            scrollEnabled={true}
+            autoFocus={autoFocus}
           />
         </View>
         {affix && affix}
         {allowClear && value && (
           <TouchableOpacity
             style={{ paddingRight: 8 }}
-            onPress={() => onChange('')}
+            onPress={() => onChangeText('')}
           >
             <AntDesign name="close" size={20} color={colors.text} />
           </TouchableOpacity>
