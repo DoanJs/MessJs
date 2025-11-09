@@ -165,7 +165,6 @@ const MessageDetailScreen = ({ route }: any) => {
               id: docSnapBatch.id,
               messageCount: docSnapBatch.data()?.messageCount,
             };
-
             if (shouldCreateNewBatch(batchInfo)) {
               // Tạo batchInfo (chứa batchId) tiếp theo
               batchInfo = createNewBatch(batchInfo);
@@ -201,12 +200,12 @@ const MessageDetailScreen = ({ route }: any) => {
                 messageId,
               ),
               {
-                senderId: user?.id,
+                senderId: user.id,
                 type: 'text',
                 text: value,
                 mediaURL: '',
-                createAt: serverTimestamp(),
                 status: 'sent',
+                createAt: serverTimestamp(),
               },
               { merge: true },
             );
@@ -216,17 +215,14 @@ const MessageDetailScreen = ({ route }: any) => {
             // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
             removePendingMessage(id, messageId);
 
-            // Update số lượng tin nhắn trong batch (tăng thêm 1 nếu gửi tin nhắn thành công)
-            await updateDoc(doc(db, `chatRooms/${id}/batches`, batchInfo.id), {
-              messageCount: increment(1),
-            });
-            // Update lại số thông tin cần thiết trong chatRoomId để hiện thị ngoài room
-            await updateDoc(doc(db, `chatRooms`, id), {
-              lastMessageText: value,
-              lastMessageAt: serverTimestamp(),
-              lastSenderId: user?.id,
-              lastBatchId: batchInfo.id,
-            });
+            // // cho update tren server bang CF
+            // // Update lại số thông tin cần thiết trong chatRoomId để hiện thị ngoài badge room
+            // await updateDoc(doc(db, `chatRooms`, id), {
+            //   lastMessageText: value,
+            //   lastMessageAt: serverTimestamp(),
+            //   lastSenderId: user?.id,
+            //   lastBatchId: batchInfo.id,
+            // });
           } else {
             const batchInfo = createNewBatch(null);
 
@@ -246,7 +242,6 @@ const MessageDetailScreen = ({ route }: any) => {
                 lastBatchId: batchInfo.id,
                 memberCount: 2,
                 memberIds: [user.id, friend.id],
-                // readStatus: ,
               },
               { merge: true },
             );
@@ -267,11 +262,23 @@ const MessageDetailScreen = ({ route }: any) => {
               },
             ];
 
-            const promiseMember = members.map(_ =>
+            const promiseMember = members.map(_ => {
               setDoc(doc(db, `chatRooms/${id}/members`, _.id), _, {
                 merge: true,
-              }),
-            );
+              });
+              // Thêm readStatus subcollection cho chatRoom
+              setDoc(
+                doc(db, `chatRooms/${id}/readStatus`, _.id),
+                {
+                  lastReadMessageId: _.id === user.id ? messageId : null,
+                  lastReadAt: _.id === user.id ? serverTimestamp() : null,
+                },
+                {
+                  merge: true,
+                },
+              );
+              // // Thêm unreadCounts subcollection cho chatRoom bằng CF rồi
+            });
             await Promise.all(promiseMember);
 
             // Tạo batch đầu tiên
@@ -279,7 +286,7 @@ const MessageDetailScreen = ({ route }: any) => {
               doc(db, `chatRooms/${id}/batches`, batchInfo.id),
               {
                 id: batchInfo.id,
-                messageCount: 1,
+                messageCount: 0,
                 preBatchId: null,
                 nextBatchId: convertBatchId(batchInfo, 'increase'),
               },
@@ -298,8 +305,8 @@ const MessageDetailScreen = ({ route }: any) => {
                 type: 'text',
                 text: value,
                 mediaURL: '',
-                createAt: serverTimestamp(),
                 status: 'sent',
+                createAt: serverTimestamp(),
               },
               { merge: true },
             );
@@ -374,8 +381,8 @@ const MessageDetailScreen = ({ route }: any) => {
               type: 'text',
               text: value,
               mediaURL: '',
-              createAt: serverTimestamp(),
               status: 'sent',
+              createAt: serverTimestamp(),
             },
             { merge: true },
           );
@@ -384,21 +391,7 @@ const MessageDetailScreen = ({ route }: any) => {
           updatePendingStatus(chatRoom.id, messageId, 'sent');
           // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
           removePendingMessage(chatRoom.id, messageId);
-
-          // Update số lượng tin nhắn trong batch (tăng thêm 1 nếu gửi tin nhắn thành công)
-          await updateDoc(
-            doc(db, `chatRooms/${chatRoom.id}/batches`, batchInfo.id),
-            {
-              messageCount: increment(1),
-            },
-          );
-          // Update lại số thông tin cần thiết trong chatRoomId để hiện thị ngoài room
-          await updateDoc(doc(db, `chatRooms`, chatRoom.id), {
-            lastMessageText: value,
-            lastMessageAt: serverTimestamp(),
-            lastSenderId: user?.id,
-            lastBatchId: batchInfo.id,
-          });
+          
         } catch (error) {
           updatePendingStatus(chatRoom.id, messageId, 'failed');
           console.log(error);
@@ -492,7 +485,11 @@ const MessageDetailScreen = ({ route }: any) => {
             }}
             data={messages}
             renderItem={({ item }) => (
-              <MessageContentComponent msg={item} messages={messages} type={chatRoom.type}/>
+              <MessageContentComponent
+                msg={item}
+                messages={messages}
+                type={chatRoom.type}
+              />
             )}
             ref={flatListRef}
           />

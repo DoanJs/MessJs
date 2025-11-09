@@ -1,4 +1,4 @@
-import { BatchModel, ReadStatusModel, TimeAtModel } from '.';
+import { BatchModel, ReadStatusModel, TimeAtModel, UserModel } from '.';
 
 export interface ChatRoomModel {
   id: string;
@@ -16,6 +16,7 @@ export interface ChatRoomModel {
   memberCount: number;
   memberIds: string[];
 
+  members?: UserModel[]
   batches?: BatchModel[];
   readStatus?: ReadStatusModel[];
 }
