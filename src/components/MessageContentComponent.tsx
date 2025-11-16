@@ -1,3 +1,4 @@
+import moment from 'moment';
 import React from 'react';
 import { View } from 'react-native';
 import {
@@ -7,22 +8,45 @@ import {
   TextComponent,
 } from '.';
 import { colors } from '../constants/colors';
-import { sizes } from '../constants/sizes';
-import { MessageModel, UserModel } from '../models';
-import { useUsersStore, useUserStore } from '../zustand';
 import { convertInfoUserFromID } from '../constants/convertData';
+import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
+import { sizes } from '../constants/sizes';
+import { MessageModel, ReadStatusModel, UserModel } from '../models';
+import { useUsersStore, useUserStore } from '../zustand';
 
 interface Props {
+  showBlockTime: boolean;
+  shouldShowSmallTime: boolean;
+  isEndOfTimeBlock: boolean;
   msg: MessageModel;
   messages: MessageModel[];
-  type: string
+  type: string;
+  readStatus: Record<string, ReadStatusModel>;
+  members: UserModel[];
 }
 
 const MessageContentComponent = (props: Props) => {
   const { user } = useUserStore();
   const { users } = useUsersStore();
-  const { msg, messages, type } = props;
+  const {
+    showBlockTime,
+    shouldShowSmallTime,
+    isEndOfTimeBlock,
+    msg,
+    messages,
+    type,
+    readStatus,
+    members,
+  } = props;
 
+  const readers = Object.keys(readStatus).filter(userId => {
+    if (userId === user?.id) return false; // bỏ người gửi
+
+    const lastId = readStatus[userId]?.lastReadMessageId;
+    const lastIndex = messages.findIndex(m => m.id === lastId);
+    const currentIndex = messages.findIndex(m => m.id === msg.id);
+    return lastIndex === currentIndex; // user đã đọc tới tin này hoặc sau
+  });
   // Tìm tin cuối cùng (cuối danh sách) mà người gửi là chính bạn
   const lastSentByUser = [...messages]
     .reverse()
@@ -43,97 +67,123 @@ const MessageContentComponent = (props: Props) => {
 
     return isShow;
   };
-
   return (
-    <RowComponent
-      justify={user?.id === msg.senderId ? 'flex-end' : 'flex-start'}
-      styles={{ alignItems: showAvatar() ? 'center' : 'flex-start' }}
-    >
-      {user?.id !== msg.senderId && (
-        <>
-          {showAvatar() ? (
-            <AvatarComponent
-              size={26}
-              uri={convertInfoUserFromID(msg.senderId, users)?.photoURL}
-            />
-          ) : (
-            <SpaceComponent height={26} width={26} />
-          )}
-          <SpaceComponent width={10} />
-        </>
+    <>
+      {showBlockTime && (
+        <TextComponent
+          styles={{ marginVertical: 4 }}
+          text={formatMessageBlockTime(msg.createAt)}
+          textAlign="center"
+          size={sizes.subText}
+          color={colors.gray3}
+        />
       )}
-      <View
-        style={{
-          maxWidth: '70%',
+      <RowComponent
+        justify={user?.id === msg.senderId ? 'flex-end' : 'flex-start'}
+        styles={{
+          alignItems:
+            showAvatar() || isEndOfTimeBlock ? 'flex-end' : 'flex-start',
         }}
       >
-        {type === 'group' && user?.id !== msg.senderId && showDisplayName() && (
-          <RowComponent justify="flex-start" styles={{ width: '100%' }}>
-            <TextComponent
-              text={
-                convertInfoUserFromID(msg.senderId, users)
-                  ?.displayName as string
-              }
-              size={sizes.smallText}
-              color="coral"
-            />
-          </RowComponent>
+        {user?.id !== msg.senderId && (
+          <>
+            {showAvatar() || isEndOfTimeBlock ? (
+              <AvatarComponent
+                size={26}
+                uri={convertInfoUserFromID(msg.senderId, users)?.photoURL}
+                styles={{ marginBottom: 6 }}
+              />
+            ) : (
+              <SpaceComponent height={26} width={26} />
+            )}
+            <SpaceComponent width={10} />
+          </>
         )}
-        <RowComponent
-          styles={{
-            flexDirection: 'column',
-            backgroundColor:
-              user?.id !== msg.senderId
-                ? colors.gray + '80'
-                : colors.primaryBold,
-            padding: 10,
-            borderRadius: 10,
+        <View
+          style={{
+            maxWidth: '70%',
           }}
         >
-          <TextComponent
-            text={msg.text}
+          {type === 'group' &&
+            user?.id !== msg.senderId &&
+            showDisplayName() && (
+              <RowComponent justify="flex-start" styles={{ width: '100%' }}>
+                <TextComponent
+                  text={
+                    convertInfoUserFromID(msg.senderId, users)
+                      ?.displayName as string
+                  }
+                  size={sizes.smallText}
+                  color="coral"
+                />
+              </RowComponent>
+            )}
+          <RowComponent
             styles={{
-              textAlign: 'justify',
-              color:
-                user?.id !== msg.senderId ? colors.text : colors.background,
+              flexDirection: 'column',
+              backgroundColor:
+                user?.id !== msg.senderId
+                  ? colors.gray + '80'
+                  : colors.primaryBold,
+              padding: 10,
+              borderRadius: 10,
+              alignItems: 'flex-start',
             }}
-          />
-        </RowComponent>
-        <RowComponent justify="flex-end">
-          {(msg.status === 'failed' ||
-            msg.status === 'pending' ||
-            (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
+          >
             <TextComponent
-              text={
-                msg.status === 'failed'
-                  ? '❌ Lỗi gửi'
-                  : msg.status === 'pending'
-                  ? 'Đang gửi'
-                  : 'Đã gửi'
-              }
-              size={sizes.extraComment}
+              text={msg.text}
+              styles={{
+                textAlign: 'justify',
+                color:
+                  user?.id !== msg.senderId ? colors.text : colors.background,
+              }}
             />
+            {(showAvatar() || shouldShowSmallTime) && (
+              <TextComponent
+                text={moment(toMs(msg.createAt ?? msg.createAt)).format(
+                  'HH:mm',
+                )}
+                textAlign="center"
+                size={sizes.smallText}
+                color={
+                  msg.senderId === user?.id ? colors.background : colors.red
+                }
+              />
+            )}
+          </RowComponent>
+          {readers.length == 0 && (
+            <RowComponent justify="flex-end">
+              {(msg.status === 'failed' ||
+                msg.status === 'pending' ||
+                (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
+                <TextComponent
+                  text={
+                    msg.status === 'failed'
+                      ? '❌ Lỗi gửi'
+                      : msg.status === 'pending'
+                      ? 'Đang gửi'
+                      : 'Đã gửi'
+                  }
+                  size={sizes.extraComment}
+                />
+              )}
+            </RowComponent>
           )}
+          <SpaceComponent height={4} />
+        </View>
+      </RowComponent>
+      {readers.length > 0 && (
+        <RowComponent justify="flex-end" styles={{ marginBottom: 4 }}>
+          {readers.map((_: string, index: number) => (
+            <AvatarComponent
+              size={sizes.bigText}
+              key={index}
+              uri={members.filter(member => member.id === _)[0]?.photoURL}
+            />
+          ))}
         </RowComponent>
-        <SpaceComponent height={4} />
-        {/* <RowComponent
-          styles={{
-            flexDirection: 'column',
-            backgroundColor:
-              user?.id !== msg.senderId
-                ? colors.gray + '80'
-                : colors.primaryBold,
-            padding: 10,
-            borderRadius: 10,
-          }}
-        >
-          <TextComponent
-            text="Lorem ipsum dolor sit amet consectetur adipisicing elit. Maxime, enim earum eius accusantium ullam quasi quam! Omnis ipsa provident a qui deleniti reiciendis ut atque adipisci, doloribus dicta corrupti enim."
-            styles={{ textAlign: 'justify' }}
-          />
-        </RowComponent> */}
-      </View>
-    </RowComponent>
+      )}
+    </>
   );
 };
 

@@ -1,4 +1,4 @@
-import { onSnapshot } from '@react-native-firebase/firestore';
+import { doc, onSnapshot } from '@react-native-firebase/firestore';
 import { Add, ScanBarcode, SearchNormal1 } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl } from 'react-native';
@@ -6,7 +6,7 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
-import { auth } from '../../../firebase.config';
+import { auth, db } from '../../../firebase.config';
 import {
   Container,
   MessageItemComponent,
@@ -22,29 +22,40 @@ import { getDocsData } from '../../constants/firebase/getDocsData';
 import { q_chatRoomsWithMember } from '../../constants/firebase/query';
 import { sizes } from '../../constants/sizes';
 import { useUsersStore, useUserStore } from '../../zustand';
+import { ChatRoomModel } from '../../models/ChatRoomModel';
+type BadgeMap = { [roomId: string]: number };
 
 const MessageScreen = () => {
   const insets = useSafeAreaInsets();
   const userServer = auth.currentUser;
   const { setUser } = useUserStore();
   const { setUsers } = useUsersStore();
-  const [rooms, setRooms] = useState([]);
+  const [rooms, setRooms] = useState<ChatRoomModel[]>([]);
   const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
   const [isVisibleAddRoom, setIsVisibleAddRoom] = useState(false);
+  const [badges, setBadges] = useState<BadgeMap>({}); // { roomId: count }
 
   useEffect(() => {
     if (!userServer) return;
+    let cancelled = false;
     // Gộp phần setUser trong zustand ở đây luôn
-    getDocData({
-      id: userServer.uid,
-      nameCollect: 'users',
-      setData: setUser,
-    });
+    (async () => {
+      if (!cancelled)
+        getDocData({
+          id: userServer.uid,
+          nameCollect: 'users',
+          setData: setUser,
+        });
+    })();
 
-    getDocsData({
-      nameCollect: 'users',
-      setData: setUsers,
-    });
+    (async () => {
+      if (!cancelled)
+        getDocsData({
+          nameCollect: 'users',
+          setData: setUsers,
+        });
+    })();
+
     // Lắng nghe realtime
     const unsubscribe = onSnapshot(
       q_chatRoomsWithMember(userServer.uid),
@@ -63,8 +74,35 @@ const MessageScreen = () => {
     );
 
     // Cleanup listener khi component unmount
-    return () => unsubscribe();
+    return () => {
+      cancelled = true;
+      unsubscribe();
+    };
   }, [userServer]);
+
+  useEffect(() => {
+    if (!rooms.length) return;
+
+    const unsubList: any[] = [];
+
+    // Lắng nghe từng unreadCount của user trong mỗi room
+    rooms.forEach((room: any) => {
+      const unreadRef = doc(
+        db,
+        `chatRooms/${room.id}/unreadCounts/${userServer?.uid}`,
+      );
+      const unsub = onSnapshot(unreadRef, snap => {
+        setBadges(prev => ({
+          ...prev,
+          [room.id]: snap.exists() ? snap.data()?.count || 0 : 0,
+        }));
+      });
+      unsubList.push(unsub);
+    });
+
+    // Cleanup tất cả listener khi unmount
+    return () => unsubList.forEach(u => u());
+  }, [rooms, userServer]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -127,7 +165,10 @@ const MessageScreen = () => {
             }
             data={rooms}
             renderItem={({ item: chatRoom }) => (
-              <MessageItemComponent chatRoom={chatRoom} />
+              <MessageItemComponent
+                chatRoom={chatRoom}
+                count={badges[chatRoom.id]}//truyền count vào để show ngoài badge
+              />
             )}
           />
         </SectionComponent>

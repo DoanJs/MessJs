@@ -8,6 +8,7 @@ export interface ChatRoomModel {
   description: string;
   createdBy: string;
   createAt: TimeAtModel;
+  lastMessageId: string;
   lastMessageText: string;
   lastMessageAt: TimeAtModel;
   lastSenderId: string;
@@ -16,7 +17,7 @@ export interface ChatRoomModel {
   memberCount: number;
   memberIds: string[];
 
-  members?: UserModel[]
+  members?: UserModel[];
   batches?: BatchModel[];
   readStatus?: ReadStatusModel[];
 }

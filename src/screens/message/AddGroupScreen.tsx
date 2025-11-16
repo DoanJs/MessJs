@@ -7,10 +7,13 @@ import {
 import { Bezier, TickCircle } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
+import 'react-native-get-random-values';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
+import { v4 as uuidv4 } from 'uuid';
+import { db } from '../../../firebase.config';
 import {
   CheckboxUserComponent,
   Container,
@@ -20,17 +23,13 @@ import {
   SpaceComponent,
   TextComponent,
 } from '../../components';
+import { createNewBatch } from '../../constants/checkNewBatch';
 import { colors } from '../../constants/colors';
 import { getDocsData } from '../../constants/firebase/getDocsData';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
 import { UserModel } from '../../models';
 import { useUserStore } from '../../zustand';
-import { db } from '../../../firebase.config';
-import 'react-native-get-random-values';
-import { v4 as uuidv4 } from 'uuid';
-import { createNewBatch } from '../../constants/checkNewBatch';
-import { convertBatchId } from '../../constants/convertData';
 
 const AddGroupScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -89,7 +88,7 @@ const AddGroupScreen = ({ navigation }: any) => {
       );
 
       // Thêm thành viên khác ngoài author (nếu có)
-      const promiseMember = memberGroup.map((_: any) =>
+      const promiseMember = memberGroup.map((_: any) => {
         setDoc(
           doc(db, `chatRooms/${id}/members`, _.id),
           {
@@ -97,12 +96,24 @@ const AddGroupScreen = ({ navigation }: any) => {
             role: _.id === user.id ? 'admin' : 'member',
             joinedAt: serverTimestamp(),
             nickName: _.displayName,
+            photoURL: _.photoURL
           },
           {
             merge: true,
           },
-        ),
-      );
+        );
+        // Thêm readStatus subcollection trong chatRoom
+        setDoc(
+          doc(db, `chatRooms/${id}/readStatus`, _.id),
+          {
+            lastReadMessageId: null,
+            lastReadAt: null,
+          },
+          {
+            merge: true,
+          },
+        );
+      });
       await Promise.all(promiseMember);
 
       // Tạo batch đầu tiên cho group
@@ -112,7 +123,7 @@ const AddGroupScreen = ({ navigation }: any) => {
           id: batchInfo.id,
           messageCount: 0,
           preBatchId: null,
-          nextBatchId: convertBatchId(batchInfo, 'increase'),
+          nextBatchId: null,
         },
         { merge: true },
       );
@@ -136,7 +147,6 @@ const AddGroupScreen = ({ navigation }: any) => {
           lastBatchId: batchInfo.id,
           memberCount: memberGroup.length,
           memberIds: memberGroup.map((_: any) => _.id),
-          // readStatus: ,
         },
       });
     }

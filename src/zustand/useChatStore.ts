@@ -48,13 +48,13 @@ export const useChatStore = create<ChatState>()(
           // ⚡ 4️⃣ Sắp xếp theo thời gian
           allMessages.sort((a: any, b: any) => {
             const aTime =
-              typeof a.createdAt === 'object' && a.createdAt?.toMillis
-                ? a.createdAt.toMillis()
-                : Number(a.createdAt);
+              typeof a.createAt === 'object' && a.createAt?.toMillis
+                ? a.createAt.toMillis()
+                : Number(a.createAt);
             const bTime =
-              typeof b.createdAt === 'object' && b.createdAt?.toMillis
-                ? b.createdAt.toMillis()
-                : Number(b.createdAt);
+              typeof b.createAt === 'object' && b.createAt?.toMillis
+                ? b.createAt.toMillis()
+                : Number(b.createAt);
             return aTime - bTime;
           });
 

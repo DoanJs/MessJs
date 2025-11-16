@@ -7,6 +7,6 @@ export interface MessageModel {
   type: string;
   text: string;
   mediaURL: string;
-  createAt: TimeAtModel | FieldValue;
+  createAt: TimeAtModel | FieldValue
   status: string; //"pending" | "sent" | "fail"
 }

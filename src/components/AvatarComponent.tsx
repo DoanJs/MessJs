@@ -1,22 +1,26 @@
 import React from 'react';
-import { Image } from 'react-native';
+import { Image, ImageStyle, StyleProp } from 'react-native';
 import { sizes } from '../constants/sizes';
 
 interface Props {
   uri?: string;
   size?: number;
+  styles?: StyleProp<ImageStyle>;
 }
 
 const AvatarComponent = (props: Props) => {
-  const { uri, size } = props;
+  const { uri, size, styles } = props;
   return (
     <Image
-      style={{
-        height: size ?? sizes.bigHeader,
-        width: size ?? sizes.bigHeader,
-        borderRadius: 100,
-        resizeMode: 'cover',
-      }}
+      style={[
+        {
+          height: size ?? sizes.bigHeader,
+          width: size ?? sizes.bigHeader,
+          borderRadius: 100,
+          resizeMode: 'cover',
+        },
+        styles,
+      ]}
       source={{
         uri:
           uri ??

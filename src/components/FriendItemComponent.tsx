@@ -1,7 +1,7 @@
 import { serverTimestamp } from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import { Call, Video } from 'iconsax-react-native';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   AvatarComponent,
   RowComponent,
@@ -23,6 +23,7 @@ const FriendItemComponent = (props: Props) => {
   const { friend } = props;
   const navigation: any = useNavigation();
   const { user } = useUserStore();
+  const [members, setMembers] = useState<UserModel[]>([]);
 
   const onNavigateDetail = () => {
     try {
@@ -43,6 +44,7 @@ const FriendItemComponent = (props: Props) => {
           chatRoom: {
             id: makeContactId(user?.id as string, friend.id)
           },
+          members: []
         });
       });
     } catch (error) {

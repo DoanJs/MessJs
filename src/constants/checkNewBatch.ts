@@ -29,9 +29,13 @@ export const createNewBatch = (lastBatch: BatchInfo | null): BatchInfo => {
     lastBatch.id.slice(0, 10),
     lastBatch.id.slice(-2),
   ];
-  const isNewDay = batchDate !== today;
+  // Nếu khác ngày => reset về -01
+  if (batchDate !== today) {
+    return { id: `${today}-01`, messageCount: 0 };
+  }
 
-  const newIndex = isNewDay ? 1 : Number(batchIndexStr) + 1;
+  // Cùng ngày => tăng chỉ số
+  const newIndex = Number(batchIndexStr) + 1;
   const newBatchId = `${today}-${String(newIndex).padStart(2, '0')}`;
 
   return { id: newBatchId, messageCount: 0 };
