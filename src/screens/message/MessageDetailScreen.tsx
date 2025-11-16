@@ -645,14 +645,15 @@ const MessageDetailScreen = ({ route }: any) => {
     }
   };
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    console.log('FlatList dang scroll');
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
 
     const distanceFromBottom =
       contentSize.height - (layoutMeasurement.height + contentOffset.y);
 
-    const atBottom = distanceFromBottom < 20;
+    const atBottom = distanceFromBottom < 120;
 
-    setIsAtBottom(distanceFromBottom < 20); // ngưỡng 20px
+    setIsAtBottom(atBottom); // ngưỡng 20px
     if (atBottom) {
       setHasNewMessage(false); // đang ở đáy thì ẩn nút
     }
