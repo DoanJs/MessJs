@@ -156,7 +156,7 @@ const MessageItemComponent = (props: Props) => {
         >
           <TextComponent
             styles={{ color: 'white', fontWeight: 'bold' }}
-            text={`${count}`}
+            text={`${count < 9 ? count : '9+'}`}
           />
         </View>
       </RowComponent>

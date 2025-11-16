@@ -635,7 +635,6 @@ const MessageDetailScreen = ({ route }: any) => {
     }
   };
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    console.log('FlatList dang scroll');
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
 
     const distanceFromBottom =
@@ -652,6 +651,16 @@ const MessageDetailScreen = ({ route }: any) => {
     flatListRef.current?.scrollToEnd({ animated: true });
     setHasNewMessage(false);
     setIsAtBottom(true);
+  };
+  const delay = (ms: any) => new Promise((res: any) => setTimeout(res, ms));
+  const handleInitialScroll = async () => {
+    await delay(500); // đợi layout ổn định
+
+    flatListRef.current?.scrollToEnd({ animated: false });
+    setIsAtBottom(true);
+
+    await delay(3000); // đủ thời gian để scroll chạy xong thật sự
+    setInitialLoad(false);
   };
 
   return (
@@ -759,11 +768,14 @@ const MessageDetailScreen = ({ route }: any) => {
             onContentSizeChange={() => {
               // scroll xuống dưới cùng khi vào phòng chat
               if (initialLoad) {
-                setTimeout(() => {
-                  flatListRef.current?.scrollToEnd({ animated: false });
-                  setIsAtBottom(true);
-                }, 30); // 30–50ms là đủ
-                setInitialLoad(false);
+                // setTimeout(() => {
+                //   flatListRef.current?.scrollToEnd({ animated: false });
+                //   setIsAtBottom(true);
+                //   setTimeout(() => {
+                //     setInitialLoad(false);
+                //   }, 5000); // 30–50ms là đủ
+                // }, 30); // 30–50ms là đủ
+                handleInitialScroll();
               }
             }}
           />
