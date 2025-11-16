@@ -70,6 +70,7 @@ const MessageDetailScreen = ({ route }: any) => {
   const { messagesByRoom, pendingMessages } = useChatStore();
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
   const messages = [
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
@@ -110,17 +111,6 @@ const MessageDetailScreen = ({ route }: any) => {
       cancelled = true; // <– khi chatRoom đổi hoặc component unmount
     };
   }, [chatRoom]);
-  // scroll xuống dưới cùng khi vào phòng chat
-  useEffect(() => {
-    if (messages.length > 0) {
-      const timer = setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: false });
-        setIsAtBottom(true);
-      }, 100);
-
-      return () => clearTimeout(timer);
-    }
-  }, []); // ❗ chỉ chạy 1 lần, không để [messages.length]
   // Scroll khi có tin mới nhưng chỉ khi user đang ở đáy
   useEffect(() => {
     if (messages.length === 0 || !user) return;
@@ -741,7 +731,8 @@ const MessageDetailScreen = ({ route }: any) => {
           <FlatList
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              paddingBottom: insets.bottom + 80,
+              // paddingBottom: insets.bottom + 80,
+              paddingBottom: initialLoad ? 0 : insets.bottom + 80,
             }}
             data={messages}
             renderItem={({ item, index }) => (
@@ -764,6 +755,17 @@ const MessageDetailScreen = ({ route }: any) => {
             )}
             ref={flatListRef}
             onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onContentSizeChange={() => {
+              // scroll xuống dưới cùng khi vào phòng chat
+              if (initialLoad) {
+                setTimeout(() => {
+                  flatListRef.current?.scrollToEnd({ animated: false });
+                  setIsAtBottom(true);
+                }, 30); // 30–50ms là đủ
+                setInitialLoad(false);
+              }
+            }}
           />
 
           {hasNewMessage && !isAtBottom && (
