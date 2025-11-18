@@ -19,9 +19,13 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
+  Keyboard,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Text,
+  TextInput,
   TouchableOpacity,
+  View,
 } from 'react-native';
 import 'react-native-get-random-values';
 import {
@@ -60,6 +64,7 @@ import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { ReadStatusModel } from '../../models';
 import { useChatStore, useUserStore } from '../../zustand';
+import { EmojiPopup } from 'react-native-emoji-popup';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -71,6 +76,7 @@ const MessageDetailScreen = ({ route }: any) => {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
+  const [emojiVisible, setEmojiVisible] = useState(false);
   const messages = [
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
@@ -808,11 +814,13 @@ const MessageDetailScreen = ({ route }: any) => {
           }}
         >
           <RowComponent>
-            <EmojiNormal
-              size={sizes.extraTitle}
-              color={colors.background}
-              variant="Bold"
-            />
+            <EmojiPopup onEmojiSelected={(emoji) => setValue(m => m + emoji) }>
+              <EmojiNormal
+                size={sizes.extraTitle}
+                color={colors.background}
+                variant="Bold"
+              />
+            </EmojiPopup>
             <SpaceComponent width={16} />
             <InputComponent
               styles={{

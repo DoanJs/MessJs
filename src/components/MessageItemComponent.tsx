@@ -87,8 +87,7 @@ const MessageItemComponent = (props: Props) => {
     return members[index];
   };
 
-  
-  handleGetFriendPrivate()
+  handleGetFriendPrivate();
   if (!userServer) return <ActivityLoadingComponent />;
   return (
     <RowComponent
@@ -126,7 +125,10 @@ const MessageItemComponent = (props: Props) => {
           size={sizes.bigText}
         />
         <TextComponent
-          text={chatRoom.lastMessageText}
+          text={
+            `${chatRoom.lastSenderId === userServer.uid ? 'Bạn: ' : ''}` +
+            chatRoom.lastMessageText
+          }
           color={count > 0 ? colors.textBold : colors.gray3}
           font={count > 0 ? fontFamillies.poppinsBold : undefined}
           numberOfLine={1}
