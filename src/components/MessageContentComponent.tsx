@@ -1,6 +1,6 @@
 import moment from 'moment';
-import React from 'react';
-import { View } from 'react-native';
+import React, { ReactNode, useEffect, useState } from 'react';
+import { Image, TouchableOpacity, View } from 'react-native';
 import {
   AvatarComponent,
   RowComponent,
@@ -23,11 +23,15 @@ interface Props {
   type: string;
   readStatus: Record<string, ReadStatusModel>;
   members: UserModel[];
+  onImagePress: (uri: string) => void;
 }
 
 const MessageContentComponent = (props: Props) => {
   const { user } = useUserStore();
   const { users } = useUsersStore();
+  const [uri, setUri] = useState(
+    'https://img6.thuthuatphanmem.vn/uploads/2022/11/18/hinh-anh-dang-load-troll_093252029.jpg',
+  );
   const {
     showBlockTime,
     shouldShowSmallTime,
@@ -37,7 +41,14 @@ const MessageContentComponent = (props: Props) => {
     type,
     readStatus,
     members,
+    onImagePress,
   } = props;
+
+  useEffect(() => {
+    if (msg.type === 'image') {
+      getSignedUrl(msg.mediaURL);
+    }
+  }, [msg.type]);
 
   const readers = Object.keys(readStatus).filter(userId => {
     if (userId === user?.id) return false; // bỏ người gửi
@@ -66,6 +77,56 @@ const MessageContentComponent = (props: Props) => {
     const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
 
     return isShow;
+  };
+  const showContent = () => {
+    let result: ReactNode;
+    switch (msg.type) {
+      case 'text':
+        result = (
+          <TextComponent
+            text={msg.text}
+            styles={{
+              textAlign: 'justify',
+              color:
+                user?.id !== msg.senderId ? colors.text : colors.background,
+            }}
+          />
+        );
+        break;
+      case 'image':
+        result = (
+          <TouchableOpacity
+            style={{ flex: 1, width: '100%' }}
+            onPress={() => onImagePress(uri)}
+          >
+            <Image
+              source={{
+                uri,
+              }}
+              style={{
+                width: 200,
+                height: 150,
+                flex: 1,
+                objectFit: 'cover',
+              }}
+            />
+          </TouchableOpacity>
+        );
+        break;
+
+      default:
+        break;
+    }
+
+    return result;
+  };
+  const getSignedUrl = async (key: string) => {
+    const res = await fetch(
+      `https://asia-southeast1-messjs.cloudfunctions.net/getSignedUrlR2?key=${key}`,
+    );
+    const json = await res.json();
+
+    setUri(json.url);
   };
   return (
     <>
@@ -130,14 +191,7 @@ const MessageContentComponent = (props: Props) => {
               alignItems: 'flex-start',
             }}
           >
-            <TextComponent
-              text={msg.text}
-              styles={{
-                textAlign: 'justify',
-                color:
-                  user?.id !== msg.senderId ? colors.text : colors.background,
-              }}
-            />
+            {showContent()}
             {(showAvatar() || shouldShowSmallTime) && (
               <TextComponent
                 text={moment(toMs(msg.createAt ?? msg.createAt)).format(

@@ -19,15 +19,13 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
-  Keyboard,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  Text,
-  TextInput,
   TouchableOpacity,
-  View,
 } from 'react-native';
+import { EmojiPopup } from 'react-native-emoji-popup';
 import 'react-native-get-random-values';
+import { Asset } from 'react-native-image-picker';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -60,11 +58,12 @@ import {
   shouldShowSmallTime,
 } from '../../constants/handleTimeData';
 import { makeContactId } from '../../constants/makeContactId';
+import pickImage from '../../constants/pickImage';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { ReadStatusModel } from '../../models';
 import { useChatStore, useUserStore } from '../../zustand';
-import { EmojiPopup } from 'react-native-emoji-popup';
+import ImageViewing from 'react-native-image-viewing';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -76,7 +75,8 @@ const MessageDetailScreen = ({ route }: any) => {
   const [isAtBottom, setIsAtBottom] = useState(true);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
-  const [emojiVisible, setEmojiVisible] = useState(false);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerImages, setViewerImages] = useState<any>([]);
   const messages = [
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
@@ -198,9 +198,13 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom, lastBatchId]); // <– dependency quan trọng
 
-  const handleSendMessage = async () => {
+  const handleSendMessage = async (
+    type: string = 'text',
+    key?: string,
+    messId?: string,
+  ) => {
     if (user) {
-      const messageId = uuidv4();
+      const messageId = messId ?? uuidv4();
       // ------------------------------------
       let chatRoomId = '';
 
@@ -210,13 +214,16 @@ const MessageDetailScreen = ({ route }: any) => {
         chatRoomId = chatRoom.id;
       }
 
+      const text = type === 'text' ? value : '';
+      const mediaURL = type === 'image' ? (key as string) : '';
+
       // Thêm tin nhắn ở local
       addPendingMessage(chatRoomId, {
         id: messageId,
         senderId: user?.id,
-        type: 'text',
-        text: value,
-        mediaURL: '',
+        type,
+        text,
+        mediaURL,
         createAt: serverTimestamp(),
         status: 'pending',
       });
@@ -270,9 +277,9 @@ const MessageDetailScreen = ({ route }: any) => {
             ),
             {
               senderId: user.id,
-              type: 'text',
-              text: value,
-              mediaURL: '',
+              type,
+              text,
+              mediaURL,
               status: 'sent',
               createAt: serverTimestamp(),
             },
@@ -365,9 +372,9 @@ const MessageDetailScreen = ({ route }: any) => {
             ),
             {
               senderId: user?.id,
-              type: 'text',
-              text: value,
-              mediaURL: '',
+              type,
+              text,
+              mediaURL,
               status: 'sent',
               createAt: serverTimestamp(),
             },
@@ -383,258 +390,6 @@ const MessageDetailScreen = ({ route }: any) => {
         updatePendingStatus(chatRoomId, messageId, 'failed');
         console.log(error);
       }
-      // ------------------------------------
-
-      // if (type === 'private' && friend) {
-      //   const id = makeContactId(user?.id as string, friend.id);
-      //   // Thêm tin nhắn ở local
-      //   addPendingMessage(id, {
-      //     id: messageId,
-      //     senderId: user?.id,
-      //     type: 'text',
-      //     text: value,
-      //     mediaURL: '',
-      //     createAt: serverTimestamp(),
-      //     status: 'pending',
-      //   });
-      //   // Xử lý phía firebase
-      //   try {
-      //     const docSnap = await getDoc(doc(db, 'chatRooms', id));
-
-      //     if (docSnap.exists()) {
-      //       //check xem batch nay qua ngay moi hoac day chua
-      //       const docSnapBatch = await getDoc(
-      //         doc(db, `chatRooms/${id}/batches`, docSnap.data()?.lastBatchId),
-      //       );
-      //       let batchInfo = {
-      //         id: docSnapBatch.id,
-      //         messageCount: docSnapBatch.data()?.messageCount,
-      //       };
-      //       if (shouldCreateNewBatch(batchInfo)) {
-      //         // Tạo batchInfo (chứa batchId) tiếp theo
-      //         batchInfo = createNewBatch(batchInfo);
-      //         // Tạo batch mới
-      //         await setDoc(
-      //           doc(db, `chatRooms/${id}/batches`, batchInfo.id),
-      //           {
-      //             id: batchInfo.id,
-      //             messageCount: 0,
-      //             preBatchId: docSnapBatch.id || null,
-      //             nextBatchId: null,
-      //           },
-      //           { merge: true },
-      //         );
-      //         // update lại nextBatchId cho batch cũ
-      //         await updateDoc(
-      //           doc(db, `chatRooms/${id}/batches`, docSnapBatch.id),
-      //           {
-      //             nextBatchId: batchInfo.id,
-      //           },
-      //         );
-      //       }
-
-      //       // Thêm tin nhắn vào subCollection messages
-      //       await setDoc(
-      //         doc(
-      //           db,
-      //           `chatRooms/${id}/batches/${batchInfo.id}/messages`,
-      //           messageId,
-      //         ),
-      //         {
-      //           senderId: user.id,
-      //           type: 'text',
-      //           text: value,
-      //           mediaURL: '',
-      //           status: 'sent',
-      //           createAt: serverTimestamp(),
-      //         },
-      //         { merge: true },
-      //       );
-
-      //       // Cập nhật trạng thái
-      //       updatePendingStatus(id, messageId, 'sent');
-      //       // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-      //       removePendingMessage(id, messageId);
-
-      //       // // cho update tren server bang CF
-      //       // // Update lại số thông tin cần thiết trong chatRoomId để hiện thị ngoài badge room
-      //       // await updateDoc(doc(db, `chatRooms`, id), {
-      //       //   lastMessageText: value,
-      //       //   lastMessageAt: serverTimestamp(),
-      //       //   lastSenderId: user?.id,
-      //       //   lastBatchId: batchInfo.id,
-      //       // });
-      //     } else {
-      //       const batchInfo = createNewBatch(null);
-
-      //       await setDoc(
-      //         doc(db, 'chatRooms', id),
-      //         {
-      //           type: 'private',
-      //           name: '',
-      //           avatarURL: '',
-      //           description: '',
-      //           createdBy: user?.id,
-      //           createAt: serverTimestamp(),
-      //           lastMessageId: messageId,
-      //           lastMessageText: value,
-      //           lastMessageAt: serverTimestamp(),
-      //           lastSenderId: user?.id,
-
-      //           lastBatchId: batchInfo.id,
-      //           memberCount: 2,
-      //           memberIds: [user.id, friend.id],
-      //         },
-      //         { merge: true },
-      //       );
-
-      //       // Tạo members subcollection cho batch/id
-      //       const members = [
-      //         {
-      //           id: user.id,
-      //           role: 'admin',
-      //           joinedAt: serverTimestamp(),
-      //           nickName: user?.displayName,
-      //         },
-      //         {
-      //           id: friend?.id,
-      //           role: 'member',
-      //           joinedAt: serverTimestamp(),
-      //           nickName: friend?.displayName,
-      //         },
-      //       ];
-
-      //       const promiseMember = members.map(_ => {
-      //         setDoc(doc(db, `chatRooms/${id}/members`, _.id), _, {
-      //           merge: true,
-      //         });
-      //         // Thêm readStatus subcollection cho chatRoom
-      //         setDoc(
-      //           doc(db, `chatRooms/${id}/readStatus`, _.id),
-      //           {
-      //             lastReadMessageId: _.id === user.id ? messageId : null,
-      //             lastReadAt: _.id === user.id ? serverTimestamp() : null,
-      //           },
-      //           {
-      //             merge: true,
-      //           },
-      //         );
-      //         // // Thêm unreadCounts subcollection cho chatRoom bằng CF rồi
-      //       });
-      //       await Promise.all(promiseMember);
-
-      //       // Tạo batch đầu tiên
-      //       await setDoc(
-      //         doc(db, `chatRooms/${id}/batches`, batchInfo.id),
-      //         {
-      //           id: batchInfo.id,
-      //           messageCount: 0,
-      //           preBatchId: null,
-      //           nextBatchId: null,
-      //         },
-      //         { merge: true },
-      //       );
-
-      //       // Tạo messages subcollection cho batch/id
-      //       await setDoc(
-      //         doc(
-      //           db,
-      //           `chatRooms/${id}/batches/${batchInfo.id}/messages`,
-      //           messageId,
-      //         ),
-      //         {
-      //           senderId: user?.id,
-      //           type: 'text',
-      //           text: value,
-      //           mediaURL: '',
-      //           status: 'sent',
-      //           createAt: serverTimestamp(),
-      //         },
-      //         { merge: true },
-      //       );
-
-      //       // Cập nhật trạng thái
-      //       updatePendingStatus(id, messageId, 'sent');
-      //       // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-      //       removePendingMessage(id, messageId);
-      //     }
-      //   } catch (error) {
-      //     updatePendingStatus(id, messageId, 'failed');
-      //     console.log(error);
-      //   }
-      // } else {
-      //   // Thêm tin nhắn ở local
-      //   addPendingMessage(chatRoom.id, {
-      //     id: messageId,
-      //     senderId: user?.id,
-      //     type: 'text',
-      //     text: value,
-      //     mediaURL: '',
-      //     createAt: serverTimestamp(),
-      //     status: 'pending',
-      //   });
-
-      //   try {
-      //     //check xem batch nay qua ngay moi hoac day chua
-      //     const docSnapBatch = await getDoc(
-      //       doc(db, `chatRooms/${chatRoom.id}/batches`, lastBatchId as string),
-      //     );
-      //     let batchInfo = {
-      //       id: docSnapBatch.id,
-      //       messageCount: docSnapBatch.data()?.messageCount,
-      //     };
-
-      //     if (shouldCreateNewBatch(batchInfo)) {
-      //       // Tạo batchInfo (chứa batchId) tiếp theo
-      //       batchInfo = createNewBatch(batchInfo);
-      //       // Tạo batch mới
-      //       await setDoc(
-      //         doc(db, `chatRooms/${chatRoom.id}/batches`, batchInfo.id),
-      //         {
-      //           id: batchInfo.id,
-      //           messageCount: 0,
-      //           preBatchId: docSnapBatch.id,
-      //           nextBatchId: null,
-      //         },
-      //         { merge: true },
-      //       );
-      //       // update lại nextBatchId cho batch cũ
-      //       await updateDoc(
-      //         doc(db, `chatRooms/${chatRoom.id}/batches`, docSnapBatch.id),
-      //         {
-      //           nextBatchId: batchInfo.id,
-      //         },
-      //       );
-      //     }
-
-      //     // Thêm tin nhắn vào subCollection messages
-      //     await setDoc(
-      //       doc(
-      //         db,
-      //         `chatRooms/${chatRoom.id}/batches/${batchInfo.id}/messages`,
-      //         messageId,
-      //       ),
-      //       {
-      //         senderId: user?.id,
-      //         type: 'text',
-      //         text: value,
-      //         mediaURL: '',
-      //         status: 'sent',
-      //         createAt: serverTimestamp(),
-      //       },
-      //       { merge: true },
-      //     );
-
-      //     // Cập nhật trạng thái
-      //     updatePendingStatus(chatRoom.id, messageId, 'sent');
-      //     // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-      //     removePendingMessage(chatRoom.id, messageId);
-      //   } catch (error) {
-      //     updatePendingStatus(chatRoom.id, messageId, 'failed');
-      //     console.log(error);
-      //   }
-      // }
-
       setValue('');
       // ⬇️ Sau khi gửi xong, cuộn xuống dưới cùng
       flatListRef.current?.scrollToEnd({ animated: true });
@@ -668,7 +423,49 @@ const MessageDetailScreen = ({ route }: any) => {
     await delay(3000); // đủ thời gian để scroll chạy xong thật sự
     setInitialLoad(false);
   };
+  const handleOpenImage = async () => {
+    const picked = await pickImage(); // mở Image Picker
+    if (!picked) return;
 
+    const { asset } = picked;
+
+    try {
+      const messId = uuidv4();
+      uploadImage(chatRoom.id, messId, asset);
+    } catch (error) {
+      console.log(error);
+    }
+  };
+  const uploadImage = async (
+    roomId: string,
+    messageId: string,
+    asset: Asset,
+  ) => {
+    const base64 = asset.base64;
+
+    const res = await fetch(
+      'https://asia-southeast1-messjs.cloudfunctions.net/uploadToR2',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId,
+          messageId,
+          fileName: asset.fileName,
+          base64,
+          contentType: asset.type,
+        }),
+      },
+    );
+
+    const json = await res.json();
+
+    handleSendMessage('image', json.key, messageId);
+  };
+  const openViewer = (url: string) => {
+    setViewerImages([{ uri: url }]);
+    setViewerVisible(true);
+  };
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -766,6 +563,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 type={chatRoom.type}
                 readStatus={readStatus}
                 members={members}
+                 onImagePress={openViewer}
               />
             )}
             ref={flatListRef}
@@ -814,7 +612,7 @@ const MessageDetailScreen = ({ route }: any) => {
           }}
         >
           <RowComponent>
-            <EmojiPopup onEmojiSelected={(emoji) => setValue(m => m + emoji) }>
+            <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
               <EmojiNormal
                 size={sizes.extraTitle}
                 color={colors.background}
@@ -848,6 +646,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 />
                 <SpaceComponent width={16} />
                 <Image
+                  onPress={handleOpenImage}
                   size={sizes.extraTitle}
                   color={colors.background}
                   variant="Bold"
@@ -858,11 +657,19 @@ const MessageDetailScreen = ({ route }: any) => {
                 size={sizes.extraTitle}
                 color={colors.background}
                 variant="Bold"
-                onPress={handleSendMessage}
+                onPress={() => handleSendMessage()}
               />
             )}
           </RowComponent>
         </SectionComponent>
+
+        <ImageViewing
+        imageIndex={0}
+          visible={viewerVisible}
+          images={viewerImages}
+          onRequestClose={() => setViewerVisible(false)}
+          animationType="fade"
+        />
       </Container>
     </SafeAreaView>
   );
