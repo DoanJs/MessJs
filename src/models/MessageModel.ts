@@ -6,7 +6,8 @@ export interface MessageModel {
   senderId: string;
   type: string;
   text: string;
+  localURL: string;
   mediaURL: string;
-  createAt: TimeAtModel | FieldValue
+  createAt: TimeAtModel | FieldValue;
   status: string; //"pending" | "sent" | "fail"
 }

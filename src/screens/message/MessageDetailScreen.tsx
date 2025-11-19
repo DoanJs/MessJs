@@ -26,6 +26,7 @@ import {
 import { EmojiPopup } from 'react-native-emoji-popup';
 import 'react-native-get-random-values';
 import { Asset } from 'react-native-image-picker';
+import ImageViewing from 'react-native-image-viewing';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -63,7 +64,6 @@ import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { ReadStatusModel } from '../../models';
 import { useChatStore, useUserStore } from '../../zustand';
-import ImageViewing from 'react-native-image-viewing';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -77,6 +77,7 @@ const MessageDetailScreen = ({ route }: any) => {
   const [initialLoad, setInitialLoad] = useState(true);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerImages, setViewerImages] = useState<any>([]);
+  const [imageIndex, setImageIndex] = useState(0);
   const messages = [
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
@@ -202,6 +203,7 @@ const MessageDetailScreen = ({ route }: any) => {
     type: string = 'text',
     key?: string,
     messId?: string,
+    localURI: string = '',
   ) => {
     if (user) {
       const messageId = messId ?? uuidv4();
@@ -216,6 +218,7 @@ const MessageDetailScreen = ({ route }: any) => {
 
       const text = type === 'text' ? value : '';
       const mediaURL = type === 'image' ? (key as string) : '';
+      const localURL = type === 'image' ? localURI : '';
 
       // Thêm tin nhắn ở local
       addPendingMessage(chatRoomId, {
@@ -223,6 +226,7 @@ const MessageDetailScreen = ({ route }: any) => {
         senderId: user?.id,
         type,
         text,
+        localURL,
         mediaURL,
         createAt: serverTimestamp(),
         status: 'pending',
@@ -279,6 +283,7 @@ const MessageDetailScreen = ({ route }: any) => {
               senderId: user.id,
               type,
               text,
+              localURL: '',
               mediaURL,
               status: 'sent',
               createAt: serverTimestamp(),
@@ -374,6 +379,7 @@ const MessageDetailScreen = ({ route }: any) => {
               senderId: user?.id,
               type,
               text,
+              localURL: '',
               mediaURL,
               status: 'sent',
               createAt: serverTimestamp(),
@@ -427,14 +433,31 @@ const MessageDetailScreen = ({ route }: any) => {
     const picked = await pickImage(); // mở Image Picker
     if (!picked) return;
 
-    const { asset } = picked;
-
     try {
-      const messId = uuidv4();
-      uploadImage(chatRoom.id, messId, asset);
-    } catch (error) {
-      console.log(error);
+      // Gửi từng ảnh lên
+      // for (const asset of picked) {
+      //   const messId = uuidv4();
+
+      //   await uploadImage(chatRoom.id, messId, asset);
+      // }
+      await Promise.all(
+        picked.map(async (asset: any) => {
+          const messId = uuidv4();
+          await uploadImage(chatRoom.id, messId, asset);
+        }),
+      );
+    } catch (err) {
+      console.log('Upload error:', err);
     }
+    // // Trường hợp gửi 01 ảnh
+    // const { asset } = picked;
+
+    // try {
+    //   const messId = uuidv4();
+    //   uploadImage(chatRoom.id, messId, asset);
+    // } catch (error) {
+    //   console.log(error);
+    // }
   };
   const uploadImage = async (
     roomId: string,
@@ -460,12 +483,33 @@ const MessageDetailScreen = ({ route }: any) => {
 
     const json = await res.json();
 
-    handleSendMessage('image', json.key, messageId);
+    handleSendMessage('image', json.key, messageId, asset.uri);
   };
-  const openViewer = (url: string) => {
-    setViewerImages([{ uri: url }]);
+  const openViewer = async (fileKey: string) => {
+    const imageMessages = messages.filter(m => m.type === 'image');
+    const keys = imageMessages.map(_ => _.mediaURL);
+    const promiseItems = imageMessages.map(
+      async _ => await getSignedUrl(_.mediaURL),
+    );
+
+    const uris = await Promise.all(promiseItems);
+
+    const allImages = uris.map(m => ({ uri: m }));
+    const index = keys.indexOf(fileKey);
+
+    setImageIndex(index);
+    setViewerImages(allImages);
     setViewerVisible(true);
   };
+  const getSignedUrl = async (fileKey: string) => {
+    const endpoint =
+      'https://asia-southeast1-messjs.cloudfunctions.net/getSignedUrlR2';
+
+    const res = await fetch(`${endpoint}?key=${fileKey}`);
+    const json = await res.json();
+    return json.url; // signed URL
+  };
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -543,7 +587,6 @@ const MessageDetailScreen = ({ route }: any) => {
           <FlatList
             showsVerticalScrollIndicator={false}
             contentContainerStyle={{
-              // paddingBottom: insets.bottom + 80,
               paddingBottom: initialLoad ? 0 : insets.bottom + 80,
             }}
             data={messages}
@@ -563,7 +606,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 type={chatRoom.type}
                 readStatus={readStatus}
                 members={members}
-                 onImagePress={openViewer}
+                onImagePress={openViewer}
               />
             )}
             ref={flatListRef}
@@ -664,7 +707,7 @@ const MessageDetailScreen = ({ route }: any) => {
         </SectionComponent>
 
         <ImageViewing
-        imageIndex={0}
+          imageIndex={imageIndex}
           visible={viewerVisible}
           images={viewerImages}
           onRequestClose={() => setViewerVisible(false)}

@@ -97,11 +97,11 @@ const MessageContentComponent = (props: Props) => {
         result = (
           <TouchableOpacity
             style={{ flex: 1, width: '100%' }}
-            onPress={() => onImagePress(uri)}
+            onPress={() => onImagePress(msg.mediaURL)}
           >
             <Image
               source={{
-                uri,
+                uri: msg.status === 'pending' ? msg.localURL : uri,
               }}
               style={{
                 width: 200,
