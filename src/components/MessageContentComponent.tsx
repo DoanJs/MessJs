@@ -13,6 +13,8 @@ import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
 import { sizes } from '../constants/sizes';
 import { MessageModel, ReadStatusModel, UserModel } from '../models';
 import { useUsersStore, useUserStore } from '../zustand';
+import { getFunctions, httpsCallable } from '@react-native-firebase/functions';
+import { functions } from '../../firebase.config';
 
 interface Props {
   showBlockTime: boolean;
@@ -120,13 +122,10 @@ const MessageContentComponent = (props: Props) => {
 
     return result;
   };
-  const getSignedUrl = async (key: string) => {
-    const res = await fetch(
-      `https://asia-southeast1-messjs.cloudfunctions.net/getSignedUrlR2?key=${key}`,
-    );
-    const json = await res.json();
-
-    setUri(json.url);
+  const getSignedUrl = async (fileKey: string) => {
+    const getViewUrl = httpsCallable(functions, 'getViewUrl');
+    const { data }: any = await getViewUrl({ fileKey });
+    setUri(data.viewUrl);
   };
   return (
     <>

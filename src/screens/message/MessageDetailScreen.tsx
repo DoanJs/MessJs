@@ -6,6 +6,7 @@ import {
   setDoc,
   updateDoc,
 } from '@react-native-firebase/firestore';
+import { httpsCallable } from '@react-native-firebase/functions';
 import {
   Call,
   EmojiNormal,
@@ -23,16 +24,17 @@ import {
   NativeSyntheticEvent,
   TouchableOpacity,
 } from 'react-native';
+import RNBlobUtil from 'react-native-blob-util';
 import { EmojiPopup } from 'react-native-emoji-popup';
 import 'react-native-get-random-values';
-import { Asset } from 'react-native-image-picker';
+import { launchImageLibrary } from 'react-native-image-picker';
 import ImageViewing from 'react-native-image-viewing';
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
-import { db } from '../../../firebase.config';
+import { db, functions } from '../../../firebase.config';
 import {
   Container,
   InputComponent,
@@ -59,11 +61,11 @@ import {
   shouldShowSmallTime,
 } from '../../constants/handleTimeData';
 import { makeContactId } from '../../constants/makeContactId';
-import pickImage from '../../constants/pickImage';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { ReadStatusModel } from '../../models';
 import { useChatStore, useUserStore } from '../../zustand';
+import {Video as VideoCompressor} from 'react-native-compressor';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -429,61 +431,75 @@ const MessageDetailScreen = ({ route }: any) => {
     await delay(3000); // đủ thời gian để scroll chạy xong thật sự
     setInitialLoad(false);
   };
-  const handleOpenImage = async () => {
-    const picked = await pickImage(); // mở Image Picker
-    if (!picked) return;
+  const pickImage = async () => {
+    const res = await launchImageLibrary({
+      mediaType: 'mixed',
+      selectionLimit: 0, // chọn nhiều ảnh
+    });
 
-    try {
-      // Gửi từng ảnh lên
-      // for (const asset of picked) {
-      //   const messId = uuidv4();
+    if (res.didCancel || !res.assets) return null;
 
-      //   await uploadImage(chatRoom.id, messId, asset);
-      // }
-      await Promise.all(
-        picked.map(async (asset: any) => {
-          const messId = uuidv4();
-          await uploadImage(chatRoom.id, messId, asset);
-        }),
-      );
-    } catch (err) {
-      console.log('Upload error:', err);
-    }
-    // // Trường hợp gửi 01 ảnh
-    // const { asset } = picked;
-
-    // try {
-    //   const messId = uuidv4();
-    //   uploadImage(chatRoom.id, messId, asset);
-    // } catch (error) {
-    //   console.log(error);
-    // }
+    return res.assets;
   };
-  const uploadImage = async (
+  const getUploadUrl = async (
+    fileType: string,
     roomId: string,
     messageId: string,
-    asset: Asset,
   ) => {
-    const base64 = asset.base64;
+    const callable = httpsCallable(functions, 'getUploadUrl');
 
-    const res = await fetch(
-      'https://asia-southeast1-messjs.cloudfunctions.net/uploadToR2',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          roomId,
-          messageId,
-          fileName: asset.fileName,
-          base64,
-          contentType: asset.type,
-        }),
-      },
-    );
+    const { uploadUrl, fileKey }: any = (
+      await callable({ fileType, roomId, messageId })
+    ).data;
 
-    const json = await res.json();
+    return { uploadUrl, fileKey };
+  };
+  const uploadBinaryToR2S3 = async (
+    uploadUrl: string,
+    fileUri: string,
+    mime: string,
+  ) => {
+    try {
+      const filePath = fileUri.replace('file://', '');
 
-    handleSendMessage('image', json.key, messageId, asset.uri);
+      const res = await RNBlobUtil.fetch(
+        'PUT',
+        uploadUrl,
+        { 'Content-Type': mime },
+        RNBlobUtil.wrap(filePath),
+      );
+
+      return res.info().status === 200;
+    } catch (err) {
+      console.log('Upload to R2 error:', err);
+      return false;
+    }
+  };
+  const handleOpenImage = async () => {
+    const picked: any = await pickImage();
+    if (!picked) return;
+    console.log(picked);
+    compress(picked[0].uri)
+    // try {
+    //   await Promise.all(
+    //     picked.map(async (asset: any) => {
+    //       const messId = uuidv4();
+    //       const ext = asset.fileName.split('.').pop() || 'jpg';
+
+    //       const { fileKey, uploadUrl } = await getUploadUrl(
+    //         ext,
+    //         chatRoom.id,
+    //         messId,
+    //       );
+
+    //       await uploadBinaryToR2S3(uploadUrl, asset.uri, asset.type);
+
+    //       handleSendMessage('image', fileKey, messId, asset.uri);
+    //     }),
+    //   );
+    // } catch (err) {
+    //   console.log('Upload error:', err);
+    // }
   };
   const openViewer = async (fileKey: string) => {
     const imageMessages = messages.filter(m => m.type === 'image');
@@ -491,25 +507,25 @@ const MessageDetailScreen = ({ route }: any) => {
     const promiseItems = imageMessages.map(
       async _ => await getSignedUrl(_.mediaURL),
     );
-
     const uris = await Promise.all(promiseItems);
-
     const allImages = uris.map(m => ({ uri: m }));
     const index = keys.indexOf(fileKey);
-
     setImageIndex(index);
     setViewerImages(allImages);
     setViewerVisible(true);
   };
   const getSignedUrl = async (fileKey: string) => {
-    const endpoint =
-      'https://asia-southeast1-messjs.cloudfunctions.net/getSignedUrlR2';
-
-    const res = await fetch(`${endpoint}?key=${fileKey}`);
-    const json = await res.json();
-    return json.url; // signed URL
+    const getViewUrl = httpsCallable(functions, 'getViewUrl');
+    const { data }: any = await getViewUrl({ fileKey });
+    return data.viewUrl;
   };
-
+  const compress = async (uri: string) => {
+    const compressedUri = await VideoCompressor.compress(uri, {
+      compressionMethod: 'auto',
+    });
+    console.log(compressedUri)
+    return compressedUri;
+  };
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}

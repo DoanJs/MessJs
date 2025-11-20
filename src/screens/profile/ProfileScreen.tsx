@@ -20,7 +20,7 @@ import { useUserStore } from '../../zustand';
 
 const ProfileScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const {user} = useUserStore()
+  const { user } = useUserStore();
 
   const handleLogout = async () => {
     setIsLoading(true);
@@ -32,7 +32,7 @@ const ProfileScreen = () => {
     setIsLoading(false);
   };
 
-  if(!user) return <ActivityLoadingComponent />
+  if (!user) return <ActivityLoadingComponent />;
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}
@@ -61,7 +61,9 @@ const ProfileScreen = () => {
             >
               <Image
                 source={{
-                  uri: user.photoURL ?? 'https://cdn.pixabay.com/photo/2019/10/30/16/19/fox-4589927_1280.jpg',
+                  uri:
+                    user.photoURL ??
+                    'https://cdn.pixabay.com/photo/2019/10/30/16/19/fox-4589927_1280.jpg',
                 }}
                 style={{
                   resizeMode: 'cover',
@@ -115,7 +117,7 @@ const ProfileScreen = () => {
             </RowComponent>
             <ArrowRight2 size={sizes.title} color={colors.textBold} />
           </RowComponent>
-          <SpaceComponent height={16 } />
+          <SpaceComponent height={16} />
           <RowComponent onPress={handleLogout}>
             <Logout size={sizes.title} color={colors.textBold} />
             <SpaceComponent width={16} />

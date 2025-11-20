@@ -20,6 +20,7 @@ import {
   setDoc,
   updateDoc,
 } from '@react-native-firebase/firestore';
+import { getFunctions } from '@react-native-firebase/functions';
 // import {
 //   AuthorizationStatus,
 //   getInitialNotification,
@@ -39,6 +40,7 @@ const auth = getAuth();
 const db = getFirestore();
 const app = getApp();
 // const messaging = getMessaging(app);
+const functions = getFunctions(app, 'asia-southeast1');
 
 GoogleSignin.configure({
   webClientId:
@@ -184,4 +186,5 @@ export {
   signInWithEmailAndPassword,
   signInWithGoogle,
   signOut,
+  functions
 };

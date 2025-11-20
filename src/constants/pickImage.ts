@@ -3,7 +3,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 
 const pickImage = async () => {
   const result = await launchImageLibrary({
-    mediaType: 'photo',
+    mediaType: 'mixed',
     selectionLimit: 0,
     quality: 0.9,
   });
