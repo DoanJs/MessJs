@@ -1,3 +1,4 @@
+import { httpsCallable } from '@react-native-firebase/functions';
 import moment from 'moment';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { Image, TouchableOpacity, View } from 'react-native';
@@ -6,15 +7,15 @@ import {
   RowComponent,
   SpaceComponent,
   TextComponent,
+  VideoPlayer,
 } from '.';
+import { functions } from '../../firebase.config';
 import { colors } from '../constants/colors';
 import { convertInfoUserFromID } from '../constants/convertData';
 import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
 import { sizes } from '../constants/sizes';
 import { MessageModel, ReadStatusModel, UserModel } from '../models';
 import { useUsersStore, useUserStore } from '../zustand';
-import { getFunctions, httpsCallable } from '@react-native-firebase/functions';
-import { functions } from '../../firebase.config';
 
 interface Props {
   showBlockTime: boolean;
@@ -32,7 +33,8 @@ const MessageContentComponent = (props: Props) => {
   const { user } = useUserStore();
   const { users } = useUsersStore();
   const [uri, setUri] = useState(
-    'https://img6.thuthuatphanmem.vn/uploads/2022/11/18/hinh-anh-dang-load-troll_093252029.jpg',
+    '',
+    // 'https://img6.thuthuatphanmem.vn/uploads/2022/11/18/hinh-anh-dang-load-troll_093252029.jpg',
   );
   const {
     showBlockTime,
@@ -47,7 +49,7 @@ const MessageContentComponent = (props: Props) => {
   } = props;
 
   useEffect(() => {
-    if (msg.type === 'image') {
+    if (msg.type === 'image' || msg.type === 'video') {
       getSignedUrl(msg.mediaURL);
     }
   }, [msg.type]);
@@ -111,6 +113,18 @@ const MessageContentComponent = (props: Props) => {
                 flex: 1,
                 objectFit: 'cover',
               }}
+            />
+          </TouchableOpacity>
+        );
+        break;
+      case 'video':
+        result = (
+          <TouchableOpacity
+            style={{ flex: 1, width: '100%' }}
+            onPress={() => {}}
+          >
+            <VideoPlayer
+              videoUrl={msg.status === 'pending' ? msg.localURL : uri}
             />
           </TouchableOpacity>
         );

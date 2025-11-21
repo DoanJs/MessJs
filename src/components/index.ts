@@ -17,6 +17,7 @@ import SectionComponent from './SectionComponent';
 import SpaceComponent from './SpaceComponent';
 import SpinnerComponent from './SpinnerComponent';
 import TextComponent from './TextComponent';
+import VideoPlayer from './VideoPlayerComponent';
 
 export {
   ActivityLoadingComponent,
@@ -36,5 +37,5 @@ export {
   SectionComponent,
   SpaceComponent,
   SpinnerComponent,
-  TextComponent,CheckboxUserComponent
+  TextComponent,CheckboxUserComponent, VideoPlayer
 };

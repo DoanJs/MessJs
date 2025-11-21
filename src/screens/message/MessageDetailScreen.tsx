@@ -27,7 +27,7 @@ import {
 import RNBlobUtil from 'react-native-blob-util';
 import { EmojiPopup } from 'react-native-emoji-popup';
 import 'react-native-get-random-values';
-import { launchImageLibrary } from 'react-native-image-picker';
+import { Asset, launchImageLibrary } from 'react-native-image-picker';
 import ImageViewing from 'react-native-image-viewing';
 import {
   SafeAreaView,
@@ -65,7 +65,8 @@ import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { ReadStatusModel } from '../../models';
 import { useChatStore, useUserStore } from '../../zustand';
-import {Video as VideoCompressor} from 'react-native-compressor';
+import { Video as VideoCompressor } from 'react-native-compressor';
+import { createThumbnail } from 'react-native-create-thumbnail';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -206,6 +207,8 @@ const MessageDetailScreen = ({ route }: any) => {
     key?: string,
     messId?: string,
     localURI: string = '',
+    asset?: Asset,
+    thumbnaiKey?: string,
   ) => {
     if (user) {
       const messageId = messId ?? uuidv4();
@@ -219,8 +222,10 @@ const MessageDetailScreen = ({ route }: any) => {
       }
 
       const text = type === 'text' ? value : '';
-      const mediaURL = type === 'image' ? (key as string) : '';
-      const localURL = type === 'image' ? localURI : '';
+      const mediaURL =
+        type === 'image' || type == 'video' ? (key as string) : '';
+      const localURL = type === 'image' || type == 'video' ? localURI : '';
+      const thumbKey = type === 'video' ? (thumbnaiKey as string) : '';
 
       // Thêm tin nhắn ở local
       addPendingMessage(chatRoomId, {
@@ -230,6 +235,12 @@ const MessageDetailScreen = ({ route }: any) => {
         text,
         localURL,
         mediaURL,
+
+        thumbKey,
+        duration: asset ? (asset.duration as number) : 0,
+        height: asset ? (asset.height as number) : 0,
+        width: asset ? (asset.width as number) : 0,
+
         createAt: serverTimestamp(),
         status: 'pending',
       });
@@ -287,6 +298,12 @@ const MessageDetailScreen = ({ route }: any) => {
               text,
               localURL: '',
               mediaURL,
+
+              thumbKey,
+              duration: asset ? (asset.duration as number) : 0,
+              height: asset ? (asset.height as number) : 0,
+              width: asset ? (asset.width as number) : 0,
+
               status: 'sent',
               createAt: serverTimestamp(),
             },
@@ -383,6 +400,12 @@ const MessageDetailScreen = ({ route }: any) => {
               text,
               localURL: '',
               mediaURL,
+              
+              thumbKey,
+              duration: asset ? (asset.duration as number) : 0,
+              height: asset ? (asset.height as number) : 0,
+              width: asset ? (asset.width as number) : 0,
+
               status: 'sent',
               createAt: serverTimestamp(),
             },
@@ -443,13 +466,15 @@ const MessageDetailScreen = ({ route }: any) => {
   };
   const getUploadUrl = async (
     fileType: string,
+    type: string,
+    isThumb: boolean,
     roomId: string,
     messageId: string,
   ) => {
     const callable = httpsCallable(functions, 'getUploadUrl');
 
     const { uploadUrl, fileKey }: any = (
-      await callable({ fileType, roomId, messageId })
+      await callable({ fileType, type, isThumb, roomId, messageId })
     ).data;
 
     return { uploadUrl, fileKey };
@@ -478,28 +503,64 @@ const MessageDetailScreen = ({ route }: any) => {
   const handleOpenImage = async () => {
     const picked: any = await pickImage();
     if (!picked) return;
-    console.log(picked);
-    compress(picked[0].uri)
-    // try {
-    //   await Promise.all(
-    //     picked.map(async (asset: any) => {
-    //       const messId = uuidv4();
-    //       const ext = asset.fileName.split('.').pop() || 'jpg';
 
-    //       const { fileKey, uploadUrl } = await getUploadUrl(
-    //         ext,
-    //         chatRoom.id,
-    //         messId,
-    //       );
+    try {
+      await Promise.all(
+        picked.map(async (asset: any) => {
+          const messId = uuidv4();
+          const ext = asset.fileName.split('.').pop() || 'jpg';
+          const type = ['mp4', 'mov', '3gp'].includes(ext)
+            ? 'video'
+            : ['mp3', 'aac', 'wav', 'm4a', 'ogg'].includes(ext)
+            ? 'audio'
+            : 'image';
 
-    //       await uploadBinaryToR2S3(uploadUrl, asset.uri, asset.type);
+          let isCompressUri: string = asset.uri;
+          let thumbKey: string = '';
 
-    //       handleSendMessage('image', fileKey, messId, asset.uri);
-    //     }),
-    //   );
-    // } catch (err) {
-    //   console.log('Upload error:', err);
-    // }
+          if (type === 'video') {
+            isCompressUri = await compress(asset.uri);
+
+            const thumb = await createThumbnail({
+              url: asset.uri,
+            });
+            const extThumb = thumb.mime.split('.').pop() || 'jpg';
+            const { fileKey: thumbFileKey, uploadUrl: thumbUploadUrl } =
+              await getUploadUrl(
+                extThumb,
+                thumb.mime,
+                true,
+                chatRoom.id,
+                messId,
+              );
+
+            await uploadBinaryToR2S3(thumbUploadUrl, thumb.path, thumb.mime);
+            thumbKey = thumbFileKey;
+          }
+
+          const { fileKey, uploadUrl } = await getUploadUrl(
+            ext,
+            asset.type,
+            false,
+            chatRoom.id,
+            messId,
+          );
+
+          await uploadBinaryToR2S3(uploadUrl, isCompressUri, asset.type);
+
+          handleSendMessage(
+            type,
+            fileKey,
+            messId,
+            isCompressUri,
+            type === 'image' ? undefined : asset,
+            thumbKey,
+          );
+        }),
+      );
+    } catch (err) {
+      console.log('Upload error:', err);
+    }
   };
   const openViewer = async (fileKey: string) => {
     const imageMessages = messages.filter(m => m.type === 'image');
@@ -523,7 +584,6 @@ const MessageDetailScreen = ({ route }: any) => {
     const compressedUri = await VideoCompressor.compress(uri, {
       compressionMethod: 'auto',
     });
-    console.log(compressedUri)
     return compressedUri;
   };
   return (

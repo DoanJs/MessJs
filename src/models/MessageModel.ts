@@ -8,11 +8,10 @@ export interface MessageModel {
   text: string;
   localURL: string;
   mediaURL: string;
+  thumbKey: string
+  duration: number
+  width: number
+  height: number
   createAt: TimeAtModel | FieldValue;
   status: string; //"pending" | "sent" | "fail"
-
-  // thumbKey: string
-  // duration: string
-  // width: number
-  // height: number
 }
