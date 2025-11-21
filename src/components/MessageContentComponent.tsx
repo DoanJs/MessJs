@@ -33,8 +33,7 @@ const MessageContentComponent = (props: Props) => {
   const { user } = useUserStore();
   const { users } = useUsersStore();
   const [uri, setUri] = useState(
-    '',
-    // 'https://img6.thuthuatphanmem.vn/uploads/2022/11/18/hinh-anh-dang-load-troll_093252029.jpg',
+    'https://img6.thuthuatphanmem.vn/uploads/2022/11/18/hinh-anh-dang-load-troll_093252029.jpg',
   );
   const {
     showBlockTime,
@@ -121,7 +120,7 @@ const MessageContentComponent = (props: Props) => {
         result = (
           <TouchableOpacity
             style={{ flex: 1, width: '100%' }}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <VideoPlayer
               videoUrl={msg.status === 'pending' ? msg.localURL : uri}
@@ -223,17 +222,17 @@ const MessageContentComponent = (props: Props) => {
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                <TextComponent
-                  text={
-                    msg.status === 'failed'
-                      ? '❌ Lỗi gửi'
-                      : msg.status === 'pending'
-                      ? 'Đang gửi'
-                      : 'Đã gửi'
-                  }
-                  size={sizes.extraComment}
-                />
-              )}
+                  <TextComponent
+                    text={
+                      msg.status === 'failed'
+                        ? '❌ Lỗi gửi'
+                        : msg.status === 'pending'
+                          ? 'Đang gửi'
+                          : 'Đã gửi'
+                    }
+                    size={sizes.extraComment}
+                  />
+                )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />

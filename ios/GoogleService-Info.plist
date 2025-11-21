@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>978637318783-u1e9lg2lqp7bm77pan88urljq71j6qm6.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.978637318783-u1e9lg2lqp7bm77pan88urljq71j6qm6</string>
+	<key>ANDROID_CLIENT_ID</key>
+	<string>978637318783-99t43c6sjfdat1ebq8p3uqdrh70gd63p.apps.googleusercontent.com</string>
+	<key>API_KEY</key>
+	<string>AIzaSyBq6KM5khK8OwtyZXpZ1xcqH8PDOv5ec8g</string>
+	<key>GCM_SENDER_ID</key>
+	<string>978637318783</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>org.reactjs.native.example.MessJs</string>
+	<key>PROJECT_ID</key>
+	<string>messjs</string>
+	<key>STORAGE_BUCKET</key>
+	<string>messjs.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:978637318783:ios:5a4b67293d76640fa76d4a</string>
+</dict>
+</plist>

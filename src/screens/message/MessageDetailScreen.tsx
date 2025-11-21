@@ -22,10 +22,14 @@ import {
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   TouchableOpacity,
 } from 'react-native';
 import RNBlobUtil from 'react-native-blob-util';
+import { Video as VideoCompressor } from 'react-native-compressor';
+import { createThumbnail } from 'react-native-create-thumbnail';
 import { EmojiPopup } from 'react-native-emoji-popup';
+import RNFS from "react-native-fs";
 import 'react-native-get-random-values';
 import { Asset, launchImageLibrary } from 'react-native-image-picker';
 import ImageViewing from 'react-native-image-viewing';
@@ -65,8 +69,6 @@ import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { ReadStatusModel } from '../../models';
 import { useChatStore, useUserStore } from '../../zustand';
-import { Video as VideoCompressor } from 'react-native-compressor';
-import { createThumbnail } from 'react-native-create-thumbnail';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -400,7 +402,7 @@ const MessageDetailScreen = ({ route }: any) => {
               text,
               localURL: '',
               mediaURL,
-              
+
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
               height: asset ? (asset.height as number) : 0,
@@ -500,6 +502,49 @@ const MessageDetailScreen = ({ route }: any) => {
       return false;
     }
   };
+  const mimeToExt = (mime: string) => {
+    const ext = mime.split('/')[1]
+    if (ext === 'quicktime') return 'mov'
+    if (ext === 'mpeg') return 'mp3'
+    if (ext === 'x-m4a') return 'm4a'
+    return ext
+  }
+
+  const createVideoThumbnail = async (asset: Asset) => {
+    try {
+      let fileName = asset.fileName || `video_${Date.now()}.mp4`;
+      let uri = asset.uri as string;
+      let srcPath = uri.replace("file://", "");
+      let destPath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
+
+      // --- iOS: Không dùng file tmp ---
+      if (Platform.OS === "ios" && srcPath.includes("/tmp/")) {
+        const exist = await RNFS.exists(destPath);
+        if (exist) await RNFS.unlink(destPath);
+
+        await RNFS.copyFile(srcPath, destPath);
+
+        srcPath = destPath; // <-- QUAN TRỌNG: dùng absolute path
+      }
+
+      // --- Kiểm tra path ---
+      const exists = await RNFS.exists(srcPath);
+      if (!exists) throw new Error("File not found: " + srcPath);
+
+      // --- iOS: createThumbnail cần absolutePath, KHÔNG được có file:// ---
+      const thumbnail = await createThumbnail({
+        url: Platform.OS === "ios" ? srcPath : uri,
+        timeStamp: 1000,
+      });
+
+      return { ok: true, ...thumbnail };
+
+    } catch (error) {
+      console.log("createVideoThumbnail error:", error);
+      return { ok: false, error };
+    }
+  };
+
   const handleOpenImage = async () => {
     const picked: any = await pickImage();
     if (!picked) return;
@@ -508,23 +553,20 @@ const MessageDetailScreen = ({ route }: any) => {
       await Promise.all(
         picked.map(async (asset: any) => {
           const messId = uuidv4();
-          const ext = asset.fileName.split('.').pop() || 'jpg';
-          const type = ['mp4', 'mov', '3gp'].includes(ext)
-            ? 'video'
-            : ['mp3', 'aac', 'wav', 'm4a', 'ogg'].includes(ext)
-            ? 'audio'
-            : 'image';
+          const ext = mimeToExt(asset.type)
+
+          let type = 'image'
+          if (asset.type.startsWith('video/')) type = 'video'
+          if (asset.type.startsWith('audio/')) type = 'audio'
 
           let isCompressUri: string = asset.uri;
           let thumbKey: string = '';
 
           if (type === 'video') {
             isCompressUri = await compress(asset.uri);
+            const thumb: any = await createVideoThumbnail(asset)
 
-            const thumb = await createThumbnail({
-              url: asset.uri,
-            });
-            const extThumb = thumb.mime.split('.').pop() || 'jpg';
+            const extThumb = mimeToExt(thumb.mime)
             const { fileKey: thumbFileKey, uploadUrl: thumbUploadUrl } =
               await getUploadUrl(
                 extThumb,
@@ -533,7 +575,6 @@ const MessageDetailScreen = ({ route }: any) => {
                 chatRoom.id,
                 messId,
               );
-
             await uploadBinaryToR2S3(thumbUploadUrl, thumb.path, thumb.mime);
             thumbKey = thumbFileKey;
           }
@@ -545,7 +586,6 @@ const MessageDetailScreen = ({ route }: any) => {
             chatRoom.id,
             messId,
           );
-
           await uploadBinaryToR2S3(uploadUrl, isCompressUri, asset.type);
 
           handleSendMessage(
@@ -601,7 +641,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -624,7 +664,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
             />
             {type === 'private' && (
               <>
@@ -632,7 +672,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => {}}
+                  onPress={() => { }}
                 />
               </>
             )}
@@ -640,14 +680,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
           </RowComponent>
