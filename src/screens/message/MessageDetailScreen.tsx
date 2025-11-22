@@ -29,7 +29,7 @@ import RNBlobUtil from 'react-native-blob-util';
 import { Video as VideoCompressor } from 'react-native-compressor';
 import { createThumbnail } from 'react-native-create-thumbnail';
 import { EmojiPopup } from 'react-native-emoji-popup';
-import RNFS from "react-native-fs";
+import RNFS from 'react-native-fs';
 import 'react-native-get-random-values';
 import { Asset, launchImageLibrary } from 'react-native-image-picker';
 import ImageViewing from 'react-native-image-viewing';
@@ -204,14 +204,21 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom, lastBatchId]); // <– dependency quan trọng
 
-  const handleSendMessage = async (
-    type: string = 'text',
-    key?: string,
-    messId?: string,
-    localURI: string = '',
-    asset?: Asset,
-    thumbnaiKey?: string,
-  ) => {
+  const handleSendMessage = async ({
+    typeMsg = 'text',
+    key,
+    messId,
+    localURI = '',
+    asset,
+    thumbnaiKey,
+  }: {
+    typeMsg?: string;
+    key?: string;
+    messId?: string;
+    localURI?: string;
+    asset?: Asset;
+    thumbnaiKey?: string;
+  }) => {
     if (user) {
       const messageId = messId ?? uuidv4();
       // ------------------------------------
@@ -223,29 +230,32 @@ const MessageDetailScreen = ({ route }: any) => {
         chatRoomId = chatRoom.id;
       }
 
-      const text = type === 'text' ? value : '';
+      const text = typeMsg === 'text' ? value : '';
       const mediaURL =
-        type === 'image' || type == 'video' ? (key as string) : '';
-      const localURL = type === 'image' || type == 'video' ? localURI : '';
-      const thumbKey = type === 'video' ? (thumbnaiKey as string) : '';
+        typeMsg === 'image' || typeMsg == 'video' ? (key as string) : '';
+      const localURL =
+        typeMsg === 'image' || typeMsg == 'video' ? localURI : '';
+      const thumbKey = typeMsg === 'video' ? (thumbnaiKey as string) : '';
 
       // Thêm tin nhắn ở local
-      addPendingMessage(chatRoomId, {
-        id: messageId,
-        senderId: user?.id,
-        type,
-        text,
-        localURL,
-        mediaURL,
+      if (!['image', 'video'].includes(typeMsg)) {
+        addPendingMessage(chatRoomId, {
+          id: messageId,
+          senderId: user.id,
+          type: 'text',
+          text,
+          mediaURL: '',
+          localURL: '',
 
-        thumbKey,
-        duration: asset ? (asset.duration as number) : 0,
-        height: asset ? (asset.height as number) : 0,
-        width: asset ? (asset.width as number) : 0,
+          thumbKey: '',
+          duration: 0,
+          height: 0,
+          width: 0,
 
-        createAt: serverTimestamp(),
-        status: 'pending',
-      });
+          createAt: serverTimestamp(),
+          status: 'pending',
+        });
+      }
       // Xử lý phía firebase
       try {
         const docSnap = await getDoc(doc(db, 'chatRooms', chatRoomId));
@@ -296,7 +306,7 @@ const MessageDetailScreen = ({ route }: any) => {
             ),
             {
               senderId: user.id,
-              type,
+              type: typeMsg,
               text,
               localURL: '',
               mediaURL,
@@ -326,12 +336,12 @@ const MessageDetailScreen = ({ route }: any) => {
               name: '',
               avatarURL: '',
               description: '',
-              createdBy: user?.id,
+              createdBy: user.id,
               createAt: serverTimestamp(),
               lastMessageId: messageId,
               lastMessageText: value,
               lastMessageAt: serverTimestamp(),
-              lastSenderId: user?.id,
+              lastSenderId: user.id,
 
               lastBatchId: batchInfo.id,
               memberCount: 2,
@@ -398,7 +408,7 @@ const MessageDetailScreen = ({ route }: any) => {
             ),
             {
               senderId: user?.id,
-              type,
+              type: typeMsg,
               text,
               localURL: '',
               mediaURL,
@@ -503,22 +513,21 @@ const MessageDetailScreen = ({ route }: any) => {
     }
   };
   const mimeToExt = (mime: string) => {
-    const ext = mime.split('/')[1]
-    if (ext === 'quicktime') return 'mov'
-    if (ext === 'mpeg') return 'mp3'
-    if (ext === 'x-m4a') return 'm4a'
-    return ext
-  }
-
+    const ext = mime.split('/')[1];
+    if (ext === 'quicktime') return 'mov';
+    if (ext === 'mpeg') return 'mp3';
+    if (ext === 'x-m4a') return 'm4a';
+    return ext;
+  };
   const createVideoThumbnail = async (asset: Asset) => {
     try {
       let fileName = asset.fileName || `video_${Date.now()}.mp4`;
       let uri = asset.uri as string;
-      let srcPath = uri.replace("file://", "");
+      let srcPath = uri.replace('file://', '');
       let destPath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
 
       // --- iOS: Không dùng file tmp ---
-      if (Platform.OS === "ios" && srcPath.includes("/tmp/")) {
+      if (Platform.OS === 'ios' && srcPath.includes('/tmp/')) {
         const exist = await RNFS.exists(destPath);
         if (exist) await RNFS.unlink(destPath);
 
@@ -529,18 +538,17 @@ const MessageDetailScreen = ({ route }: any) => {
 
       // --- Kiểm tra path ---
       const exists = await RNFS.exists(srcPath);
-      if (!exists) throw new Error("File not found: " + srcPath);
+      if (!exists) throw new Error('File not found: ' + srcPath);
 
       // --- iOS: createThumbnail cần absolutePath, KHÔNG được có file:// ---
       const thumbnail = await createThumbnail({
-        url: Platform.OS === "ios" ? srcPath : uri,
+        url: Platform.OS === 'ios' ? srcPath : uri,
         timeStamp: 1000,
       });
 
       return { ok: true, ...thumbnail };
-
     } catch (error) {
-      console.log("createVideoThumbnail error:", error);
+      console.log('createVideoThumbnail error:', error);
       return { ok: false, error };
     }
   };
@@ -553,20 +561,46 @@ const MessageDetailScreen = ({ route }: any) => {
       await Promise.all(
         picked.map(async (asset: any) => {
           const messId = uuidv4();
-          const ext = mimeToExt(asset.type)
+          const ext = mimeToExt(asset.type);
 
-          let type = 'image'
-          if (asset.type.startsWith('video/')) type = 'video'
-          if (asset.type.startsWith('audio/')) type = 'audio'
+          let typeMsg = 'image';
+          if (asset.type.startsWith('video/')) typeMsg = 'video';
+          if (asset.type.startsWith('audio/')) typeMsg = 'audio';
+
+          let chatRoomId = '';
+
+          if (type === 'private' && friend) {
+            chatRoomId = makeContactId(user?.id as string, friend.id);
+          } else {
+            chatRoomId = chatRoom.id;
+          }
+
+          addPendingMessage(chatRoomId, {
+            id: messId,
+            senderId: user?.id as string,
+            type: typeMsg,
+            text: '',
+            mediaURL: '',
+            localURL: asset.uri,
+
+            thumbKey: '',
+            duration:
+              asset && typeMsg === 'video' ? (asset.duration as number) : 0,
+            height: asset && typeMsg === 'video' ? (asset.height as number) : 0,
+            width: asset && typeMsg === 'video' ? (asset.width as number) : 0,
+
+            createAt: serverTimestamp(),
+            status: 'pending',
+          });
 
           let isCompressUri: string = asset.uri;
           let thumbKey: string = '';
 
-          if (type === 'video') {
+          if (typeMsg === 'video') {
             isCompressUri = await compress(asset.uri);
-            const thumb: any = await createVideoThumbnail(asset)
+            const thumb: any = await createVideoThumbnail(asset);
 
-            const extThumb = mimeToExt(thumb.mime)
+            const extThumb = mimeToExt(thumb.mime);
             const { fileKey: thumbFileKey, uploadUrl: thumbUploadUrl } =
               await getUploadUrl(
                 extThumb,
@@ -588,14 +622,14 @@ const MessageDetailScreen = ({ route }: any) => {
           );
           await uploadBinaryToR2S3(uploadUrl, isCompressUri, asset.type);
 
-          handleSendMessage(
-            type,
-            fileKey,
+          handleSendMessage({
+            typeMsg,
+            key: fileKey,
             messId,
-            isCompressUri,
-            type === 'image' ? undefined : asset,
-            thumbKey,
-          );
+            localURI: isCompressUri,
+            asset: typeMsg === 'image' ? undefined : asset,
+            thumbnaiKey: thumbKey,
+          });
         }),
       );
     } catch (err) {
@@ -641,7 +675,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => { }}
+            onPress={() => {}}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -664,7 +698,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
             />
             {type === 'private' && (
               <>
@@ -672,7 +706,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => { }}
+                  onPress={() => {}}
                 />
               </>
             )}
@@ -680,14 +714,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
               variant="Bold"
             />
           </RowComponent>
@@ -816,7 +850,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 size={sizes.extraTitle}
                 color={colors.background}
                 variant="Bold"
-                onPress={() => handleSendMessage()}
+                onPress={() => handleSendMessage({})}
               />
             )}
           </RowComponent>

@@ -48,10 +48,34 @@ const MessageContentComponent = (props: Props) => {
   } = props;
 
   useEffect(() => {
-    if (msg.type === 'image' || msg.type === 'video') {
-      getSignedUrl(msg.mediaURL);
-    }
-  }, [msg.type]);
+    let isActive = true;
+
+    const load = async () => {
+      // chỉ xử lý image + video
+      if (!['image', 'video'].includes(msg.type)) return;
+
+      // nếu đã có localURL → ưu tiên hiện trước
+      if (msg.localURL) {
+        setUri(msg.localURL);
+      }
+
+      // nếu không có mediaURL thì dừng
+      if (!msg.mediaURL) return;
+
+      // lấy signed URL
+      const res = await getSignedUrl(msg.mediaURL);
+
+      if (isActive) {
+        setUri(res);
+      }
+    };
+
+    load();
+
+    return () => {
+      isActive = false;
+    };
+  }, [msg.id]);
 
   const readers = Object.keys(readStatus).filter(userId => {
     if (userId === user?.id) return false; // bỏ người gửi
@@ -120,7 +144,7 @@ const MessageContentComponent = (props: Props) => {
         result = (
           <TouchableOpacity
             style={{ flex: 1, width: '100%' }}
-            onPress={() => { }}
+            onPress={() => {}}
           >
             <VideoPlayer
               videoUrl={msg.status === 'pending' ? msg.localURL : uri}
@@ -138,7 +162,7 @@ const MessageContentComponent = (props: Props) => {
   const getSignedUrl = async (fileKey: string) => {
     const getViewUrl = httpsCallable(functions, 'getViewUrl');
     const { data }: any = await getViewUrl({ fileKey });
-    setUri(data.viewUrl);
+    return data.viewUrl;
   };
   return (
     <>
@@ -222,17 +246,17 @@ const MessageContentComponent = (props: Props) => {
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                  <TextComponent
-                    text={
-                      msg.status === 'failed'
-                        ? '❌ Lỗi gửi'
-                        : msg.status === 'pending'
-                          ? 'Đang gửi'
-                          : 'Đã gửi'
-                    }
-                    size={sizes.extraComment}
-                  />
-                )}
+                <TextComponent
+                  text={
+                    msg.status === 'failed'
+                      ? '❌ Lỗi gửi'
+                      : msg.status === 'pending'
+                      ? 'Đang gửi'
+                      : 'Đã gửi'
+                  }
+                  size={sizes.extraComment}
+                />
+              )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />
