@@ -3,6 +3,7 @@ import moment from 'moment';
 import React, { ReactNode, useEffect, useState } from 'react';
 import { Image, TouchableOpacity, View } from 'react-native';
 import {
+  AudioPlayerComponent,
   AvatarComponent,
   RowComponent,
   SpaceComponent,
@@ -52,7 +53,7 @@ const MessageContentComponent = (props: Props) => {
 
     const load = async () => {
       // chỉ xử lý image + video
-      if (!['image', 'video'].includes(msg.type)) return;
+      if (!['image', 'video', 'audio'].includes(msg.type)) return;
 
       // nếu đã có localURL → ưu tiên hiện trước
       if (msg.localURL) {
@@ -128,7 +129,7 @@ const MessageContentComponent = (props: Props) => {
           >
             <Image
               source={{
-                uri
+                uri,
               }}
               style={{
                 width: 200,
@@ -148,7 +149,19 @@ const MessageContentComponent = (props: Props) => {
             <VideoPlayer
               videoUrl={msg.status === 'pending' ? msg.localURL : uri}
               styles={{
-                opacity: msg.status === 'pending' ? 0.5 : 1,
+                opacity: msg.status === 'pending' ? 0.3 : 1,
+              }}
+            />
+          </TouchableOpacity>
+        );
+        break;
+      case 'audio':
+        result = (
+          <TouchableOpacity style={{ flex: 1, width: '100%' }}>
+            <AudioPlayerComponent
+              url={uri}
+              audioStyles={{
+                opacity: msg.status === 'pending' ? 0.3 : 1,
               }}
             />
           </TouchableOpacity>
@@ -166,6 +179,7 @@ const MessageContentComponent = (props: Props) => {
     const { data }: any = await getViewUrl({ fileKey });
     return data.viewUrl;
   };
+
   return (
     <>
       {showBlockTime && (

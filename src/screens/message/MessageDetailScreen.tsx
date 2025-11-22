@@ -15,6 +15,7 @@ import {
   SearchNormal1,
   Send2,
   Setting2,
+  Trash,
   Video,
 } from 'iconsax-react-native';
 import React, { useEffect, useRef, useState } from 'react';
@@ -22,6 +23,7 @@ import {
   FlatList,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  PermissionsAndroid,
   Platform,
   TouchableOpacity,
 } from 'react-native';
@@ -84,6 +86,8 @@ const MessageDetailScreen = ({ route }: any) => {
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerImages, setViewerImages] = useState<any>([]);
   const [imageIndex, setImageIndex] = useState(0);
+  const [isRecord, setIsRecord] = useState(false);
+  const [duration, setDuration] = useState(0);
   const messages = [
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
@@ -226,20 +230,24 @@ const MessageDetailScreen = ({ route }: any) => {
       let chatRoomId = '';
 
       if (type === 'private' && friend) {
-        chatRoomId = makeContactId(user?.id as string, friend.id);
+        chatRoomId = makeContactId(user.id as string, friend.id);
       } else {
         chatRoomId = chatRoom.id;
       }
 
       const text = typeMsg === 'text' ? value : '';
       const mediaURL =
-        typeMsg === 'image' || typeMsg == 'video' ? (key as string) : '';
+        typeMsg === 'image' || typeMsg == 'video' || typeMsg == 'audio'
+          ? (key as string)
+          : '';
       const localURL =
-        typeMsg === 'image' || typeMsg == 'video' ? localURI : '';
+        typeMsg === 'image' || typeMsg == 'video' || typeMsg == 'audio'
+          ? localURI
+          : '';
       const thumbKey = typeMsg === 'video' ? (thumbnaiKey as string) : '';
 
       // Thêm tin nhắn ở local
-      if (!['image', 'video'].includes(typeMsg)) {
+      if (!['image', 'video', 'audio'].includes(typeMsg)) {
         addPendingMessage(chatRoomId, {
           id: messageId,
           senderId: user.id,
@@ -663,37 +671,126 @@ const MessageDetailScreen = ({ route }: any) => {
     });
     return compressedUri;
   };
+  const handleOpenRecord = async () => {
+    setIsRecord(true);
+    setValue('Đã ghi');
+    await onStartRecord();
+  };
 
   // Recording
+  const requestAudioPermission = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Audio Recording Permission',
+            message:
+              'This app needs access to your microphone to record audio.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          },
+        );
+
+        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+          console.log('Recording permission granted');
+          return true;
+        } else {
+          console.log('Recording permission denied');
+          return false;
+        }
+      } catch (err) {
+        console.warn(err);
+        return false;
+      }
+    }
+    return true;
+  };
   const onStartRecord = async () => {
-    console.log('ok')
+    const ok = await requestAudioPermission();
+    if (!ok) return;
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)} giây`;
+      setValue(`Đã ghi: ${timeRecord}`);
+      setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
       // setRecordTime(Sound.mmssss(Math.floor(e.currentPosition)));
     });
 
     const result = await Sound.startRecorder();
-    console.log('Recording started:', result);
+    // console.log('Recording started:', result);
   };
-
-  const onStopRecord = async () => {
+  const onStopRecord = async (actionRecord: string) => {
     const result = await Sound.stopRecorder();
     Sound.removeRecordBackListener();
-    console.log('Recording stopped:', result);
+
+    if (actionRecord === 'send') {
+      const messId = uuidv4();
+      let chatRoomId = '';
+
+      if (type === 'private' && friend) {
+        chatRoomId = makeContactId(user?.id as string, friend.id);
+      } else {
+        chatRoomId = chatRoom.id;
+      }
+
+      addPendingMessage(chatRoomId, {
+        id: messId,
+        senderId: user?.id as string,
+        type: 'audio',
+        text: '',
+        mediaURL: '',
+        localURL: result,
+
+        thumbKey: '',
+        duration,
+        height: 0,
+        width: 0,
+
+        createAt: serverTimestamp(),
+        status: 'pending',
+      });
+
+      flatListRef.current?.scrollToEnd({ animated: true });
+      setValue('')
+
+      const { fileKey, uploadUrl } = await getUploadUrl(
+        'mp4',
+        'audio/mp4',
+        false,
+        chatRoom.id,
+        messId,
+      );
+
+      await uploadBinaryToR2S3(uploadUrl, result, 'audio/mp4');
+
+      handleSendMessage({
+        typeMsg: 'audio',
+        key: fileKey,
+        messId,
+        localURI: result,
+        asset: { duration, height: 0, width: 0 },
+        thumbnaiKey: '',
+      });
+    }
+
+    setIsRecord(false);
+    setValue('');
   };
 
   // Pause/Resume Recording
-  const onPauseRecord = async () => {
-    await Sound.pauseRecorder();
-    console.log('Recording paused');
-  };
+  // const onPauseRecord = async () => {
+  //   await Sound.pauseRecorder();
+  //   console.log('Recording paused');
+  // };
 
-  const onResumeRecord = async () => {
-    await Sound.resumeRecorder();
-    console.log('Recording resumed');
-  };
+  // const onResumeRecord = async () => {
+  //   await Sound.resumeRecorder();
+  //   console.log('Recording resumed');
+  // };
 
   return (
     <SafeAreaView
@@ -840,13 +937,22 @@ const MessageDetailScreen = ({ route }: any) => {
           }}
         >
           <RowComponent>
-            <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
-              <EmojiNormal
+            {isRecord ? (
+              <Trash
+                onPress={() => onStopRecord('remove')}
                 size={sizes.extraTitle}
                 color={colors.background}
                 variant="Bold"
               />
-            </EmojiPopup>
+            ) : (
+              <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
+                <EmojiNormal
+                  size={sizes.extraTitle}
+                  color={colors.background}
+                  variant="Bold"
+                />
+              </EmojiPopup>
+            )}
             <SpaceComponent width={16} />
             <InputComponent
               styles={{
@@ -868,7 +974,7 @@ const MessageDetailScreen = ({ route }: any) => {
             {value === '' ? (
               <>
                 <Microphone2
-                onPress={onStartRecord}
+                  onPress={handleOpenRecord}
                   size={sizes.extraTitle}
                   color={colors.background}
                   variant="Bold"
@@ -881,6 +987,13 @@ const MessageDetailScreen = ({ route }: any) => {
                   variant="Bold"
                 />
               </>
+            ) : isRecord ? (
+              <Send2
+                size={sizes.extraTitle}
+                color={colors.background}
+                variant="Bold"
+                onPress={() => onStopRecord('send')}
+              />
             ) : (
               <Send2
                 size={sizes.extraTitle}

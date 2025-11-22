@@ -1,4 +1,5 @@
 import ActivityLoadingComponent from './ActivityLoadingComponent';
+import AudioPlayerComponent from './AudioPlayerComponent';
 import AvatarComponent from './AvatarComponent';
 import AvatarGroupComponent from './AvatarGroupComponent';
 import BtnShadowLinearComponent from './BtnShadowLinearComponent';
@@ -25,6 +26,7 @@ export {
   AvatarGroupComponent,
   BtnShadowLinearComponent,
   ButtonComponent,
+  CheckboxUserComponent,
   CheckedButtonComponent,
   Container,
   FriendItemComponent,
@@ -37,5 +39,6 @@ export {
   SectionComponent,
   SpaceComponent,
   SpinnerComponent,
-  TextComponent,CheckboxUserComponent, VideoPlayer
+  TextComponent,
+  VideoPlayer,AudioPlayerComponent
 };
