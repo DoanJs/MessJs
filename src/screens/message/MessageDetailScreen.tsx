@@ -33,6 +33,7 @@ import RNFS from 'react-native-fs';
 import 'react-native-get-random-values';
 import { Asset, launchImageLibrary } from 'react-native-image-picker';
 import ImageViewing from 'react-native-image-viewing';
+import Sound, { RecordBackType } from 'react-native-nitro-sound';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -593,6 +594,8 @@ const MessageDetailScreen = ({ route }: any) => {
             status: 'pending',
           });
 
+          flatListRef.current?.scrollToEnd({ animated: true });
+
           let isCompressUri: string = asset.uri;
           let thumbKey: string = '';
 
@@ -660,6 +663,38 @@ const MessageDetailScreen = ({ route }: any) => {
     });
     return compressedUri;
   };
+
+  // Recording
+  const onStartRecord = async () => {
+    console.log('ok')
+    // Set up recording progress listener
+    Sound.addRecordBackListener((e: RecordBackType) => {
+      console.log('Recording progress:', e.currentPosition, e.currentMetering);
+      // setRecordSecs(e.currentPosition);
+      // setRecordTime(Sound.mmssss(Math.floor(e.currentPosition)));
+    });
+
+    const result = await Sound.startRecorder();
+    console.log('Recording started:', result);
+  };
+
+  const onStopRecord = async () => {
+    const result = await Sound.stopRecorder();
+    Sound.removeRecordBackListener();
+    console.log('Recording stopped:', result);
+  };
+
+  // Pause/Resume Recording
+  const onPauseRecord = async () => {
+    await Sound.pauseRecorder();
+    console.log('Recording paused');
+  };
+
+  const onResumeRecord = async () => {
+    await Sound.resumeRecorder();
+    console.log('Recording resumed');
+  };
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -833,6 +868,7 @@ const MessageDetailScreen = ({ route }: any) => {
             {value === '' ? (
               <>
                 <Microphone2
+                onPress={onStartRecord}
                   size={sizes.extraTitle}
                   color={colors.background}
                   variant="Bold"

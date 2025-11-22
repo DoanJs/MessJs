@@ -128,13 +128,15 @@ const MessageContentComponent = (props: Props) => {
           >
             <Image
               source={{
-                uri: msg.status === 'pending' ? msg.localURL : uri,
+                uri
               }}
               style={{
                 width: 200,
                 height: 150,
+                borderRadius: 10,
                 flex: 1,
                 objectFit: 'cover',
+                opacity: msg.status === 'pending' ? 0.3 : 1,
               }}
             />
           </TouchableOpacity>
@@ -142,12 +144,12 @@ const MessageContentComponent = (props: Props) => {
         break;
       case 'video':
         result = (
-          <TouchableOpacity
-            style={{ flex: 1, width: '100%' }}
-            onPress={() => {}}
-          >
+          <TouchableOpacity style={{ flex: 1, width: '100%' }}>
             <VideoPlayer
               videoUrl={msg.status === 'pending' ? msg.localURL : uri}
+              styles={{
+                opacity: msg.status === 'pending' ? 0.5 : 1,
+              }}
             />
           </TouchableOpacity>
         );
@@ -219,10 +221,12 @@ const MessageContentComponent = (props: Props) => {
             styles={{
               flexDirection: 'column',
               backgroundColor:
-                user?.id !== msg.senderId
-                  ? colors.gray + '80'
-                  : colors.primaryBold,
-              padding: 10,
+                msg.type === 'text'
+                  ? user?.id !== msg.senderId
+                    ? colors.gray + '80'
+                    : colors.primaryBold
+                  : colors.background,
+              padding: msg.type === 'text' ? 10 : 0,
               borderRadius: 10,
               alignItems: 'flex-start',
             }}
@@ -236,7 +240,11 @@ const MessageContentComponent = (props: Props) => {
                 textAlign="center"
                 size={sizes.smallText}
                 color={
-                  msg.senderId === user?.id ? colors.background : colors.red
+                  msg.senderId === user?.id
+                    ? msg.type === 'text'
+                      ? colors.background
+                      : colors.text
+                    : colors.red
                 }
               />
             )}

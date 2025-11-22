@@ -2028,6 +2028,11 @@
     prompts "^2.4.2"
     semver "^7.5.2"
 
+"@react-native-community/slider@^5.0.1":
+  version "5.1.1"
+  resolved "https://registry.yarnpkg.com/@react-native-community/slider/-/slider-5.1.1.tgz#321c37da565b264fd8f96a4edcb55d3fe78f26aa"
+  integrity sha512-W98If/LnTaziU3/0h5+G1LvJaRhMc6iLQBte6UWa4WBIHDMaDPglNBIFKcCXc9Dxp83W+f+5Wv22Olq9M2HJYA==
+
 "@react-native-firebase/app@^23.4.1":
   version "23.4.1"
   resolved "https://registry.yarnpkg.com/@react-native-firebase/app/-/app-23.4.1.tgz#00c836c6fc3f921de0fbe235362627ce73df8de6"
@@ -6645,6 +6650,18 @@ react-native-modal@^14.0.0-rc.1:
   integrity sha512-v5pvGyx1FlmBzdHyPqBsYQyS2mIJhVmuXyNo5EarIzxicKhuoul6XasXMviGcXboEUT0dTYWs88/VendojPiVw==
   dependencies:
     react-native-animatable "1.4.0"
+
+react-native-nitro-modules@^0.31.9:
+  version "0.31.9"
+  resolved "https://registry.yarnpkg.com/react-native-nitro-modules/-/react-native-nitro-modules-0.31.9.tgz#52eded23fbd120063d2f4e843e1ccb0d7e31c229"
+  integrity sha512-w7NtHq4wP6LZgvDs7zbFU3B2uHpRx/bJlSTckw0By8NyEX39fURPGgHyi4a67q1O7I3iFJvbRNWUiiOBbNvHDg==
+
+react-native-nitro-sound@^0.2.9:
+  version "0.2.9"
+  resolved "https://registry.yarnpkg.com/react-native-nitro-sound/-/react-native-nitro-sound-0.2.9.tgz#e456600c3bf3128645cfd30642d80d02f64c98e6"
+  integrity sha512-shlDKr5riTqqhnh42H0NynZmtzrR6JWqZ7m1yVBfY9B43d4DvD2MdhhLjpvaZwnMefGM5gYrVPN/6YBjcF1RMg==
+  dependencies:
+    "@react-native-community/slider" "^5.0.1"
 
 react-native-safe-area-context@^5.6.1:
   version "5.6.1"
