@@ -1,7 +1,14 @@
 import {
+  collection,
   doc,
+  documentId,
+  FieldPath,
   getDoc,
+  getDocs,
+  limit,
   onSnapshot,
+  orderBy,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -92,6 +99,7 @@ const MessageDetailScreen = ({ route }: any) => {
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
   ];
+
   const flatListRef = useRef<FlatList>(null);
   const {
     addPendingMessage,
@@ -177,6 +185,101 @@ const MessageDetailScreen = ({ route }: any) => {
       unsubReadStatus();
     };
   }, [chatRoom]);
+
+  // --------------
+  useEffect(() => {
+    if (!chatRoom) return;
+
+    let isMounted = true; // flag để cleanup
+
+    const load3Batch = async () => {
+      try {
+        // 1. Lấy batch ASC rồi reverse + slice
+        const q_batches = query(
+          collection(db, `chatRooms/${chatRoom.id}/batches`),
+          orderBy(documentId(), 'asc'),
+        );
+
+        const snap = await getDocs(q_batches);
+
+        if (!isMounted) return; // ❗ nếu unmount thì dừng luôn
+
+        const batchIds = snap.docs.map((d: any) => d.data().id).reverse();
+        const top3 = batchIds.slice(0, 3);
+
+        if (top3.length === 0) {
+          if (isMounted) setMessagesForRoom(chatRoom.id, []);
+          return;
+        }
+
+        // 2. Load message của top3 batch (song song)
+        const messages = await loadMessagesFromBatchIds(chatRoom.id, top3);
+
+        if (!isMounted) return; // ❗ kiểm tra lại trước khi setState
+
+        setMessagesForRoom(chatRoom.id, messages);
+      } catch (err) {
+        console.log('load3Batch error', err);
+      }
+    };
+
+    load3Batch();
+
+    return () => {
+      // Khi unmount hoặc chatRoom đổi → hủy task
+      isMounted = false;
+    };
+    // load3Batch();
+  }, [chatRoom, lastBatchId]);
+
+  // const load3Batch = async () => {
+  //   const q_batches = query(
+  //     collection(db, `chatRooms/${chatRoom.id}/batches`),
+  //     orderBy(documentId(), 'asc'),
+  //   );
+
+  //   const batchId3 = await getDocs(q_batches).then(snap => {
+  //     const batches = snap.docs.map((d: any) => d.data().id);
+  //     return batches.reverse().slice(0, 3);
+  //   });
+  //   const messages = await loadMessagesFromBatchIds(chatRoom.id, batchId3);
+
+  //   console.log(messages);
+  //   setMessagesForRoom(chatRoom.id, messages);
+  // };
+
+  const loadMessagesFromBatchIds = async (
+    roomId: string,
+    batchIds: string[],
+  ) => {
+    const allMessages: any = [];
+
+    await Promise.all(
+      batchIds.map(async batchId => {
+        const q = query(
+          collection(db, `chatRooms/${roomId}/batches/${batchId}/messages`),
+          orderBy('createAt', 'asc'),
+        );
+
+        const snap = await getDocs(q);
+
+        const msgs = snap.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+          // batchId,
+          createAt: doc.data().createAt ?? new Date(),
+        }));
+
+        allMessages.push(...msgs);
+      }),
+    );
+
+    // sort toàn bộ theo thời gian
+    return allMessages.sort((a: any, b: any) => a.createAt - b.createAt);
+  };
+
+  // --------------
+
   useEffect(() => {
     if (!chatRoom || !lastBatchId) return;
 
@@ -713,7 +816,9 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)} giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
+        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+      } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -755,7 +860,7 @@ const MessageDetailScreen = ({ route }: any) => {
       });
 
       flatListRef.current?.scrollToEnd({ animated: true });
-      setValue('')
+      setValue('');
 
       const { fileKey, uploadUrl } = await getUploadUrl(
         'mp4',
