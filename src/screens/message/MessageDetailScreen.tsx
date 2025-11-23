@@ -2,10 +2,8 @@ import {
   collection,
   doc,
   documentId,
-  FieldPath,
   getDoc,
   getDocs,
-  limit,
   onSnapshot,
   orderBy,
   query,
@@ -110,6 +108,10 @@ const MessageDetailScreen = ({ route }: any) => {
   const [readStatus, setReadStatus] = useState<Record<string, ReadStatusModel>>(
     {},
   );
+  const [allBatchIds, setAllBatchIds] = useState<string[]>([]); // toàn bộ batch theo DESC (newest -> oldest)
+  const [loadedCount, setLoadedCount] = useState(3); // đã load bao nhiêu batch (3 batch đầu)
+  const [isAtTop, setIsAtTop] = useState(false);
+
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
 
@@ -186,7 +188,7 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom]);
 
-  // --------------
+  // load 3 batch đầu tiên vào ---> dạng prepend / không phải là append (true)
   useEffect(() => {
     if (!chatRoom) return;
 
@@ -205,19 +207,20 @@ const MessageDetailScreen = ({ route }: any) => {
         if (!isMounted) return; // ❗ nếu unmount thì dừng luôn
 
         const batchIds = snap.docs.map((d: any) => d.data().id).reverse();
+        setAllBatchIds(batchIds);
+        setLoadedCount(3);
         const top3 = batchIds.slice(0, 3);
 
         if (top3.length === 0) {
-          if (isMounted) setMessagesForRoom(chatRoom.id, []);
+          if (isMounted) setMessagesForRoom(chatRoom.id, [], false);
           return;
         }
 
         // 2. Load message của top3 batch (song song)
         const messages = await loadMessagesFromBatchIds(chatRoom.id, top3);
-
         if (!isMounted) return; // ❗ kiểm tra lại trước khi setState
 
-        setMessagesForRoom(chatRoom.id, messages);
+        setMessagesForRoom(chatRoom.id, messages, false);
       } catch (err) {
         console.log('load3Batch error', err);
       }
@@ -229,24 +232,58 @@ const MessageDetailScreen = ({ route }: any) => {
       // Khi unmount hoặc chatRoom đổi → hủy task
       isMounted = false;
     };
-    // load3Batch();
-  }, [chatRoom, lastBatchId]);
+  }, [chatRoom]);
 
-  // const load3Batch = async () => {
-  //   const q_batches = query(
-  //     collection(db, `chatRooms/${chatRoom.id}/batches`),
-  //     orderBy(documentId(), 'asc'),
-  //   );
+  useEffect(() => {
+    if (!chatRoom || !lastBatchId) return;
 
-  //   const batchId3 = await getDocs(q_batches).then(snap => {
-  //     const batches = snap.docs.map((d: any) => d.data().id);
-  //     return batches.reverse().slice(0, 3);
-  //   });
-  //   const messages = await loadMessagesFromBatchIds(chatRoom.id, batchId3);
+    // 🔥 Đăng ký lắng nghe realtime
+    const unsubscribe = onSnapshot(
+      q_messagesASC({ chatRoomId: chatRoom.id, batchId: lastBatchId }),
+      snapshot => {
+        const msgs = snapshot.docs.map((doc: any) => {
+          const data = doc.data();
 
-  //   console.log(messages);
-  //   setMessagesForRoom(chatRoom.id, messages);
-  // };
+          // convert createAt nếu có
+          const createAt = data?.createAt
+            ? data.createAt // nếu là Timestamp
+            : new Date(); // fallback khi chưa có
+
+          return {
+            id: doc.id,
+            ...data,
+            createAt,
+          };
+        });
+        // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ ---> dạng append (false)
+        setMessagesForRoom(chatRoom.id, msgs, false);
+      },
+    );
+
+    // 🧹 Hủy đăng ký khi batchId đổi hoặc component unmount
+    return () => {
+      unsubscribe();
+    };
+  }, [chatRoom, lastBatchId]); // <– dependency quan trọng
+  
+  useEffect(() => {
+    if (isAtTop) {
+      loadMoreBatches();
+    }
+  }, [isAtTop]);
+  // --------------
+  const loadMoreBatches = async () => {
+    if (loadedCount >= allBatchIds.length) return; // hết batch
+
+    const next = allBatchIds.slice(loadedCount, loadedCount + 2);
+
+    const moreMessages = await loadMessagesFromBatchIds(chatRoom.id, next);
+
+    setMessagesForRoom(chatRoom.id, moreMessages, true);
+
+    setLoadedCount(prev => prev + next.length);
+  };
+  // --------------
 
   const loadMessagesFromBatchIds = async (
     roomId: string,
@@ -277,41 +314,6 @@ const MessageDetailScreen = ({ route }: any) => {
     // sort toàn bộ theo thời gian
     return allMessages.sort((a: any, b: any) => a.createAt - b.createAt);
   };
-
-  // --------------
-
-  useEffect(() => {
-    if (!chatRoom || !lastBatchId) return;
-
-    // 🔥 Đăng ký lắng nghe realtime
-    const unsubscribe = onSnapshot(
-      q_messagesASC({ chatRoomId: chatRoom.id, batchId: lastBatchId }),
-      snapshot => {
-        const msgs = snapshot.docs.map((doc: any) => {
-          const data = doc.data();
-
-          // convert createAt nếu có
-          const createAt = data?.createAt
-            ? data.createAt // nếu là Timestamp
-            : new Date(); // fallback khi chưa có
-
-          return {
-            id: doc.id,
-            ...data,
-            createAt,
-          };
-        });
-        // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ
-        setMessagesForRoom(chatRoom.id, msgs);
-      },
-    );
-
-    // 🧹 Hủy đăng ký khi batchId đổi hoặc component unmount
-    return () => {
-      unsubscribe();
-    };
-  }, [chatRoom, lastBatchId]); // <– dependency quan trọng
-
   const handleSendMessage = async ({
     typeMsg = 'text',
     key,
@@ -562,6 +564,14 @@ const MessageDetailScreen = ({ route }: any) => {
     if (atBottom) {
       setHasNewMessage(false); // đang ở đáy thì ẩn nút
     }
+
+    const offsetY = contentOffset.y;
+    // offsetY <= 0 nghĩa là chạm top
+    if (offsetY <= 0) {
+      setIsAtTop(true);
+    } else if (isAtTop) {
+      setIsAtTop(false);
+    }
   };
   const scrollToBottom = () => {
     flatListRef.current?.scrollToEnd({ animated: true });
@@ -665,6 +675,7 @@ const MessageDetailScreen = ({ route }: any) => {
     }
   };
 
+   // Image and Video
   const handleOpenImage = async () => {
     const picked: any = await pickImage();
     if (!picked) return;

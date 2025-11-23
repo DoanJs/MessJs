@@ -8,7 +8,7 @@ interface ChatState {
   pendingMessages: Record<string, MessageModel[]>; // stored offline
 
   // Set messages for a room (from Firestore)
-  setMessagesForRoom: (roomId: string, messages: MessageModel[]) => void;
+  setMessagesForRoom: (roomId: string, messages: MessageModel[], prepend?: boolean) => void;
 
   // Add local pending message (sending/failed)
   addPendingMessage: (roomId: string, message: MessageModel) => void;
@@ -32,7 +32,7 @@ export const useChatStore = create<ChatState>()(
       messagesByRoom: {},
       pendingMessages: {},
 
-      setMessagesForRoom: (roomId, messages) => {
+      setMessagesForRoom: (roomId, messages, prepend = false) => {
         set(state => {
           const prevMessages = state.messagesByRoom[roomId] || [];
 
@@ -42,8 +42,16 @@ export const useChatStore = create<ChatState>()(
           // ⚡ 2️⃣ Chỉ lấy tin nhắn mới chưa có
           const uniqueNewMsgs = messages.filter(m => !existingIds.has(m.id));
 
-          // ⚡ 3️⃣ Ghép lại mảng
-          const allMessages = [...prevMessages, ...uniqueNewMsgs];
+          // ⚡ 3️⃣ Ghép lại mảng - Check xem thuộc trường hợp prepend/append
+          let allMessages;
+
+          if (prepend) {
+            // ⭐ Load batch cũ → thêm ở đầu
+            allMessages = [...uniqueNewMsgs, ...prevMessages];
+          } else {
+            // ⭐ Realtime → thêm cuối
+            allMessages = [...prevMessages, ...uniqueNewMsgs];
+          }
 
           // ⚡ 4️⃣ Sắp xếp theo thời gian
           allMessages.sort((a: any, b: any) => {
