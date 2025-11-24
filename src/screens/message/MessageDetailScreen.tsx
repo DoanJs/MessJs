@@ -188,7 +188,7 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom]);
 
-  // load 3 batch đầu tiên vào ---> dạng prepend / không phải là append (true)
+  // load 3 batch đầu tiên vào ---> dạng prepend (false)
   useEffect(() => {
     if (!chatRoom) return;
 
@@ -212,7 +212,7 @@ const MessageDetailScreen = ({ route }: any) => {
         const top3 = batchIds.slice(0, 3);
 
         if (top3.length === 0) {
-          if (isMounted) setMessagesForRoom(chatRoom.id, [], false);
+          if (isMounted) setMessagesForRoom(chatRoom.id, [], true);
           return;
         }
 
@@ -220,7 +220,7 @@ const MessageDetailScreen = ({ route }: any) => {
         const messages = await loadMessagesFromBatchIds(chatRoom.id, top3);
         if (!isMounted) return; // ❗ kiểm tra lại trước khi setState
 
-        setMessagesForRoom(chatRoom.id, messages, false);
+        setMessagesForRoom(chatRoom.id, messages, true);
       } catch (err) {
         console.log('load3Batch error', err);
       }
@@ -255,7 +255,7 @@ const MessageDetailScreen = ({ route }: any) => {
             createAt,
           };
         });
-        // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ ---> dạng append (false)
+        // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ ---> dạng prepend (false)
         setMessagesForRoom(chatRoom.id, msgs, false);
       },
     );
@@ -271,11 +271,17 @@ const MessageDetailScreen = ({ route }: any) => {
       loadMoreBatches();
     }
   }, [isAtTop]);
+
+  
   // --------------
+  
+  // --------------
+
   const loadMoreBatches = async () => {
     if (loadedCount >= allBatchIds.length) return; // hết batch
-
+    
     const next = allBatchIds.slice(loadedCount, loadedCount + 2);
+    console.log(next)
 
     const moreMessages = await loadMessagesFromBatchIds(chatRoom.id, next);
 
@@ -283,8 +289,6 @@ const MessageDetailScreen = ({ route }: any) => {
 
     setLoadedCount(prev => prev + next.length);
   };
-  // --------------
-
   const loadMessagesFromBatchIds = async (
     roomId: string,
     batchIds: string[],
@@ -303,7 +307,6 @@ const MessageDetailScreen = ({ route }: any) => {
         const msgs = snap.docs.map((doc: any) => ({
           id: doc.id,
           ...doc.data(),
-          // batchId,
           createAt: doc.data().createAt ?? new Date(),
         }));
 
@@ -1010,6 +1013,7 @@ const MessageDetailScreen = ({ route }: any) => {
             ref={flatListRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            maintainVisibleContentPosition={{minIndexForVisible: 0}}
             onContentSizeChange={() => {
               // scroll xuống dưới cùng khi vào phòng chat
               if (initialLoad) {

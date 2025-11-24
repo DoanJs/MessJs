@@ -146,7 +146,7 @@ const Register = ({ navigation }: any) => {
               placeholderTextColor={colors.gray}
               color={colors.background}
               value={fullName}
-              onChange={val => setFullName(val)}
+              onChangeText={setFullName}
             />
             <SpaceComponent height={10} />
             <InputComponent
@@ -162,7 +162,7 @@ const Register = ({ navigation }: any) => {
               placeholderTextColor={colors.gray}
               color={colors.background}
               value={email}
-              onChange={val => setEmail(val)}
+              onChangeText={setEmail}
             />
             <SpaceComponent height={10} />
             <InputComponent
@@ -178,7 +178,7 @@ const Register = ({ navigation }: any) => {
               placeholderTextColor={colors.gray}
               color={colors.background}
               value={phone}
-              onChange={val => setPhone(val)}
+              onChangeText={setPhone}
             />
             <SpaceComponent height={10} />
             <InputComponent
@@ -197,7 +197,7 @@ const Register = ({ navigation }: any) => {
               textStyles={{
                 color: colors.text,
               }}
-              onChange={val => setPassword(val)}
+              onChangeText={setPassword}
             />
 
             {errorText !== '' && (
