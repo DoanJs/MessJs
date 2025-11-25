@@ -30,7 +30,7 @@ interface Props {
   onImagePress: (uri: string) => void;
 }
 
-const MessageContentComponent = (props: Props) => {
+const MessageContentComponent = React.memo((props: Props) => {
   const { user } = useUserStore();
   const { users } = useUsersStore();
   const [uri, setUri] = useState(
@@ -297,6 +297,6 @@ const MessageContentComponent = (props: Props) => {
       )}
     </>
   );
-};
+});
 
 export default MessageContentComponent;
