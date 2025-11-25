@@ -15,19 +15,21 @@ import { colors } from '../constants/colors';
 import { convertInfoUserFromID } from '../constants/convertData';
 import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
 import { sizes } from '../constants/sizes';
-import { MessageModel, ReadStatusModel, UserModel } from '../models';
+import { MessageModel, UserModel } from '../models';
 import { useUsersStore, useUserStore } from '../zustand';
 
 interface Props {
+  lastSentByUser: any
+  showDisplayName: boolean
+  showAvatar: boolean
   showBlockTime: boolean;
   shouldShowSmallTime: boolean;
   isEndOfTimeBlock: boolean;
-  msg: MessageModel;
-  messages: MessageModel[];
+  msg: MessageModel | any;
+  readers: any
+
   type: string;
-  readStatus: Record<string, ReadStatusModel>;
   members: UserModel[];
-  onImagePress: (uri: string) => void;
 }
 
 const MessageContentComponent = React.memo((props: Props) => {
@@ -37,16 +39,19 @@ const MessageContentComponent = React.memo((props: Props) => {
     'https://img6.thuthuatphanmem.vn/uploads/2022/11/18/hinh-anh-dang-load-troll_093252029.jpg',
   );
   const {
+    lastSentByUser,
+    showDisplayName,
+    showAvatar,
     showBlockTime,
     shouldShowSmallTime,
     isEndOfTimeBlock,
     msg,
-    messages,
+    readers,
     type,
-    readStatus,
     members,
-    onImagePress,
   } = props;
+
+  console.log('readers:---', readers)
 
   useEffect(() => {
     let isActive = true;
@@ -77,35 +82,34 @@ const MessageContentComponent = React.memo((props: Props) => {
       isActive = false;
     };
   }, [msg.id]);
+  // const readers = Object.keys(readStatus).filter(userId => {
+  //   if (userId === user?.id) return false; // bỏ người gửi
 
-  const readers = Object.keys(readStatus).filter(userId => {
-    if (userId === user?.id) return false; // bỏ người gửi
-
-    const lastId = readStatus[userId]?.lastReadMessageId;
-    const lastIndex = messages.findIndex(m => m.id === lastId);
-    const currentIndex = messages.findIndex(m => m.id === msg.id);
-    return lastIndex === currentIndex; // user đã đọc tới tin này hoặc sau
-  });
+  //   const lastId = readStatus[userId]?.lastReadMessageId;
+  //   const lastIndex = messages.findIndex(m => m.id === lastId);
+  //   const currentIndex = messages.findIndex(m => m.id === msg.id);
+  //   return lastIndex === currentIndex; // user đã đọc tới tin này hoặc sau
+  // });
   // Tìm tin cuối cùng (cuối danh sách) mà người gửi là chính bạn
-  const lastSentByUser = [...messages]
-    .reverse()
-    .find(m => m.senderId === user?.id && m.status === 'sent');
+  // const lastSentByUser = [...messages]
+  //   .reverse()
+  //   .find(m => m.senderId === user?.id && m.status === 'sent');
 
   // Tìm tin hiển thị avatar đối với 2 tin liên tiếp
-  const showAvatar = () => {
-    const index = messages.findIndex(_ => _.id === msg.id);
-    const nextMessage = messages[index + 1];
-    const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
+  // const showAvatar = () => {
+  //   const index = messages.findIndex(_ => _.id === msg.id);
+  //   const nextMessage = messages[index + 1];
+  //   const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
 
-    return isShow;
-  };
-  const showDisplayName = () => {
-    const index = messages.findIndex(_ => _.id === msg.id);
-    const nextMessage = messages[index - 1];
-    const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
+  //   return isShow;
+  // };
+  // const showDisplayName = () => {
+  //   const index = messages.findIndex(_ => _.id === msg.id);
+  //   const nextMessage = messages[index - 1];
+  //   const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
 
-    return isShow;
-  };
+  //   return isShow;
+  // };
   const showContent = () => {
     let result: ReactNode;
     switch (msg.type) {
@@ -125,7 +129,7 @@ const MessageContentComponent = React.memo((props: Props) => {
         result = (
           <TouchableOpacity
             style={{ flex: 1, width: '100%' }}
-            onPress={() => onImagePress(msg.mediaURL)}
+            onPress={msg.onImagePressForItem}
           >
             <Image
               source={{
@@ -179,7 +183,7 @@ const MessageContentComponent = React.memo((props: Props) => {
     const { data }: any = await getViewUrl({ fileKey });
     return data.viewUrl;
   };
-
+console.log(readers)
   return (
     <>
       {showBlockTime && (
@@ -195,12 +199,12 @@ const MessageContentComponent = React.memo((props: Props) => {
         justify={user?.id === msg.senderId ? 'flex-end' : 'flex-start'}
         styles={{
           alignItems:
-            showAvatar() || isEndOfTimeBlock ? 'flex-end' : 'flex-start',
+            showAvatar || isEndOfTimeBlock ? 'flex-end' : 'flex-start',
         }}
       >
         {user?.id !== msg.senderId && (
           <>
-            {showAvatar() || isEndOfTimeBlock ? (
+            {showAvatar || isEndOfTimeBlock ? (
               <AvatarComponent
                 size={26}
                 uri={convertInfoUserFromID(msg.senderId, users)?.photoURL}
@@ -219,7 +223,7 @@ const MessageContentComponent = React.memo((props: Props) => {
         >
           {type === 'group' &&
             user?.id !== msg.senderId &&
-            showDisplayName() && (
+            showDisplayName && (
               <RowComponent justify="flex-start" styles={{ width: '100%' }}>
                 <TextComponent
                   text={
@@ -246,7 +250,7 @@ const MessageContentComponent = React.memo((props: Props) => {
             }}
           >
             {showContent()}
-            {(showAvatar() || shouldShowSmallTime) && (
+            {(showAvatar || shouldShowSmallTime) && (
               <TextComponent
                 text={moment(toMs(msg.createAt ?? msg.createAt)).format(
                   'HH:mm',
@@ -263,22 +267,22 @@ const MessageContentComponent = React.memo((props: Props) => {
               />
             )}
           </RowComponent>
-          {readers.length == 0 && (
+          {readers.length === 0 && (
             <RowComponent justify="flex-end">
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                <TextComponent
-                  text={
-                    msg.status === 'failed'
-                      ? '❌ Lỗi gửi'
-                      : msg.status === 'pending'
-                      ? 'Đang gửi'
-                      : 'Đã gửi'
-                  }
-                  size={sizes.extraComment}
-                />
-              )}
+                  <TextComponent
+                    text={
+                      msg.status === 'failed'
+                        ? '❌ Lỗi gửi'
+                        : msg.status === 'pending'
+                          ? 'Đang gửi'
+                          : 'Đã gửi'
+                    }
+                    size={sizes.extraComment}
+                  />
+                )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />

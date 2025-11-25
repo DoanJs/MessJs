@@ -23,7 +23,7 @@ import {
   Trash,
   Video,
 } from 'iconsax-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   NativeScrollEvent,
@@ -81,7 +81,8 @@ import { useChatStore, useUserStore } from '../../zustand';
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
-  const { type, friend, chatRoom, members } = route.params;
+  const { type, friend, chatRoom } = route.params;
+  const [members, setMembers] = useState(route.params.members);
   const [value, setValue] = useState('');
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const { messagesByRoom, pendingMessages } = useChatStore();
@@ -117,6 +118,10 @@ const MessageDetailScreen = ({ route }: any) => {
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
 
   useEffect(() => {
+    setMembers(route.params.members);
+  }, []);
+
+  useEffect(() => {
     if (!chatRoom) return;
 
     let cancelled = false; // <– flag để tránh setState sau khi unmount hoặc đổi phòng
@@ -144,9 +149,7 @@ const MessageDetailScreen = ({ route }: any) => {
     if (messages.length === 0 || !user) return;
 
     // Nếu là prepend → bỏ qua
-    console.log('isPrepending trk: ', isPrepending);
     if (isPrepending) return;
-    console.log('isPrepending sau: ', isPrepending);
 
     const lastMsg = messages[messages.length - 1];
     const isFromMe = lastMsg.senderId === user.id;
@@ -165,6 +168,60 @@ const MessageDetailScreen = ({ route }: any) => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages.length]);
+  // 
+  const enhancedMessages = useMemo(() => {
+    return messages.map((msg, index) => {
+      const prev = messages[index - 1];
+      const next = messages[index + 1];
+
+      return {
+        ...msg,
+        showBlockTime: shouldShowBlockTime(prev, msg),
+        showSmallTime: shouldShowSmallTime(prev, msg, next, index, messages.length),
+        endOfTimeBlock: isEndOfTimeBlock(next, msg),
+        showAvatar: !next || next.senderId !== msg.senderId,
+        showDisplayName: !prev || prev.senderId !== msg.senderId,
+        onImagePressForItem: () => openViewer(msg.mediaURL)
+      };
+    });
+  }, [messages]);
+
+  const lastSentByUser = useMemo(() => {
+    if (!messages || !user?.id) return undefined;
+    return [...messages]
+      .reverse()
+      .find(m => m.senderId === user.id && (m.status === 'sent' || m.status === 'pending'));
+  }, [messages, user?.id]);
+  
+
+  const messageIndexMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    messages.forEach((m, i) => {
+      map[m.id] = i;
+    });
+    return map;
+  }, [messages]);
+
+  const readersByMessageId = useMemo(() => {
+    const result: Record<string, string[]> = {};
+
+    Object.keys(readStatus).forEach(userId => {
+      if (userId === user?.id) return; // 🔑 bỏ người gửi / chính bạn
+      
+      const lastId = readStatus[userId]?.lastReadMessageId;
+      const lastIdx = messageIndexMap[lastId];
+      if (lastIdx == null) return;
+
+      // user đã đọc đến message index = lastIdx
+      const msg = messages[lastIdx];
+      if (!msg) return;
+
+      if (!result[msg.id]) result[msg.id] = [];
+      result[msg.id].push(userId);
+    });
+
+    return result;
+  }, [readStatus, messageIndexMap]);
 
   // Lắng nghe thay đổi lastBatchId trong chatRoom
   useEffect(() => {
@@ -839,9 +896,8 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
-        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-      } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+        } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -935,7 +991,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -958,7 +1014,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
             />
             {type === 'private' && (
               <>
@@ -966,7 +1022,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => {}}
+                  onPress={() => { }}
                 />
               </>
             )}
@@ -974,14 +1030,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
           </RowComponent>
@@ -999,30 +1055,27 @@ const MessageDetailScreen = ({ route }: any) => {
             contentContainerStyle={{
               paddingBottom: initialLoad ? 0 : insets.bottom + 80,
             }}
-            data={messages}
+            data={enhancedMessages}
             keyExtractor={item => item.id}
             renderItem={useCallback(
-              ({ item, index }: { item: any; index: number }) => (
+              ({ item }: { item: any }) => (
                 <MessageContentComponent
-                  showBlockTime={shouldShowBlockTime(messages[index - 1], item)}
-                  shouldShowSmallTime={shouldShowSmallTime(
-                    messages[index - 1],
-                    item,
-                    messages[index + 1],
-                    index,
-                    messages.length,
-                  )}
-                  isEndOfTimeBlock={isEndOfTimeBlock(messages[index + 1], item)}
-                  msg={item}
-                  messages={messages}
-                  type={chatRoom.type}
-                  readStatus={readStatus}
+                  showBlockTime={item.showBlockTime}
+                  shouldShowSmallTime={item.showSmallTime}
+                  isEndOfTimeBlock={item.endOfTimeBlock}
+                  showAvatar={item.showAvatar}
+                  showDisplayName={item.showDisplayName}
+                  lastSentByUser={lastSentByUser}
+                  readers={readersByMessageId[item.id] ?? []}
                   members={members}
-                  onImagePress={openViewer}
+
+                  msg={item}
+                  type={chatRoom.type}
                 />
               ),
-              [],
+              [lastSentByUser, readersByMessageId, members] // 🔑 thêm vào dependency
             )}
+            extraData={lastSentByUser}
             ref={flatListRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}

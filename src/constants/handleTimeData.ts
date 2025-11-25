@@ -20,7 +20,7 @@ export const shouldShowBlockTime = (
 
   const prev = convertTimeStampFirestore(prevMessage.createAt);
   const curr = convertTimeStampFirestore(currentMessage.createAt);
-
+  
   if (!prev?.dataTime || !curr?.dataTime) return false;
 
   const diffMs = curr.dataTime - prev.dataTime;
