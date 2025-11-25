@@ -111,6 +111,8 @@ const MessageDetailScreen = ({ route }: any) => {
   const [allBatchIds, setAllBatchIds] = useState<string[]>([]); // toàn bộ batch theo DESC (newest -> oldest)
   const [loadedCount, setLoadedCount] = useState(3); // đã load bao nhiêu batch (3 batch đầu)
   const [isAtTop, setIsAtTop] = useState(false);
+  const [isPrepending, setIsPrepending] = useState(false);
+
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
@@ -142,6 +144,9 @@ const MessageDetailScreen = ({ route }: any) => {
   useEffect(() => {
     if (messages.length === 0 || !user) return;
 
+    // Nếu là prepend → bỏ qua
+    if (isPrepending) return;
+
     const lastMsg = messages[messages.length - 1];
     const isFromMe = lastMsg.senderId === user.id;
 
@@ -158,7 +163,7 @@ const MessageDetailScreen = ({ route }: any) => {
     } else {
       flatListRef.current?.scrollToEnd({ animated: true });
     }
-  }, [messages.length]);
+  }, [messages.length, isPrepending]);
 
   // Lắng nghe thay đổi lastBatchId trong chatRoom
   useEffect(() => {
@@ -265,25 +270,26 @@ const MessageDetailScreen = ({ route }: any) => {
       unsubscribe();
     };
   }, [chatRoom, lastBatchId]); // <– dependency quan trọng
-  
+
   useEffect(() => {
     if (isAtTop) {
       loadMoreBatches();
     }
   }, [isAtTop]);
 
-  
+
   // --------------
-  
+
   // --------------
 
   const loadMoreBatches = async () => {
     if (loadedCount >= allBatchIds.length) return; // hết batch
-    
+
     const next = allBatchIds.slice(loadedCount, loadedCount + 2);
     console.log(next)
-
+    setIsPrepending(true);
     const moreMessages = await loadMessagesFromBatchIds(chatRoom.id, next);
+    setIsPrepending(false);
 
     setMessagesForRoom(chatRoom.id, moreMessages, true);
 
@@ -678,7 +684,7 @@ const MessageDetailScreen = ({ route }: any) => {
     }
   };
 
-   // Image and Video
+  // Image and Video
   const handleOpenImage = async () => {
     const picked: any = await pickImage();
     if (!picked) return;
@@ -830,9 +836,8 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
-        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-      } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+        } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -926,7 +931,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -949,7 +954,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
             />
             {type === 'private' && (
               <>
@@ -957,7 +962,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => {}}
+                  onPress={() => { }}
                 />
               </>
             )}
@@ -965,14 +970,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
           </RowComponent>
@@ -1013,7 +1018,7 @@ const MessageDetailScreen = ({ route }: any) => {
             ref={flatListRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            maintainVisibleContentPosition={{minIndexForVisible: 0}}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
             onContentSizeChange={() => {
               // scroll xuống dưới cùng khi vào phòng chat
               if (initialLoad) {
