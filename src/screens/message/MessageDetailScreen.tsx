@@ -23,7 +23,13 @@ import {
   Trash,
   Video,
 } from 'iconsax-react-native';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   FlatList,
   NativeScrollEvent,
@@ -75,12 +81,13 @@ import {
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
-import { ReadStatusModel } from '../../models';
-import { useChatStore, useUserStore } from '../../zustand';
+import { MessageModel, ReadStatusModel } from '../../models';
+import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
+  const { users } = useUsersStore();
   const { type, friend, chatRoom } = route.params;
   const [members, setMembers] = useState(route.params.members);
   const [value, setValue] = useState('');
@@ -168,7 +175,7 @@ const MessageDetailScreen = ({ route }: any) => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages.length]);
-  // 
+  //
   const enhancedMessages = useMemo(() => {
     return messages.map((msg, index) => {
       const prev = messages[index - 1];
@@ -177,11 +184,17 @@ const MessageDetailScreen = ({ route }: any) => {
       return {
         ...msg,
         showBlockTime: shouldShowBlockTime(prev, msg),
-        showSmallTime: shouldShowSmallTime(prev, msg, next, index, messages.length),
+        showSmallTime: shouldShowSmallTime(
+          prev,
+          msg,
+          next,
+          index,
+          messages.length,
+        ),
         endOfTimeBlock: isEndOfTimeBlock(next, msg),
         showAvatar: !next || next.senderId !== msg.senderId,
         showDisplayName: !prev || prev.senderId !== msg.senderId,
-        onImagePressForItem: () => openViewer(msg.mediaURL)
+        onImagePressForItem: () => openViewer(msg.mediaURL),
       };
     });
   }, [messages]);
@@ -190,9 +203,12 @@ const MessageDetailScreen = ({ route }: any) => {
     if (!messages || !user?.id) return undefined;
     return [...messages]
       .reverse()
-      .find(m => m.senderId === user.id && (m.status === 'sent' || m.status === 'pending'));
+      .find(
+        m =>
+          m.senderId === user.id &&
+          (m.status === 'sent' || m.status === 'pending'),
+      );
   }, [messages, user?.id]);
-  
 
   const messageIndexMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -207,7 +223,7 @@ const MessageDetailScreen = ({ route }: any) => {
 
     Object.keys(readStatus).forEach(userId => {
       if (userId === user?.id) return; // 🔑 bỏ người gửi / chính bạn
-      
+
       const lastId = readStatus[userId]?.lastReadMessageId;
       const lastIdx = messageIndexMap[lastId];
       if (lastIdx == null) return;
@@ -280,8 +296,9 @@ const MessageDetailScreen = ({ route }: any) => {
         }
 
         // 2. Load message của top3 batch (song song)
-        const messages = await loadMessagesFromBatchIds(chatRoom.id, top3);
+        let messages = await loadMessagesFromBatchIds(chatRoom.id, top3);
         if (!isMounted) return; // ❗ kiểm tra lại trước khi setState
+        messages = await preloadSignedUrls(messages);
 
         setMessagesForRoom(chatRoom.id, messages, true);
       } catch (err) {
@@ -303,8 +320,8 @@ const MessageDetailScreen = ({ route }: any) => {
     // 🔥 Đăng ký lắng nghe realtime
     const unsubscribe = onSnapshot(
       q_messagesASC({ chatRoomId: chatRoom.id, batchId: lastBatchId }),
-      snapshot => {
-        const msgs = snapshot.docs.map((doc: any) => {
+      async snapshot => {
+        let msgs = snapshot.docs.map((doc: any) => {
           const data = doc.data();
 
           // convert createAt nếu có
@@ -318,6 +335,7 @@ const MessageDetailScreen = ({ route }: any) => {
             createAt,
           };
         });
+        msgs = await preloadSignedUrls(msgs);
         // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ ---> dạng prepend (false)
         setMessagesForRoom(chatRoom.id, msgs, false);
       },
@@ -345,7 +363,8 @@ const MessageDetailScreen = ({ route }: any) => {
     const next = allBatchIds.slice(loadedCount, loadedCount + 2);
     console.log(next);
     setIsPrepending(true);
-    const moreMessages = await loadMessagesFromBatchIds(chatRoom.id, next);
+    let moreMessages = await loadMessagesFromBatchIds(chatRoom.id, next);
+    moreMessages = await preloadSignedUrls(moreMessages);
 
     setMessagesForRoom(chatRoom.id, moreMessages, true);
 
@@ -896,8 +915,9 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-        } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
+        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+      } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -976,6 +996,46 @@ const MessageDetailScreen = ({ route }: any) => {
   //   console.log('Recording resumed');
   // };
 
+  const renderItem = useCallback(
+    ({ item }: { item: MessageModel & any }) => (
+      <MessageContentComponent
+        currentUser={user}
+        users={users}
+        showBlockTime={item.showBlockTime}
+        shouldShowSmallTime={item.showSmallTime}
+        isEndOfTimeBlock={item.endOfTimeBlock}
+        showAvatar={item.showAvatar}
+        showDisplayName={item.showDisplayName}
+        lastSentByUser={lastSentByUser}
+        readers={readersByMessageId[item.id] ?? []}
+        members={members}
+        msg={item}
+        type={chatRoom.type}
+      />
+    ),
+    [lastSentByUser, readersByMessageId, members, chatRoom.type],
+  );
+  const preloadSignedUrls = async (messages: MessageModel[]) => {
+    const results = await Promise.all(
+      messages.map(async (msg: MessageModel) => {
+        if (['image', 'video', 'audio'].includes(msg.type)) {
+          if (msg.localURL) {
+            // msg.mediaURL = msg.localURL;
+            return msg;
+          }
+
+          if (msg.mediaURL) {
+            const signed = await getSignedUrl(msg.mediaURL);
+            msg.mediaURL = signed;
+          }
+        }
+        return msg;
+      }),
+    );
+
+    return results;
+  };
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -991,7 +1051,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => { }}
+            onPress={() => {}}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1014,7 +1074,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
             />
             {type === 'private' && (
               <>
@@ -1022,7 +1082,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => { }}
+                  onPress={() => {}}
                 />
               </>
             )}
@@ -1030,14 +1090,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
               variant="Bold"
             />
           </RowComponent>
@@ -1057,29 +1117,15 @@ const MessageDetailScreen = ({ route }: any) => {
             }}
             data={enhancedMessages}
             keyExtractor={item => item.id}
-            renderItem={useCallback(
-              ({ item }: { item: any }) => (
-                <MessageContentComponent
-                  showBlockTime={item.showBlockTime}
-                  shouldShowSmallTime={item.showSmallTime}
-                  isEndOfTimeBlock={item.endOfTimeBlock}
-                  showAvatar={item.showAvatar}
-                  showDisplayName={item.showDisplayName}
-                  lastSentByUser={lastSentByUser}
-                  readers={readersByMessageId[item.id] ?? []}
-                  members={members}
-
-                  msg={item}
-                  type={chatRoom.type}
-                />
-              ),
-              [lastSentByUser, readersByMessageId, members] // 🔑 thêm vào dependency
-            )}
+            renderItem={renderItem}
             extraData={lastSentByUser}
             ref={flatListRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            maintainVisibleContentPosition={{
+              minIndexForVisible: 0,
+              // autoscrollToTopThreshold: 20,
+            }}
             onContentSizeChange={() => {
               // scroll xuống dưới cùng khi vào phòng chat
               if (initialLoad) {
@@ -1093,6 +1139,11 @@ const MessageDetailScreen = ({ route }: any) => {
                 handleInitialScroll();
               }
             }}
+            windowSize={12}
+            maxToRenderPerBatch={15}
+            initialNumToRender={20}
+            updateCellsBatchingPeriod={10}
+            removeClippedSubviews={true}
           />
 
           {hasNewMessage && !isAtBottom && (

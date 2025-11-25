@@ -1,6 +1,5 @@
-import { httpsCallable } from '@react-native-firebase/functions';
 import moment from 'moment';
-import React, { ReactNode, useEffect, useState } from 'react';
+import React, { ReactNode } from 'react';
 import { Image, TouchableOpacity, View } from 'react-native';
 import {
   AudioPlayerComponent,
@@ -10,35 +9,32 @@ import {
   TextComponent,
   VideoPlayer,
 } from '.';
-import { functions } from '../../firebase.config';
 import { colors } from '../constants/colors';
 import { convertInfoUserFromID } from '../constants/convertData';
 import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
 import { sizes } from '../constants/sizes';
 import { MessageModel, UserModel } from '../models';
-import { useUsersStore, useUserStore } from '../zustand';
 
 interface Props {
-  lastSentByUser: any
-  showDisplayName: boolean
-  showAvatar: boolean
+  currentUser: UserModel | null;
+  users: UserModel[];
+  lastSentByUser: any;
+  showDisplayName: boolean;
+  showAvatar: boolean;
   showBlockTime: boolean;
   shouldShowSmallTime: boolean;
   isEndOfTimeBlock: boolean;
   msg: MessageModel | any;
-  readers: any
+  readers: any;
 
   type: string;
   members: UserModel[];
 }
 
 const MessageContentComponent = React.memo((props: Props) => {
-  const { user } = useUserStore();
-  const { users } = useUsersStore();
-  const [uri, setUri] = useState(
-    'https://img6.thuthuatphanmem.vn/uploads/2022/11/18/hinh-anh-dang-load-troll_093252029.jpg',
-  );
   const {
+    currentUser: user,
+    users,
     lastSentByUser,
     showDisplayName,
     showAvatar,
@@ -51,65 +47,6 @@ const MessageContentComponent = React.memo((props: Props) => {
     members,
   } = props;
 
-  console.log('readers:---', readers)
-
-  useEffect(() => {
-    let isActive = true;
-
-    const load = async () => {
-      // chỉ xử lý image + video
-      if (!['image', 'video', 'audio'].includes(msg.type)) return;
-
-      // nếu đã có localURL → ưu tiên hiện trước
-      if (msg.localURL) {
-        setUri(msg.localURL);
-      }
-
-      // nếu không có mediaURL thì dừng
-      if (!msg.mediaURL) return;
-
-      // lấy signed URL
-      const res = await getSignedUrl(msg.mediaURL);
-
-      if (isActive) {
-        setUri(res);
-      }
-    };
-
-    load();
-
-    return () => {
-      isActive = false;
-    };
-  }, [msg.id]);
-  // const readers = Object.keys(readStatus).filter(userId => {
-  //   if (userId === user?.id) return false; // bỏ người gửi
-
-  //   const lastId = readStatus[userId]?.lastReadMessageId;
-  //   const lastIndex = messages.findIndex(m => m.id === lastId);
-  //   const currentIndex = messages.findIndex(m => m.id === msg.id);
-  //   return lastIndex === currentIndex; // user đã đọc tới tin này hoặc sau
-  // });
-  // Tìm tin cuối cùng (cuối danh sách) mà người gửi là chính bạn
-  // const lastSentByUser = [...messages]
-  //   .reverse()
-  //   .find(m => m.senderId === user?.id && m.status === 'sent');
-
-  // Tìm tin hiển thị avatar đối với 2 tin liên tiếp
-  // const showAvatar = () => {
-  //   const index = messages.findIndex(_ => _.id === msg.id);
-  //   const nextMessage = messages[index + 1];
-  //   const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
-
-  //   return isShow;
-  // };
-  // const showDisplayName = () => {
-  //   const index = messages.findIndex(_ => _.id === msg.id);
-  //   const nextMessage = messages[index - 1];
-  //   const isShow = !nextMessage || nextMessage.senderId !== msg.senderId;
-
-  //   return isShow;
-  // };
   const showContent = () => {
     let result: ReactNode;
     switch (msg.type) {
@@ -133,7 +70,7 @@ const MessageContentComponent = React.memo((props: Props) => {
           >
             <Image
               source={{
-                uri,
+                uri: msg.mediaURL,
               }}
               style={{
                 width: 200,
@@ -151,7 +88,7 @@ const MessageContentComponent = React.memo((props: Props) => {
         result = (
           <TouchableOpacity style={{ flex: 1, width: '100%' }}>
             <VideoPlayer
-              videoUrl={msg.status === 'pending' ? msg.localURL : uri}
+              videoUrl={msg.status === 'pending' ? msg.localURL : msg.mediaURL}
               styles={{
                 opacity: msg.status === 'pending' ? 0.3 : 1,
               }}
@@ -163,7 +100,7 @@ const MessageContentComponent = React.memo((props: Props) => {
         result = (
           <TouchableOpacity style={{ flex: 1, width: '100%' }}>
             <AudioPlayerComponent
-              url={uri}
+              url={msg.mediaURL}
               audioStyles={{
                 opacity: msg.status === 'pending' ? 0.3 : 1,
               }}
@@ -178,12 +115,7 @@ const MessageContentComponent = React.memo((props: Props) => {
 
     return result;
   };
-  const getSignedUrl = async (fileKey: string) => {
-    const getViewUrl = httpsCallable(functions, 'getViewUrl');
-    const { data }: any = await getViewUrl({ fileKey });
-    return data.viewUrl;
-  };
-console.log(readers)
+
   return (
     <>
       {showBlockTime && (
@@ -221,20 +153,18 @@ console.log(readers)
             maxWidth: '70%',
           }}
         >
-          {type === 'group' &&
-            user?.id !== msg.senderId &&
-            showDisplayName && (
-              <RowComponent justify="flex-start" styles={{ width: '100%' }}>
-                <TextComponent
-                  text={
-                    convertInfoUserFromID(msg.senderId, users)
-                      ?.displayName as string
-                  }
-                  size={sizes.smallText}
-                  color="coral"
-                />
-              </RowComponent>
-            )}
+          {type === 'group' && user?.id !== msg.senderId && showDisplayName && (
+            <RowComponent justify="flex-start" styles={{ width: '100%' }}>
+              <TextComponent
+                text={
+                  convertInfoUserFromID(msg.senderId, users)
+                    ?.displayName as string
+                }
+                size={sizes.smallText}
+                color="coral"
+              />
+            </RowComponent>
+          )}
           <RowComponent
             styles={{
               flexDirection: 'column',
@@ -272,17 +202,17 @@ console.log(readers)
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                  <TextComponent
-                    text={
-                      msg.status === 'failed'
-                        ? '❌ Lỗi gửi'
-                        : msg.status === 'pending'
-                          ? 'Đang gửi'
-                          : 'Đã gửi'
-                    }
-                    size={sizes.extraComment}
-                  />
-                )}
+                <TextComponent
+                  text={
+                    msg.status === 'failed'
+                      ? '❌ Lỗi gửi'
+                      : msg.status === 'pending'
+                      ? 'Đang gửi'
+                      : 'Đã gửi'
+                  }
+                  size={sizes.extraComment}
+                />
+              )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />
