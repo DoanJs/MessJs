@@ -1,6 +1,6 @@
 import moment from 'moment';
-import React, { ReactNode } from 'react';
-import { Image, TouchableOpacity, View } from 'react-native';
+import React, { ReactNode, useRef } from 'react';
+import { Image, Pressable, TouchableOpacity, View } from 'react-native';
 import {
   AudioPlayerComponent,
   AvatarComponent,
@@ -29,6 +29,7 @@ interface Props {
 
   type: string;
   members: UserModel[];
+  onLongPress: ({ msg, rect }: any) => void;
 }
 
 const MessageContentComponent = React.memo((props: Props) => {
@@ -45,6 +46,7 @@ const MessageContentComponent = React.memo((props: Props) => {
     readers,
     type,
     members,
+    onLongPress,
   } = props;
 
   const showContent = () => {
@@ -116,8 +118,21 @@ const MessageContentComponent = React.memo((props: Props) => {
     return result;
   };
 
+  const ref = useRef<any>(null);
+  const handleLongPress = () => {
+    ref.current?.measure(
+      (fx: any, fy: any, width: any, height: any, px: any, py: any) => {
+        // Gửi vị trí bong bóng + dữ liệu tin nhắn lên cha
+        onLongPress({
+          msg,
+          rect: { x: px, y: py + 10, width, height },
+        });
+      },
+    );
+  };
+
   return (
-    <>
+    <TouchableOpacity onLongPress={handleLongPress} delayLongPress={250} >
       {showBlockTime && (
         <TextComponent
           styles={{ marginVertical: 4 }}
@@ -148,7 +163,8 @@ const MessageContentComponent = React.memo((props: Props) => {
             <SpaceComponent width={10} />
           </>
         )}
-        <View
+        <Pressable
+          ref={ref}
           style={{
             maxWidth: '70%',
           }}
@@ -216,7 +232,7 @@ const MessageContentComponent = React.memo((props: Props) => {
             </RowComponent>
           )}
           <SpaceComponent height={4} />
-        </View>
+        </Pressable>
       </RowComponent>
       {readers.length > 0 && (
         <RowComponent justify="flex-end" styles={{ marginBottom: 4 }}>
@@ -229,7 +245,7 @@ const MessageContentComponent = React.memo((props: Props) => {
           ))}
         </RowComponent>
       )}
-    </>
+    </TouchableOpacity>
   );
 });
 

@@ -14,4 +14,5 @@ export interface MessageModel {
   height: number
   createAt: TimeAtModel | FieldValue;
   status: string; //"pending" | "sent" | "fail"
+  batchId: string
 }

@@ -8,6 +8,7 @@ import CheckboxUserComponent from './CheckboxUserComponent';
 import CheckedButtonComponent from './CheckedButtonComponent';
 import Container from './Container';
 import FriendItemComponent from './FriendItemComponent';
+import GlobalPopover from './GlobalPopover';
 import InputComponent from './InputComponent';
 import KeyboardAwareScrollViewComponent from './KeyboardAwareScrollViewComponent';
 import MessageContentComponent from './MessageContentComponent';
@@ -22,6 +23,7 @@ import VideoPlayer from './VideoPlayerComponent';
 
 export {
   ActivityLoadingComponent,
+  AudioPlayerComponent,
   AvatarComponent,
   AvatarGroupComponent,
   BtnShadowLinearComponent,
@@ -30,6 +32,7 @@ export {
   CheckedButtonComponent,
   Container,
   FriendItemComponent,
+  GlobalPopover,
   InputComponent,
   KeyboardAwareScrollViewComponent,
   MessageContentComponent,
@@ -40,5 +43,5 @@ export {
   SpaceComponent,
   SpinnerComponent,
   TextComponent,
-  VideoPlayer,AudioPlayerComponent
+  VideoPlayer,
 };

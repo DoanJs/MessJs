@@ -55,6 +55,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { db, functions } from '../../../firebase.config';
 import {
   Container,
+  GlobalPopover,
   InputComponent,
   MessageContentComponent,
   RowComponent,
@@ -120,9 +121,21 @@ const MessageDetailScreen = ({ route }: any) => {
   const [loadedCount, setLoadedCount] = useState(3); // đã load bao nhiêu batch (3 batch đầu)
   const [isAtTop, setIsAtTop] = useState(false);
   const [isPrepending, setIsPrepending] = useState(false);
+  const [popover, setPopover] = useState({
+    visible: false,
+    rect: null,
+    message: null,
+  });
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
+  const onLongPressMessage = ({ msg, rect }: any) => {
+    setPopover({ visible: true, rect, message: msg });
+  };
+
+  const closePopover = () => {
+    setPopover(prev => ({ ...prev, visible: false }));
+  };
 
   useEffect(() => {
     setMembers(route.params.members);
@@ -446,6 +459,7 @@ const MessageDetailScreen = ({ route }: any) => {
           senderId: user.id,
           type: 'text',
           text,
+          batchId: '',
           mediaURL: '',
           localURL: '',
 
@@ -512,6 +526,7 @@ const MessageDetailScreen = ({ route }: any) => {
               text,
               localURL: '',
               mediaURL,
+              batchId: batchInfo.id,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -614,6 +629,7 @@ const MessageDetailScreen = ({ route }: any) => {
               text,
               localURL: '',
               mediaURL,
+              batchId: batchInfo.id,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -793,6 +809,7 @@ const MessageDetailScreen = ({ route }: any) => {
             text: '',
             mediaURL: '',
             localURL: asset.uri,
+            batchId: '',
 
             thumbKey: '',
             duration:
@@ -948,6 +965,7 @@ const MessageDetailScreen = ({ route }: any) => {
         text: '',
         mediaURL: '',
         localURL: result,
+        batchId: '',
 
         thumbKey: '',
         duration,
@@ -1011,6 +1029,7 @@ const MessageDetailScreen = ({ route }: any) => {
         members={members}
         msg={item}
         type={chatRoom.type}
+        onLongPress={onLongPressMessage}
       />
     ),
     [lastSentByUser, readersByMessageId, members, chatRoom.type],
@@ -1118,7 +1137,7 @@ const MessageDetailScreen = ({ route }: any) => {
             data={enhancedMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            extraData={lastSentByUser}
+            // extraData={lastSentByUser}
             ref={flatListRef}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -1248,6 +1267,37 @@ const MessageDetailScreen = ({ route }: any) => {
           images={viewerImages}
           onRequestClose={() => setViewerVisible(false)}
           animationType="fade"
+        />
+        <GlobalPopover
+          {...popover}
+          onClose={closePopover}
+          onDelete={() => console.log('onDelete')}
+          onReply={() => {
+            console.log('onReply');
+            closePopover();
+          }}
+          onReact={() => console.log('onReact')}
+          onEmoji={async ({
+            emoji,
+            message,
+          }: {
+            emoji: string;
+            message: MessageModel;
+          }) => {
+            await setDoc(
+              doc(
+                db,
+                `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
+                user?.id as string,
+              ),
+              {
+                emoji: emoji,
+                createAt: serverTimestamp(),
+              },
+              { merge: true },
+            );
+            closePopover();
+          }}
         />
       </Container>
     </SafeAreaView>
