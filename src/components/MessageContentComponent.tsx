@@ -52,7 +52,7 @@ const MessageContentComponent = React.memo((props: Props) => {
     members,
     onLongPress,
   } = props;
-  const [reactionCounts, setReactionCounts] = useState<{[key: string]: number}>({});
+  const [reactionCounts, setReactionCounts] = useState<{ [key: string]: number }>({});
   const [myReaction, setMyReaction] = useState<string | null>(null);
   const batchId = msg.batchId; // batchId được lưu trong message
 
@@ -159,7 +159,17 @@ const MessageContentComponent = React.memo((props: Props) => {
       },
     );
   };
-  
+  const handleReaction = (reactions: Record<string, number>) => {
+    const reactionList = Object.entries(reactionCounts)
+      .filter(([emoji, count]) => count > 0).map(([emoji]) => emoji);
+    const totalReaction = Object.values(reactions).reduce((sum, n) => sum + n, 0);
+
+    return {
+      reactionList,
+      totalReaction
+    }
+  }
+
   return (
     <TouchableOpacity onLongPress={handleLongPress} delayLongPress={250} >
       {showBlockTime && (
@@ -242,18 +252,26 @@ const MessageContentComponent = React.memo((props: Props) => {
               />
             )}
             {
-              myReaction &&
+              handleReaction(reactionCounts).reactionList.length > 0 &&
               <RowComponent styles={{
                 position: 'absolute',
                 bottom: -10,
                 right: 0
               }}>
-                <TextComponent text={myReaction} />
+                {
+                  handleReaction(reactionCounts).reactionList.map((_, index) =>
+                    index <= 2 && <TextComponent text={_} key={index} />
+                  )
+                }
+                {
+                  handleReaction(reactionCounts).totalReaction > 3 &&
+                  <TextComponent text={`+${handleReaction(reactionCounts).totalReaction - 3}`} />
+                }
               </RowComponent>
             }
           </RowComponent>
           {
-            myReaction &&
+            handleReaction(reactionCounts).totalReaction > 0 &&
             <SpaceComponent height={6} />
           }
           {readers.length === 0 && (
@@ -277,7 +295,7 @@ const MessageContentComponent = React.memo((props: Props) => {
           <SpaceComponent height={4} />
         </Pressable>
       </RowComponent>
-      {readers.length > 0 && Object.keys(reactionCounts).length !== 0 &&(
+      {readers.length > 0 && Object.keys(reactionCounts).length !== 0 && (
         <RowComponent justify="flex-end" styles={{ marginBottom: 4 }}>
           {readers.map((_: string, index: number) => (
             <AvatarComponent

@@ -210,6 +210,7 @@ const MessageDetailScreen = ({ route }: any) => {
         showAvatar: !next || next.senderId !== msg.senderId,
         showDisplayName: !prev || prev.senderId !== msg.senderId,
         onImagePressForItem: () => openViewer(msg.mediaURL),
+        chatRoomId: chatRoom.id
       };
     });
   }, [messages]);
@@ -447,10 +448,6 @@ const MessageDetailScreen = ({ route }: any) => {
       const mediaURL =
         typeMsg === 'image' || typeMsg == 'video' || typeMsg == 'audio'
           ? (key as string)
-          : '';
-      const localURL =
-        typeMsg === 'image' || typeMsg == 'video' || typeMsg == 'audio'
-          ? localURI
           : '';
       const thumbKey = typeMsg === 'video' ? (thumbnaiKey as string) : '';
 
@@ -1071,7 +1068,7 @@ const MessageDetailScreen = ({ route }: any) => {
         user?.id as string,
       ),
       {
-        emoji: emoji,
+        reaction: emoji,
         createAt: serverTimestamp(),
       },
       { merge: true },

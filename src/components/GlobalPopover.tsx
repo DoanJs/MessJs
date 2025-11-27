@@ -9,6 +9,8 @@ import { ForwardMsg, ReplyMsg } from '../assets/vector';
 import TextComponent from './TextComponent';
 import { SpaceComponent } from '.';
 import { useEffect, useState } from 'react';
+import { collection, onSnapshot } from '@react-native-firebase/firestore';
+import { auth, db } from '../../firebase.config';
 
 const GlobalPopover = ({
   visible,
@@ -20,14 +22,41 @@ const GlobalPopover = ({
   onReact,
   onEmoji
 }: any) => {
+  const userCurrent = auth.currentUser
   const [value, setValue] = useState('');
+  const [myReactions, setMyReactions] = useState<any[]>([]);
+
 
   useEffect(() => {
-if(message){
-  // setValue()
-  console.log(message)
-}
-  },[message])
+    if (!message) return;
+
+    const colRef = collection(
+      db,
+      `chatRooms/${message.chatRoomId}/batches/${message.batchId}/messages/${message.id}/reactions`
+    );
+
+    const unsubscribe = onSnapshot(colRef, snap => {
+      let items: any = []
+
+      snap.docs.forEach((doc: any) => {
+        const data = doc.data();
+        items.push({ ...data, id: doc.id })
+      });
+
+      setMyReactions(items)
+    });
+
+    // ⬅️ cleanup khi unmount hoặc khi chatRoomId/batchId thay đổi
+    return () => unsubscribe();
+  }, [message]);
+
+  useEffect(() => {
+    if (myReactions) {
+      const reaction = myReactions.find((_) => _.id === userCurrent?.uid)
+      setValue(reaction?.reaction ?? '')
+    }
+  }, [myReactions])
+
   return (
     <Popover
       isVisible={visible}
@@ -48,15 +77,15 @@ if(message){
           (emoji: string, index: number) => (
             <TouchableOpacity
               onPress={() => {
-                onEmoji({emoji, message})
+                onEmoji({ emoji, message })
                 setValue(emoji)
               }}
               key={index}
               style={{
-                height: 50,width: 50, 
+                height: 50, width: 50,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: emoji === value ?  colors.textBold : undefined
+                backgroundColor: emoji === value ? colors.textBold : undefined
               }}
             >
               <TextComponent text={emoji} size={sizes.bigTitle} />
