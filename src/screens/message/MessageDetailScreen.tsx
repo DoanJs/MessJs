@@ -126,9 +126,11 @@ const MessageDetailScreen = ({ route }: any) => {
     rect: null,
     message: null,
   });
+  // const [reactionMap, setReactionMap] = useState<{[messageId]: {...}}>({});
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
+
   const onLongPressMessage = ({ msg, rect }: any) => {
     setPopover({ visible: true, rect, message: msg });
   };
@@ -459,9 +461,11 @@ const MessageDetailScreen = ({ route }: any) => {
           senderId: user.id,
           type: 'text',
           text,
-          batchId: '',
           mediaURL: '',
           localURL: '',
+          batchId: '',
+          reactionCounts: {},
+
 
           thumbKey: '',
           duration: 0,
@@ -527,6 +531,8 @@ const MessageDetailScreen = ({ route }: any) => {
               localURL: '',
               mediaURL,
               batchId: batchInfo.id,
+              reactionCounts: {},
+
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -630,6 +636,7 @@ const MessageDetailScreen = ({ route }: any) => {
               localURL: '',
               mediaURL,
               batchId: batchInfo.id,
+              reactionCounts: {},
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -810,6 +817,7 @@ const MessageDetailScreen = ({ route }: any) => {
             mediaURL: '',
             localURL: asset.uri,
             batchId: '',
+            reactionCounts: {},
 
             thumbKey: '',
             duration:
@@ -932,9 +940,8 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
-        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-      } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+        } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -966,6 +973,7 @@ const MessageDetailScreen = ({ route }: any) => {
         mediaURL: '',
         localURL: result,
         batchId: '',
+        reactionCounts: {},
 
         thumbKey: '',
         duration,
@@ -1028,6 +1036,7 @@ const MessageDetailScreen = ({ route }: any) => {
         readers={readersByMessageId[item.id] ?? []}
         members={members}
         msg={item}
+        chatRoomId={chatRoom.id}
         type={chatRoom.type}
         onLongPress={onLongPressMessage}
       />
@@ -1054,7 +1063,37 @@ const MessageDetailScreen = ({ route }: any) => {
 
     return results;
   };
+  const handleAddEmoji = async (emoji: string, message: MessageModel) => {
+    await setDoc(
+      doc(
+        db,
+        `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
+        user?.id as string,
+      ),
+      {
+        emoji: emoji,
+        createAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
 
+    await setDoc(
+      doc(
+        db,
+        `chatRooms/${chatRoom?.id}/userReactions/${user?.id}/reactions`,
+        message?.id as string,
+      ),
+      {
+        reaction: emoji,
+        batchId: message?.batchId,
+        createAt: serverTimestamp(),
+        updateAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    closePopover();
+  }
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1070,7 +1109,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1093,7 +1132,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
             />
             {type === 'private' && (
               <>
@@ -1101,7 +1140,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => {}}
+                  onPress={() => { }}
                 />
               </>
             )}
@@ -1109,14 +1148,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
           </RowComponent>
@@ -1283,21 +1322,7 @@ const MessageDetailScreen = ({ route }: any) => {
           }: {
             emoji: string;
             message: MessageModel;
-          }) => {
-            await setDoc(
-              doc(
-                db,
-                `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
-                user?.id as string,
-              ),
-              {
-                emoji: emoji,
-                createAt: serverTimestamp(),
-              },
-              { merge: true },
-            );
-            closePopover();
-          }}
+          }) => handleAddEmoji(emoji, message)}
         />
       </Container>
     </SafeAreaView>

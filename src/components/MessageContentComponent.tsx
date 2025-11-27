@@ -1,5 +1,5 @@
 import moment from 'moment';
-import React, { ReactNode, useRef } from 'react';
+import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { Image, Pressable, TouchableOpacity, View } from 'react-native';
 import {
   AudioPlayerComponent,
@@ -14,6 +14,8 @@ import { convertInfoUserFromID } from '../constants/convertData';
 import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
 import { sizes } from '../constants/sizes';
 import { MessageModel, UserModel } from '../models';
+import { collection, doc, onSnapshot } from '@react-native-firebase/firestore';
+import { db } from '../../firebase.config';
 
 interface Props {
   currentUser: UserModel | null;
@@ -25,6 +27,7 @@ interface Props {
   shouldShowSmallTime: boolean;
   isEndOfTimeBlock: boolean;
   msg: MessageModel | any;
+  chatRoomId: string
   readers: any;
 
   type: string;
@@ -43,11 +46,38 @@ const MessageContentComponent = React.memo((props: Props) => {
     shouldShowSmallTime,
     isEndOfTimeBlock,
     msg,
+    chatRoomId,
     readers,
     type,
     members,
     onLongPress,
   } = props;
+  const [reactionCounts, setReactionCounts] = useState<{[key: string]: number}>({});
+  const [myReaction, setMyReaction] = useState<string | null>(null);
+  const batchId = msg.batchId; // batchId được lưu trong message
+
+  useEffect(() => {
+    if (!chatRoomId || !batchId || !user) return;
+
+    const messageRef = doc(db, `chatRooms/${chatRoomId}/batches/${batchId}/messages/${msg.id}`);
+    const myReactionRef = doc(db, `chatRooms/${chatRoomId}/userReactions/${user.id}/reactions/${msg.id}`);
+
+    // listen reactionCounts
+    const unsubMessage = onSnapshot(messageRef, (docSnap) => {
+      setReactionCounts(docSnap.data()?.reactionCounts || {});
+    });
+
+    // listen myReaction
+    const unsubMy = onSnapshot(myReactionRef, (docSnap) => {
+      setMyReaction(docSnap.data()?.reaction || null);
+    });
+
+    // cleanup
+    return () => {
+      unsubMessage();
+      unsubMy();
+    };
+  }, [chatRoomId, batchId, msg.id, user?.id]);
 
   const showContent = () => {
     let result: ReactNode;
@@ -117,7 +147,6 @@ const MessageContentComponent = React.memo((props: Props) => {
 
     return result;
   };
-
   const ref = useRef<any>(null);
   const handleLongPress = () => {
     ref.current?.measure(
@@ -130,7 +159,7 @@ const MessageContentComponent = React.memo((props: Props) => {
       },
     );
   };
-
+  
   return (
     <TouchableOpacity onLongPress={handleLongPress} delayLongPress={250} >
       {showBlockTime && (
@@ -212,29 +241,43 @@ const MessageContentComponent = React.memo((props: Props) => {
                 }
               />
             )}
+            {
+              myReaction &&
+              <RowComponent styles={{
+                position: 'absolute',
+                bottom: -10,
+                right: 0
+              }}>
+                <TextComponent text={myReaction} />
+              </RowComponent>
+            }
           </RowComponent>
+          {
+            myReaction &&
+            <SpaceComponent height={6} />
+          }
           {readers.length === 0 && (
             <RowComponent justify="flex-end">
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                <TextComponent
-                  text={
-                    msg.status === 'failed'
-                      ? '❌ Lỗi gửi'
-                      : msg.status === 'pending'
-                      ? 'Đang gửi'
-                      : 'Đã gửi'
-                  }
-                  size={sizes.extraComment}
-                />
-              )}
+                  <TextComponent
+                    text={
+                      msg.status === 'failed'
+                        ? '❌ Lỗi gửi'
+                        : msg.status === 'pending'
+                          ? 'Đang gửi'
+                          : 'Đã gửi'
+                    }
+                    size={sizes.extraComment}
+                  />
+                )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />
         </Pressable>
       </RowComponent>
-      {readers.length > 0 && (
+      {readers.length > 0 && Object.keys(reactionCounts).length !== 0 &&(
         <RowComponent justify="flex-end" styles={{ marginBottom: 4 }}>
           {readers.map((_: string, index: number) => (
             <AvatarComponent
