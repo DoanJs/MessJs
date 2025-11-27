@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   documentId,
   getDoc,
@@ -126,7 +127,7 @@ const MessageDetailScreen = ({ route }: any) => {
     rect: null,
     message: null,
   });
-  // const [reactionMap, setReactionMap] = useState<{[messageId]: {...}}>({});
+  const [userMessageState, setUserMessageState] = useState<any>();
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
@@ -209,8 +210,9 @@ const MessageDetailScreen = ({ route }: any) => {
         endOfTimeBlock: isEndOfTimeBlock(next, msg),
         showAvatar: !next || next.senderId !== msg.senderId,
         showDisplayName: !prev || prev.senderId !== msg.senderId,
-        onImagePressForItem: () => openViewer(msg.mediaURL),
-        chatRoomId: chatRoom.id
+        onImagePressForItem: () => openViewer(msg.id),
+        chatRoomId: chatRoom.id,
+        hiddenMsg: userMessageState[msg.id] && userMessageState[msg.id].deleted
       };
     });
   }, [messages]);
@@ -329,6 +331,30 @@ const MessageDetailScreen = ({ route }: any) => {
       isMounted = false;
     };
   }, [chatRoom]);
+
+  useEffect(() => {
+    if (!chatRoom || !user) return;
+
+    const userMessageStateRef = collection(
+      db,
+      `chatRooms/${chatRoom.id}/userMessageState/${user.id}/messages`,
+    );
+
+    // listen myReaction
+    const unsub = onSnapshot(userMessageStateRef, docSnap => {
+      let state: any = {};
+      docSnap.forEach((doc: any) => {
+        state[doc.id] = doc.data(); // messageId → { deleted: true }
+      });
+      setUserMessageState(state);
+    });
+
+    // cleanup
+    return () => {
+      unsub();
+    };
+  }, [chatRoom, user]);
+
 
   useEffect(() => {
     if (!chatRoom || !lastBatchId) return;
@@ -462,7 +488,9 @@ const MessageDetailScreen = ({ route }: any) => {
           localURL: '',
           batchId: '',
           reactionCounts: {},
-
+          deleted: false,
+          deleteAt: null,
+          deleteBy: null,
 
           thumbKey: '',
           duration: 0,
@@ -529,7 +557,9 @@ const MessageDetailScreen = ({ route }: any) => {
               mediaURL,
               batchId: batchInfo.id,
               reactionCounts: {},
-
+              deleted: false,
+              deleteAt: null,
+              deleteBy: null,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -634,6 +664,9 @@ const MessageDetailScreen = ({ route }: any) => {
               mediaURL,
               batchId: batchInfo.id,
               reactionCounts: {},
+              deleted: false,
+              deleteAt: null,
+              deleteBy: null,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -815,6 +848,9 @@ const MessageDetailScreen = ({ route }: any) => {
             localURL: asset.uri,
             batchId: '',
             reactionCounts: {},
+            deleted: false,
+            deleteAt: null,
+            deleteBy: null,
 
             thumbKey: '',
             duration:
@@ -871,15 +907,18 @@ const MessageDetailScreen = ({ route }: any) => {
       console.log('Upload error:', err);
     }
   };
-  const openViewer = async (fileKey: string) => {
+  const openViewer = async (messageId: string) => {
     const imageMessages = messages.filter(m => m.type === 'image');
-    const keys = imageMessages.map(_ => _.mediaURL);
-    const promiseItems = imageMessages.map(
-      async _ => await getSignedUrl(_.mediaURL),
-    );
-    const uris = await Promise.all(promiseItems);
+    // const keys = imageMessages.map(_ => _.mediaURL);
+    // const promiseItems = imageMessages.map(
+    //   async _ => await getSignedUrl(_.mediaURL),
+    // );
+    // const uris = await Promise.all(promiseItems);
+    const keys = imageMessages.map(_ => _.id);
+    const uris = imageMessages.map(_ => _.mediaURL);
     const allImages = uris.map(m => ({ uri: m }));
-    const index = keys.indexOf(fileKey);
+    const index = keys.indexOf(messageId);
+
     setImageIndex(index);
     setViewerImages(allImages);
     setViewerVisible(true);
@@ -937,8 +976,9 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-        } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
+        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+      } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -971,6 +1011,9 @@ const MessageDetailScreen = ({ route }: any) => {
         localURL: result,
         batchId: '',
         reactionCounts: {},
+        deleted: false,
+        deleteAt: null,
+        deleteBy: null,
 
         thumbKey: '',
         duration,
@@ -1061,36 +1104,72 @@ const MessageDetailScreen = ({ route }: any) => {
     return results;
   };
   const handleAddEmoji = async (emoji: string, message: MessageModel) => {
-    await setDoc(
-      doc(
-        db,
-        `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
-        user?.id as string,
-      ),
-      {
-        reaction: emoji,
-        createAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+    if (emoji) {
+      // --- ADD OR UPDATE REACTION ---
+      await setDoc(
+        doc(
+          db,
+          `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
+          user?.id as string,
+        ),
+        {
+          reaction: emoji,
+          createAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
 
-    await setDoc(
-      doc(
-        db,
-        `chatRooms/${chatRoom?.id}/userReactions/${user?.id}/reactions`,
-        message?.id as string,
-      ),
-      {
-        reaction: emoji,
-        batchId: message?.batchId,
-        createAt: serverTimestamp(),
-        updateAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
+      await setDoc(
+        doc(
+          db,
+          `chatRooms/${chatRoom?.id}/userReactions/${user?.id}/reactions`,
+          message?.id as string,
+        ),
+        {
+          reaction: emoji,
+          batchId: message?.batchId,
+          createAt: serverTimestamp(),
+          updateAt: serverTimestamp(),
+        },
+        { merge: true },
+      );
+    } else {
+      // --- REMOVE REACTION ---
+      await deleteDoc(
+        doc(
+          db,
+          `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
+          user?.id as string,
+        ),
+      );
+
+      await deleteDoc(
+        doc(
+          db,
+          `chatRooms/${chatRoom?.id}/userReactions/${user?.id}/reactions`,
+          message?.id as string,
+        ),
+      );
+    }
 
     closePopover();
-  }
+  };
+  const handleDeleteMsg = async (message: MessageModel) => {
+    // Tạo batch mới
+    await setDoc(
+      doc(
+        db,
+        `chatRooms/${chatRoom.id}/userMessageState/${user?.id}/messages`,
+        message.id,
+      ),
+      {
+        deleted: true,
+        deletedAt: serverTimestamp(),
+      },
+      { merge: true },
+    );
+    closePopover();
+  };
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1106,7 +1185,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => { }}
+            onPress={() => {}}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1129,7 +1208,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
             />
             {type === 'private' && (
               <>
@@ -1137,7 +1216,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => { }}
+                  onPress={() => {}}
                 />
               </>
             )}
@@ -1145,14 +1224,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
               variant="Bold"
             />
           </RowComponent>
@@ -1307,7 +1386,7 @@ const MessageDetailScreen = ({ route }: any) => {
         <GlobalPopover
           {...popover}
           onClose={closePopover}
-          onDelete={() => console.log('onDelete')}
+          onDelete={(message: MessageModel) => handleDeleteMsg(message)}
           onReply={() => {
             console.log('onReply');
             closePopover();

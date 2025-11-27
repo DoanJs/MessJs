@@ -20,30 +20,29 @@ const GlobalPopover = ({
   onDelete,
   onReply,
   onReact,
-  onEmoji
+  onEmoji,
 }: any) => {
-  const userCurrent = auth.currentUser
-  const [value, setValue] = useState('');
+  const userCurrent = auth.currentUser;
+  const [value, setValue] = useState<string | null>('');
   const [myReactions, setMyReactions] = useState<any[]>([]);
-
 
   useEffect(() => {
     if (!message) return;
 
     const colRef = collection(
       db,
-      `chatRooms/${message.chatRoomId}/batches/${message.batchId}/messages/${message.id}/reactions`
+      `chatRooms/${message.chatRoomId}/batches/${message.batchId}/messages/${message.id}/reactions`,
     );
 
     const unsubscribe = onSnapshot(colRef, snap => {
-      let items: any = []
+      let items: any = [];
 
       snap.docs.forEach((doc: any) => {
         const data = doc.data();
-        items.push({ ...data, id: doc.id })
+        items.push({ ...data, id: doc.id });
       });
 
-      setMyReactions(items)
+      setMyReactions(items);
     });
 
     // ⬅️ cleanup khi unmount hoặc khi chatRoomId/batchId thay đổi
@@ -52,10 +51,10 @@ const GlobalPopover = ({
 
   useEffect(() => {
     if (myReactions) {
-      const reaction = myReactions.find((_) => _.id === userCurrent?.uid)
-      setValue(reaction?.reaction ?? '')
+      const reaction = myReactions.find(_ => _.id === userCurrent?.uid);
+      setValue(reaction?.reaction ?? '');
     }
-  }, [myReactions])
+  }, [myReactions]);
 
   return (
     <Popover
@@ -73,25 +72,43 @@ const GlobalPopover = ({
           borderBottomColor: colors.gray,
         }}
       >
-        {['👍', '❤️', '😍', '😂', '🙏', '🥺', '😭', '👏', '😁', '🔥'].map(
-          (emoji: string, index: number) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          {[
+            '👍',
+            '✌️',
+            '🙏',
+            '👏',
+            '😁',
+            '😘',
+            '😍',
+            '🥳',
+            '❤️',
+            '😂',
+            '😭',
+            '🥺',
+            '😬',
+            '🔥',
+          ].map((emoji: string, index: number) => (
             <TouchableOpacity
               onPress={() => {
-                onEmoji({ emoji, message })
-                setValue(emoji)
+                const isSame = value === emoji;
+                const newValue = isSame ? null : emoji;
+                onEmoji({ emoji: newValue, message });
+                setValue(newValue);
               }}
               key={index}
               style={{
-                height: 50, width: 50,
+                height: 50,
+                width: 50,
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: emoji === value ? colors.textBold : undefined
+                backgroundColor: emoji === value ? colors.textBold : undefined,
               }}
             >
               <TextComponent text={emoji} size={sizes.bigTitle} />
             </TouchableOpacity>
-          ),
-        )}
+          ))}
+        </ScrollView>
       </RowComponent>
       <SpaceComponent height={10} />
       <RowComponent justify="space-around">

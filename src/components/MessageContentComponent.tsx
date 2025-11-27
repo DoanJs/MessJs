@@ -27,7 +27,7 @@ interface Props {
   shouldShowSmallTime: boolean;
   isEndOfTimeBlock: boolean;
   msg: MessageModel | any;
-  chatRoomId: string
+  chatRoomId: string;
   readers: any;
 
   type: string;
@@ -52,30 +52,27 @@ const MessageContentComponent = React.memo((props: Props) => {
     members,
     onLongPress,
   } = props;
-  const [reactionCounts, setReactionCounts] = useState<{ [key: string]: number }>({});
-  const [myReaction, setMyReaction] = useState<string | null>(null);
+  const [reactionCounts, setReactionCounts] = useState<{
+    [key: string]: number;
+  }>({});
   const batchId = msg.batchId; // batchId được lưu trong message
 
   useEffect(() => {
     if (!chatRoomId || !batchId || !user) return;
 
-    const messageRef = doc(db, `chatRooms/${chatRoomId}/batches/${batchId}/messages/${msg.id}`);
-    const myReactionRef = doc(db, `chatRooms/${chatRoomId}/userReactions/${user.id}/reactions/${msg.id}`);
+    const messageRef = doc(
+      db,
+      `chatRooms/${chatRoomId}/batches/${batchId}/messages/${msg.id}`,
+    );
 
     // listen reactionCounts
-    const unsubMessage = onSnapshot(messageRef, (docSnap) => {
+    const unsubMessage = onSnapshot(messageRef, docSnap => {
       setReactionCounts(docSnap.data()?.reactionCounts || {});
-    });
-
-    // listen myReaction
-    const unsubMy = onSnapshot(myReactionRef, (docSnap) => {
-      setMyReaction(docSnap.data()?.reaction || null);
     });
 
     // cleanup
     return () => {
       unsubMessage();
-      unsubMy();
     };
   }, [chatRoomId, batchId, msg.id, user?.id]);
 
@@ -161,17 +158,21 @@ const MessageContentComponent = React.memo((props: Props) => {
   };
   const handleReaction = (reactions: Record<string, number>) => {
     const reactionList = Object.entries(reactionCounts)
-      .filter(([emoji, count]) => count > 0).map(([emoji]) => emoji);
-    const totalReaction = Object.values(reactions).reduce((sum, n) => sum + n, 0);
+      .filter(([emoji, count]) => count > 0)
+      .map(([emoji]) => emoji);
+    const totalReaction = Object.values(reactions).reduce(
+      (sum, n) => sum + n,
+      0,
+    );
 
     return {
       reactionList,
-      totalReaction
-    }
-  }
+      totalReaction,
+    };
+  };
 
   return (
-    <TouchableOpacity onLongPress={handleLongPress} delayLongPress={250} >
+    <TouchableOpacity onLongPress={handleLongPress} delayLongPress={250}>
       {showBlockTime && (
         <TextComponent
           styles={{ marginVertical: 4 }}
@@ -234,7 +235,17 @@ const MessageContentComponent = React.memo((props: Props) => {
               alignItems: 'flex-start',
             }}
           >
-            {showContent()}
+            {msg.hiddenMsg ? (
+              <TextComponent
+                text="Tin nhắn đã bị xóa"
+                color={colors.background}
+                styles={{
+                  fontStyle: 'italic',
+                }}
+              />
+            ) : (
+              showContent()
+            )}
             {(showAvatar || shouldShowSmallTime) && (
               <TextComponent
                 text={moment(toMs(msg.createAt ?? msg.createAt)).format(
@@ -251,45 +262,47 @@ const MessageContentComponent = React.memo((props: Props) => {
                 }
               />
             )}
-            {
-              handleReaction(reactionCounts).reactionList.length > 0 &&
-              <RowComponent styles={{
-                position: 'absolute',
-                bottom: -10,
-                right: 0
-              }}>
-                {
-                  handleReaction(reactionCounts).reactionList.map((_, index) =>
-                    index <= 2 && <TextComponent text={_} key={index} />
-                  )
-                }
-                {
-                  handleReaction(reactionCounts).totalReaction > 3 &&
-                  <TextComponent text={`+${handleReaction(reactionCounts).totalReaction - 3}`} />
-                }
+            {handleReaction(reactionCounts).reactionList.length > 0 && (
+              <RowComponent
+                styles={{
+                  position: 'absolute',
+                  bottom: -10,
+                  right: 0,
+                }}
+              >
+                {handleReaction(reactionCounts).reactionList.map(
+                  (_, index) =>
+                    index <= 2 && <TextComponent text={_} key={index} />,
+                )}
+                {handleReaction(reactionCounts).totalReaction > 3 && (
+                  <TextComponent
+                    text={`+${
+                      handleReaction(reactionCounts).totalReaction - 3
+                    }`}
+                  />
+                )}
               </RowComponent>
-            }
+            )}
           </RowComponent>
-          {
-            handleReaction(reactionCounts).totalReaction > 0 &&
+          {handleReaction(reactionCounts).totalReaction > 0 && (
             <SpaceComponent height={6} />
-          }
+          )}
           {readers.length === 0 && (
             <RowComponent justify="flex-end">
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                  <TextComponent
-                    text={
-                      msg.status === 'failed'
-                        ? '❌ Lỗi gửi'
-                        : msg.status === 'pending'
-                          ? 'Đang gửi'
-                          : 'Đã gửi'
-                    }
-                    size={sizes.extraComment}
-                  />
-                )}
+                <TextComponent
+                  text={
+                    msg.status === 'failed'
+                      ? '❌ Lỗi gửi'
+                      : msg.status === 'pending'
+                      ? 'Đang gửi'
+                      : 'Đã gửi'
+                  }
+                  size={sizes.extraComment}
+                />
+              )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />

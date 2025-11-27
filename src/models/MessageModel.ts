@@ -16,4 +16,8 @@ export interface MessageModel {
   status: string; //"pending" | "sent" | "fail"
   batchId: string;
   reactionCounts: Record<string, number>
+
+  deleted: boolean
+  deleteAt: TimeAtModel | FieldValue | null;
+  deleteBy: string | null
 }
