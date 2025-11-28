@@ -489,8 +489,8 @@ const MessageDetailScreen = ({ route }: any) => {
           batchId: '',
           reactionCounts: {},
           deleted: false,
-          deleteAt: null,
-          deleteBy: null,
+          deletedAt: null,
+          deletedBy: null,
 
           thumbKey: '',
           duration: 0,
@@ -558,8 +558,8 @@ const MessageDetailScreen = ({ route }: any) => {
               batchId: batchInfo.id,
               reactionCounts: {},
               deleted: false,
-              deleteAt: null,
-              deleteBy: null,
+              deletedAt: null,
+              deletedBy: null,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -665,8 +665,8 @@ const MessageDetailScreen = ({ route }: any) => {
               batchId: batchInfo.id,
               reactionCounts: {},
               deleted: false,
-              deleteAt: null,
-              deleteBy: null,
+              deletedAt: null,
+              deletedBy: null,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -849,8 +849,8 @@ const MessageDetailScreen = ({ route }: any) => {
             batchId: '',
             reactionCounts: {},
             deleted: false,
-            deleteAt: null,
-            deleteBy: null,
+            deletedAt: null,
+            deletedBy: null,
 
             thumbKey: '',
             duration:
@@ -976,9 +976,8 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
-        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-      } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+        } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -1012,8 +1011,8 @@ const MessageDetailScreen = ({ route }: any) => {
         batchId: '',
         reactionCounts: {},
         deleted: false,
-        deleteAt: null,
-        deleteBy: null,
+        deletedAt: null,
+        deletedBy: null,
 
         thumbKey: '',
         duration,
@@ -1155,7 +1154,7 @@ const MessageDetailScreen = ({ route }: any) => {
     closePopover();
   };
   const handleDeleteMsg = async (message: MessageModel) => {
-    // Tạo batch mới
+    // thêm trạng thái tin nhắn vào chatRoomId
     await setDoc(
       doc(
         db,
@@ -1170,6 +1169,19 @@ const MessageDetailScreen = ({ route }: any) => {
     );
     closePopover();
   };
+  const handleRecallMsg = async (message: MessageModel) => {
+    if (user && user.id === message.senderId) {
+      await updateDoc(
+        doc(db, `chatRooms/${chatRoom.id}/batches/${message.batchId}/messages`, message.id),
+        {
+          deleted: true,
+          deletedAt: serverTimestamp(),
+          deletedBy: user.id
+        },
+      );
+      closePopover();
+    }
+  }
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1185,7 +1197,7 @@ const MessageDetailScreen = ({ route }: any) => {
               flexDirection: 'column',
               alignItems: 'flex-start',
             }}
-            onPress={() => {}}
+            onPress={() => { }}
           >
             <TextComponent
               text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1208,7 +1220,7 @@ const MessageDetailScreen = ({ route }: any) => {
             <SearchNormal1
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
             />
             {type === 'private' && (
               <>
@@ -1216,7 +1228,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 <Call
                   size={sizes.bigTitle}
                   color={colors.background}
-                  onPress={() => {}}
+                  onPress={() => { }}
                 />
               </>
             )}
@@ -1224,14 +1236,14 @@ const MessageDetailScreen = ({ route }: any) => {
             <Video
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
             <SpaceComponent width={16} />
             <Setting2
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
           </RowComponent>
@@ -1392,6 +1404,7 @@ const MessageDetailScreen = ({ route }: any) => {
             closePopover();
           }}
           onReact={() => console.log('onReact')}
+          onRecall={(message: MessageModel) => handleRecallMsg(message)}
           onEmoji={async ({
             emoji,
             message,

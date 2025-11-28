@@ -18,6 +18,6 @@ export interface MessageModel {
   reactionCounts: Record<string, number>
 
   deleted: boolean
-  deleteAt: TimeAtModel | FieldValue | null;
-  deleteBy: string | null
+  deletedAt: TimeAtModel | FieldValue | null;
+  deletedBy: string | null
 }

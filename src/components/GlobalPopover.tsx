@@ -1,16 +1,16 @@
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { collection, onSnapshot } from '@react-native-firebase/firestore';
+import { Refresh2, Trash } from 'iconsax-react-native';
+import { useEffect, useState } from 'react';
+import { ScrollView, TouchableOpacity } from 'react-native';
 import Popover from 'react-native-popover-view';
 import { Placement } from 'react-native-popover-view/dist/Types';
-import RowComponent from './RowComponent';
-import { Trash } from 'iconsax-react-native';
-import { sizes } from '../constants/sizes';
-import { colors } from '../constants/colors';
-import { ForwardMsg, ReplyMsg } from '../assets/vector';
-import TextComponent from './TextComponent';
 import { SpaceComponent } from '.';
-import { useEffect, useState } from 'react';
-import { collection, onSnapshot } from '@react-native-firebase/firestore';
 import { auth, db } from '../../firebase.config';
+import { ForwardMsg, ReplyMsg } from '../assets/vector';
+import { colors } from '../constants/colors';
+import { sizes } from '../constants/sizes';
+import RowComponent from './RowComponent';
+import TextComponent from './TextComponent';
 
 const GlobalPopover = ({
   visible,
@@ -21,6 +21,7 @@ const GlobalPopover = ({
   onReply,
   onReact,
   onEmoji,
+  onRecall
 }: any) => {
   const userCurrent = auth.currentUser;
   const [value, setValue] = useState<string | null>('');
@@ -127,7 +128,12 @@ const GlobalPopover = ({
             height={sizes.smallHeader}
           />
         </TouchableOpacity>
-
+        {
+          userCurrent?.uid === message?.senderId &&
+          <TouchableOpacity onPress={() => onRecall(message)}>
+            <Refresh2 size={sizes.extraTitle} color={colors.blue} variant="Bold" />
+          </TouchableOpacity>
+        }
         <TouchableOpacity onPress={() => onDelete(message)}>
           <Trash size={sizes.extraTitle} color={colors.red} variant="Bold" />
         </TouchableOpacity>

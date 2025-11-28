@@ -235,17 +235,18 @@ const MessageContentComponent = React.memo((props: Props) => {
               alignItems: 'flex-start',
             }}
           >
-            {msg.hiddenMsg ? (
-              <TextComponent
-                text="Tin nhắn đã bị xóa"
-                color={colors.background}
-                styles={{
-                  fontStyle: 'italic',
-                }}
-              />
-            ) : (
-              showContent()
-            )}
+            {
+              (msg.deleted || msg.hiddenMsg) ? (
+                <TextComponent
+                  text={`${msg.deleted ? 'Tin nhắn đã bị thu hồi' : 'Tin nhắn đã bị xóa'}`}
+                  color={colors.background}
+                  styles={{
+                    fontStyle: 'italic',
+                  }}
+                />
+              ) : (
+                showContent()
+              )}
             {(showAvatar || shouldShowSmallTime) && (
               <TextComponent
                 text={moment(toMs(msg.createAt ?? msg.createAt)).format(
@@ -276,9 +277,8 @@ const MessageContentComponent = React.memo((props: Props) => {
                 )}
                 {handleReaction(reactionCounts).totalReaction > 3 && (
                   <TextComponent
-                    text={`+${
-                      handleReaction(reactionCounts).totalReaction - 3
-                    }`}
+                    text={`+${handleReaction(reactionCounts).totalReaction - 3
+                      }`}
                   />
                 )}
               </RowComponent>
@@ -292,17 +292,17 @@ const MessageContentComponent = React.memo((props: Props) => {
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                <TextComponent
-                  text={
-                    msg.status === 'failed'
-                      ? '❌ Lỗi gửi'
-                      : msg.status === 'pending'
-                      ? 'Đang gửi'
-                      : 'Đã gửi'
-                  }
-                  size={sizes.extraComment}
-                />
-              )}
+                  <TextComponent
+                    text={
+                      msg.status === 'failed'
+                        ? '❌ Lỗi gửi'
+                        : msg.status === 'pending'
+                          ? 'Đang gửi'
+                          : 'Đã gửi'
+                    }
+                    size={sizes.extraComment}
+                  />
+                )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />
