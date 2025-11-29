@@ -41,10 +41,30 @@ export const useChatStore = create<ChatState>()(
           const prevMessages = state.messagesByRoom[roomId] || [];
 
           // ⚡ 1️⃣ Tạo Set để kiểm tra trùng nhanh
-          const existingIds = new Set(prevMessages.map(m => m.id));
+          // const existingIds = new Set(prevMessages.map(m => m.id));
 
-          // ⚡ 2️⃣ Chỉ lấy tin nhắn mới chưa có
-          const uniqueNewMsgs = messages.filter(m => !existingIds.has(m.id));
+          // // ⚡ 2️⃣ Chỉ lấy tin nhắn mới chưa có
+          // const uniqueNewMsgs = messages.filter(m => !existingIds.has(m.id));
+          const uniqueNewMsgs: MessageModel[] = [];
+
+          messages.forEach(m => {
+            const idx = prevMessages.findIndex(p => p.id === m.id);
+
+            if (idx === -1) {
+              // ⭐ Tin nhắn mới → thêm vào uniqueNewMsgs
+              uniqueNewMsgs.push(m);
+            } else {
+              const oldMsg = prevMessages[idx];
+
+              // ⭐ Kiểm tra thay đổi deleted hoặc cá trường khác nếu cần
+              if (oldMsg.deleted !== m.deleted) {
+                // 🔥 REPLACE message cũ ngay tại prevMessages để tránh duplicate key
+                prevMessages[idx] = m;
+
+                // ⭐ Không push vào uniqueNewMsgs vì ta đã replace rồi
+              }
+            }
+          });
 
           if (uniqueNewMsgs.length === 0) return state;
 

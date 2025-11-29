@@ -219,6 +219,8 @@ const MessageDetailScreen = ({ route }: any) => {
     });
   }, [messages]);
 
+  console.log(messages)
+
   const lastSentByUser = useMemo(() => {
     if (!messages || !user?.id) return undefined;
     return [...messages]
@@ -1212,6 +1214,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 color={colors.background}
                 size={sizes.bigText}
                 font={fontFamillies.poppinsBold}
+                numberOfLine={1}
               />
               {type === 'group' && (
                 <TextComponent

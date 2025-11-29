@@ -235,18 +235,25 @@ const MessageContentComponent = React.memo((props: Props) => {
               alignItems: 'flex-start',
             }}
           >
-            {
-              (msg.deleted || msg.hiddenMsg) ? (
-                <TextComponent
-                  text={`${msg.deleted ? 'Tin nhắn đã bị thu hồi' : 'Tin nhắn đã bị xóa'}`}
-                  color={msg.senderId === user?.id ? colors.background : colors.text}
-                  styles={{
-                    fontStyle: 'italic',
-                  }}
-                />
-              ) : (
-                showContent()
-              )}
+            {msg.deleted || msg.hiddenMsg ? (
+              <TextComponent
+                text={`${
+                  msg.senderId === user?.id
+                    ? `Bạn đã ${msg.deleted ? 'thu hồi' : 'xóa'} tin nhắn`
+                    : `Tin nhắn đã bị ${msg.deleted ? 'thu hồi' : 'xóa'}`
+                }`}
+                color={
+                  msg.senderId === user?.id
+                    ? colors.background + '66'
+                    : colors.text + '66'
+                }
+                styles={{
+                  fontStyle: 'italic',
+                }}
+              />
+            ) : (
+              showContent()
+            )}
             {(showAvatar || shouldShowSmallTime) && (
               <TextComponent
                 text={moment(toMs(msg.createAt ?? msg.createAt)).format(
@@ -277,8 +284,9 @@ const MessageContentComponent = React.memo((props: Props) => {
                 )}
                 {handleReaction(reactionCounts).totalReaction > 3 && (
                   <TextComponent
-                    text={`+${handleReaction(reactionCounts).totalReaction - 3
-                      }`}
+                    text={`+${
+                      handleReaction(reactionCounts).totalReaction - 3
+                    }`}
                   />
                 )}
               </RowComponent>
@@ -292,23 +300,23 @@ const MessageContentComponent = React.memo((props: Props) => {
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                  <TextComponent
-                    text={
-                      msg.status === 'failed'
-                        ? '❌ Lỗi gửi'
-                        : msg.status === 'pending'
-                          ? 'Đang gửi'
-                          : 'Đã gửi'
-                    }
-                    size={sizes.extraComment}
-                  />
-                )}
+                <TextComponent
+                  text={
+                    msg.status === 'failed'
+                      ? '❌ Lỗi gửi'
+                      : msg.status === 'pending'
+                      ? 'Đang gửi'
+                      : 'Đã gửi'
+                  }
+                  size={sizes.extraComment}
+                />
+              )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />
         </Pressable>
       </RowComponent>
-      {readers.length > 0 && Object.keys(reactionCounts).length !== 0 && (
+      {readers.length > 0 && (
         <RowComponent justify="flex-end" styles={{ marginBottom: 4 }}>
           {readers.map((_: string, index: number) => (
             <AvatarComponent
