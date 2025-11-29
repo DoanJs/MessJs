@@ -1192,7 +1192,7 @@ const MessageDetailScreen = ({ route }: any) => {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={10}
+        keyboardVerticalOffset={0}
       >
 
         <Container

@@ -56,6 +56,7 @@ const MessageContentComponent = React.memo((props: Props) => {
     [key: string]: number;
   }>({});
   const batchId = msg.batchId; // batchId được lưu trong message
+  const ref = useRef<any>(null);
 
   useEffect(() => {
     if (!chatRoomId || !batchId || !user) return;
@@ -144,7 +145,6 @@ const MessageContentComponent = React.memo((props: Props) => {
 
     return result;
   };
-  const ref = useRef<any>(null);
   const handleLongPress = () => {
     ref.current?.measure(
       (fx: any, fy: any, width: any, height: any, px: any, py: any) => {
@@ -239,7 +239,7 @@ const MessageContentComponent = React.memo((props: Props) => {
               (msg.deleted || msg.hiddenMsg) ? (
                 <TextComponent
                   text={`${msg.deleted ? 'Tin nhắn đã bị thu hồi' : 'Tin nhắn đã bị xóa'}`}
-                  color={colors.background}
+                  color={msg.senderId === user?.id ? colors.background : colors.text}
                   styles={{
                     fontStyle: 'italic',
                   }}

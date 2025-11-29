@@ -23,7 +23,7 @@ export default function VideoPlayer({
         style={[{ width: 200, height: 150 }, styles]}
         controls // bật nút play/pause
         resizeMode="contain"
-        paused={false}
+        paused={true}
       />
     </View>
   );
