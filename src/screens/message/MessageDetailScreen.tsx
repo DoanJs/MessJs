@@ -15,6 +15,7 @@ import {
 import { httpsCallable } from '@react-native-firebase/functions';
 import {
   Call,
+  CloseCircle,
   EmojiNormal,
   Image,
   Microphone2,
@@ -38,7 +39,8 @@ import {
   NativeSyntheticEvent,
   PermissionsAndroid,
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import RNBlobUtil from 'react-native-blob-util';
 import { Video as VideoCompressor } from 'react-native-compressor';
@@ -62,7 +64,7 @@ import {
   RowComponent,
   SectionComponent,
   SpaceComponent,
-  TextComponent
+  TextComponent,
 } from '../../components';
 import {
   createNewBatch,
@@ -86,6 +88,7 @@ import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
 import EmojiSelector from 'react-native-emoji-selector';
+import { EmojiPopup } from 'react-native-emoji-popup';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -214,12 +217,15 @@ const MessageDetailScreen = ({ route }: any) => {
         showDisplayName: !prev || prev.senderId !== msg.senderId,
         onImagePressForItem: () => openViewer(msg.id),
         chatRoomId: chatRoom.id,
-        hiddenMsg: userMessageState && userMessageState[msg.id] ? userMessageState[msg.id].deleted : false
+        hiddenMsg:
+          userMessageState && userMessageState[msg.id]
+            ? userMessageState[msg.id].deleted
+            : false,
       };
     });
   }, [messages]);
 
-  console.log(messages)
+  console.log(messages);
 
   const lastSentByUser = useMemo(() => {
     if (!messages || !user?.id) return undefined;
@@ -358,7 +364,6 @@ const MessageDetailScreen = ({ route }: any) => {
       unsub();
     };
   }, [chatRoom, user]);
-
 
   useEffect(() => {
     if (!chatRoom || !lastBatchId) return;
@@ -980,8 +985,9 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-        } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
+        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+      } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -1176,16 +1182,20 @@ const MessageDetailScreen = ({ route }: any) => {
   const handleRecallMsg = async (message: MessageModel) => {
     if (user && user.id === message.senderId) {
       await updateDoc(
-        doc(db, `chatRooms/${chatRoom.id}/batches/${message.batchId}/messages`, message.id),
+        doc(
+          db,
+          `chatRooms/${chatRoom.id}/batches/${message.batchId}/messages`,
+          message.id,
+        ),
         {
           deleted: true,
           deletedAt: serverTimestamp(),
-          deletedBy: user.id
+          deletedBy: user.id,
         },
       );
       closePopover();
     }
-  }
+  };
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1196,7 +1206,6 @@ const MessageDetailScreen = ({ route }: any) => {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
-
         <Container
           bg={colors.primaryLight}
           back
@@ -1207,7 +1216,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
               }}
-              onPress={() => { }}
+              onPress={() => {}}
             >
               <TextComponent
                 text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1231,7 +1240,7 @@ const MessageDetailScreen = ({ route }: any) => {
               <SearchNormal1
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
               />
               {type === 'private' && (
                 <>
@@ -1239,7 +1248,7 @@ const MessageDetailScreen = ({ route }: any) => {
                   <Call
                     size={sizes.bigTitle}
                     color={colors.background}
-                    onPress={() => { }}
+                    onPress={() => {}}
                   />
                 </>
               )}
@@ -1247,14 +1256,14 @@ const MessageDetailScreen = ({ route }: any) => {
               <Video
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
                 variant="Bold"
               />
               <SpaceComponent width={16} />
               <Setting2
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
                 variant="Bold"
               />
             </RowComponent>
@@ -1338,19 +1347,27 @@ const MessageDetailScreen = ({ route }: any) => {
                   color={colors.background}
                   variant="Bold"
                 />
-              ) : (
+              ) : Platform.OS === 'ios' ? (
                 <EmojiNormal
                   onPress={() => setShowPicker(!showPicker)}
                   size={sizes.extraTitle}
                   color={colors.background}
                   variant="Bold"
                 />
+              ) : (
+                <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
+                  <EmojiNormal
+                    size={sizes.extraTitle}
+                    color={colors.background}
+                    variant="Bold"
+                  />
+                </EmojiPopup>
               )}
               <SpaceComponent width={16} />
               <InputComponent
                 styles={{
                   backgroundColor: colors.background,
-                  paddingHorizontal: 10,
+                  // paddingHorizontal: 10,
                   borderRadius: 5,
                   flex: 1,
                 }}
@@ -1422,16 +1439,16 @@ const MessageDetailScreen = ({ route }: any) => {
               message: MessageModel;
             }) => handleAddEmoji(emoji, message)}
           />
-          {showPicker && (
-            <EmojiSelector
-              onEmojiSelected={emoji => {
-                setValue(prev => prev + emoji);
-                setShowPicker(false);
-              }}
-            />
-          )}
         </Container>
       </KeyboardAvoidingView>
+      {showPicker && (
+        <EmojiSelector
+          onEmojiSelected={emoji => {
+            setValue(prev => prev + emoji);
+            setShowPicker(false);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 };
