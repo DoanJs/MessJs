@@ -33,16 +33,16 @@ import React, {
 } from 'react';
 import {
   FlatList,
+  KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
   PermissionsAndroid,
   Platform,
-  TouchableOpacity,
+  TouchableOpacity
 } from 'react-native';
 import RNBlobUtil from 'react-native-blob-util';
 import { Video as VideoCompressor } from 'react-native-compressor';
 import { createThumbnail } from 'react-native-create-thumbnail';
-import { EmojiPopup } from 'react-native-emoji-popup';
 import RNFS from 'react-native-fs';
 import 'react-native-get-random-values';
 import { Asset, launchImageLibrary } from 'react-native-image-picker';
@@ -62,7 +62,7 @@ import {
   RowComponent,
   SectionComponent,
   SpaceComponent,
-  TextComponent,
+  TextComponent
 } from '../../components';
 import {
   createNewBatch,
@@ -85,6 +85,7 @@ import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
+import EmojiSelector from 'react-native-emoji-selector';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -128,6 +129,7 @@ const MessageDetailScreen = ({ route }: any) => {
     message: null,
   });
   const [userMessageState, setUserMessageState] = useState<any>();
+  const [showPicker, setShowPicker] = useState(false);
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
@@ -212,7 +214,7 @@ const MessageDetailScreen = ({ route }: any) => {
         showDisplayName: !prev || prev.senderId !== msg.senderId,
         onImagePressForItem: () => openViewer(msg.id),
         chatRoomId: chatRoom.id,
-        hiddenMsg: userMessageState[msg.id] && userMessageState[msg.id].deleted
+        hiddenMsg: userMessageState && userMessageState[msg.id] ? userMessageState[msg.id].deleted : false
       };
     });
   }, [messages]);
@@ -936,7 +938,7 @@ const MessageDetailScreen = ({ route }: any) => {
   };
   const handleOpenRecord = async () => {
     setIsRecord(true);
-    setValue('Đã ghi');
+    setValue('Chuẩn bị ghi');
     await onStartRecord();
   };
 
@@ -1187,233 +1189,246 @@ const MessageDetailScreen = ({ route }: any) => {
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
       edges={['bottom']}
     >
-      <Container
-        bg={colors.primaryLight}
-        back
-        title={
-          <RowComponent
-            styles={{
-              flex: 1,
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-            }}
-            onPress={() => { }}
-          >
-            <TextComponent
-              text={type === 'private' ? friend?.displayName : chatRoom.name}
-              color={colors.background}
-              size={sizes.bigText}
-              font={fontFamillies.poppinsBold}
-            />
-            {type === 'group' && (
-              <TextComponent
-                text={`${chatRoom.memberCount} thành viên`}
-                color={colors.background}
-                size={sizes.smallText}
-              />
-            )}
-          </RowComponent>
-        }
-        right={
-          <RowComponent>
-            <SpaceComponent width={16} />
-            <SearchNormal1
-              size={sizes.bigTitle}
-              color={colors.background}
-              onPress={() => { }}
-            />
-            {type === 'private' && (
-              <>
-                <SpaceComponent width={16} />
-                <Call
-                  size={sizes.bigTitle}
-                  color={colors.background}
-                  onPress={() => { }}
-                />
-              </>
-            )}
-            <SpaceComponent width={16} />
-            <Video
-              size={sizes.bigTitle}
-              color={colors.background}
-              onPress={() => { }}
-              variant="Bold"
-            />
-            <SpaceComponent width={16} />
-            <Setting2
-              size={sizes.bigTitle}
-              color={colors.background}
-              onPress={() => { }}
-              variant="Bold"
-            />
-          </RowComponent>
-        }
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={10}
       >
-        <SectionComponent
-          styles={{
-            backgroundColor: colors.background,
-            flex: 1,
-            paddingTop: 10,
-          }}
-        >
-          <FlatList
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{
-              paddingBottom: initialLoad ? 0 : insets.bottom + 80,
-            }}
-            data={enhancedMessages}
-            keyExtractor={item => item.id}
-            renderItem={renderItem}
-            // extraData={lastSentByUser}
-            ref={flatListRef}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            maintainVisibleContentPosition={{
-              minIndexForVisible: 0,
-              // autoscrollToTopThreshold: 20,
-            }}
-            onContentSizeChange={() => {
-              // scroll xuống dưới cùng khi vào phòng chat
-              if (initialLoad) {
-                // setTimeout(() => {
-                //   flatListRef.current?.scrollToEnd({ animated: false });
-                //   setIsAtBottom(true);
-                //   setTimeout(() => {
-                //     setInitialLoad(false);
-                //   }, 5000); // 30–50ms là đủ
-                // }, 30); // 30–50ms là đủ
-                handleInitialScroll();
-              }
-            }}
-            windowSize={12}
-            maxToRenderPerBatch={15}
-            initialNumToRender={20}
-            updateCellsBatchingPeriod={10}
-            removeClippedSubviews={true}
-          />
 
-          {hasNewMessage && !isAtBottom && (
-            <TouchableOpacity
-              style={{
-                position: 'absolute',
-                bottom: 10,
-                right: 10,
-                backgroundColor: '#007AFF',
-                paddingVertical: 8,
-                paddingHorizontal: 14,
-                borderRadius: 20,
-                elevation: 6,
+        <Container
+          bg={colors.primaryLight}
+          back
+          title={
+            <RowComponent
+              styles={{
+                flex: 1,
+                flexDirection: 'column',
+                alignItems: 'flex-start',
               }}
-              onPress={scrollToBottom}
+              onPress={() => { }}
             >
               <TextComponent
-                styles={{ color: '#fff', fontWeight: '600' }}
-                text="Tin nhắn mới"
+                text={type === 'private' ? friend?.displayName : chatRoom.name}
+                color={colors.background}
+                size={sizes.bigText}
+                font={fontFamillies.poppinsBold}
               />
-            </TouchableOpacity>
-          )}
-        </SectionComponent>
-
-        <SectionComponent
-          styles={{
-            padding: 10,
-          }}
+              {type === 'group' && (
+                <TextComponent
+                  text={`${chatRoom.memberCount} thành viên`}
+                  color={colors.background}
+                  size={sizes.smallText}
+                />
+              )}
+            </RowComponent>
+          }
+          right={
+            <RowComponent>
+              <SpaceComponent width={16} />
+              <SearchNormal1
+                size={sizes.bigTitle}
+                color={colors.background}
+                onPress={() => { }}
+              />
+              {type === 'private' && (
+                <>
+                  <SpaceComponent width={16} />
+                  <Call
+                    size={sizes.bigTitle}
+                    color={colors.background}
+                    onPress={() => { }}
+                  />
+                </>
+              )}
+              <SpaceComponent width={16} />
+              <Video
+                size={sizes.bigTitle}
+                color={colors.background}
+                onPress={() => { }}
+                variant="Bold"
+              />
+              <SpaceComponent width={16} />
+              <Setting2
+                size={sizes.bigTitle}
+                color={colors.background}
+                onPress={() => { }}
+                variant="Bold"
+              />
+            </RowComponent>
+          }
         >
-          <RowComponent>
-            {isRecord ? (
-              <Trash
-                onPress={() => onStopRecord('remove')}
-                size={sizes.extraTitle}
-                color={colors.background}
-                variant="Bold"
-              />
-            ) : (
-              <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
-                <EmojiNormal
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                />
-              </EmojiPopup>
-            )}
-            <SpaceComponent width={16} />
-            <InputComponent
-              styles={{
-                backgroundColor: colors.background,
-                paddingHorizontal: 10,
-                borderRadius: 5,
-                flex: 1,
+          <SectionComponent
+            styles={{
+              backgroundColor: colors.background,
+              flex: 1,
+              paddingTop: 10,
+            }}
+          >
+            <FlatList
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{
+                paddingBottom: initialLoad ? 0 : insets.bottom + 80,
               }}
-              placeholder="Nhập tin nhắn"
-              placeholderTextColor={colors.gray2}
-              color={colors.background}
-              value={value}
-              onChangeText={setValue}
-              // onSubmitEditing={handleSendMessage}
-              multible
-              autoFocus={true}
+              data={enhancedMessages}
+              keyExtractor={item => item.id}
+              renderItem={renderItem}
+              // extraData={lastSentByUser}
+              ref={flatListRef}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              maintainVisibleContentPosition={{
+                minIndexForVisible: 0,
+                // autoscrollToTopThreshold: 20,
+              }}
+              onContentSizeChange={() => {
+                // scroll xuống dưới cùng khi vào phòng chat
+                if (initialLoad) {
+                  // setTimeout(() => {
+                  //   flatListRef.current?.scrollToEnd({ animated: false });
+                  //   setIsAtBottom(true);
+                  //   setTimeout(() => {
+                  //     setInitialLoad(false);
+                  //   }, 5000); // 30–50ms là đủ
+                  // }, 30); // 30–50ms là đủ
+                  handleInitialScroll();
+                }
+              }}
+              windowSize={12}
+              maxToRenderPerBatch={15}
+              initialNumToRender={20}
+              updateCellsBatchingPeriod={10}
+              removeClippedSubviews={true}
             />
-            <SpaceComponent width={16} />
-            {value === '' ? (
-              <>
-                <Microphone2
-                  onPress={handleOpenRecord}
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                />
-                <SpaceComponent width={16} />
-                <Image
-                  onPress={handleOpenImage}
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                />
-              </>
-            ) : isRecord ? (
-              <Send2
-                size={sizes.extraTitle}
-                color={colors.background}
-                variant="Bold"
-                onPress={() => onStopRecord('send')}
-              />
-            ) : (
-              <Send2
-                size={sizes.extraTitle}
-                color={colors.background}
-                variant="Bold"
-                onPress={() => handleSendMessage({})}
-              />
-            )}
-          </RowComponent>
-        </SectionComponent>
 
-        <ImageViewing
-          imageIndex={imageIndex}
-          visible={viewerVisible}
-          images={viewerImages}
-          onRequestClose={() => setViewerVisible(false)}
-          animationType="fade"
-        />
-        <GlobalPopover
-          {...popover}
-          onClose={closePopover}
-          onDelete={(message: MessageModel) => handleDeleteMsg(message)}
-          onReply={() => {
-            console.log('onReply');
-            closePopover();
-          }}
-          onReact={() => console.log('onReact')}
-          onRecall={(message: MessageModel) => handleRecallMsg(message)}
-          onEmoji={async ({
-            emoji,
-            message,
-          }: {
-            emoji: string;
-            message: MessageModel;
-          }) => handleAddEmoji(emoji, message)}
-        />
-      </Container>
+            {hasNewMessage && !isAtBottom && (
+              <TouchableOpacity
+                style={{
+                  position: 'absolute',
+                  bottom: 10,
+                  right: 10,
+                  backgroundColor: '#007AFF',
+                  paddingVertical: 8,
+                  paddingHorizontal: 14,
+                  borderRadius: 20,
+                  elevation: 6,
+                }}
+                onPress={scrollToBottom}
+              >
+                <TextComponent
+                  styles={{ color: '#fff', fontWeight: '600' }}
+                  text="Tin nhắn mới"
+                />
+              </TouchableOpacity>
+            )}
+          </SectionComponent>
+
+          <SectionComponent
+            styles={{
+              padding: 10,
+            }}
+          >
+            <RowComponent>
+              {isRecord ? (
+                <Trash
+                  onPress={() => onStopRecord('remove')}
+                  size={sizes.extraTitle}
+                  color={colors.background}
+                  variant="Bold"
+                />
+              ) : (
+                <EmojiNormal
+                  onPress={() => setShowPicker(!showPicker)}
+                  size={sizes.extraTitle}
+                  color={colors.background}
+                  variant="Bold"
+                />
+              )}
+              <SpaceComponent width={16} />
+              <InputComponent
+                styles={{
+                  backgroundColor: colors.background,
+                  paddingHorizontal: 10,
+                  borderRadius: 5,
+                  flex: 1,
+                }}
+                placeholder="Nhập tin nhắn"
+                placeholderTextColor={colors.gray2}
+                color={colors.background}
+                value={value}
+                onChangeText={setValue}
+                // onSubmitEditing={handleSendMessage}
+                multible
+                autoFocus={true}
+              />
+              <SpaceComponent width={16} />
+              {value === '' ? (
+                <>
+                  <Microphone2
+                    onPress={handleOpenRecord}
+                    size={sizes.extraTitle}
+                    color={colors.background}
+                    variant="Bold"
+                  />
+                  <SpaceComponent width={16} />
+                  <Image
+                    onPress={handleOpenImage}
+                    size={sizes.extraTitle}
+                    color={colors.background}
+                    variant="Bold"
+                  />
+                </>
+              ) : isRecord ? (
+                <Send2
+                  size={sizes.extraTitle}
+                  color={colors.background}
+                  variant="Bold"
+                  onPress={() => onStopRecord('send')}
+                />
+              ) : (
+                <Send2
+                  size={sizes.extraTitle}
+                  color={colors.background}
+                  variant="Bold"
+                  onPress={() => handleSendMessage({})}
+                />
+              )}
+            </RowComponent>
+          </SectionComponent>
+          <ImageViewing
+            imageIndex={imageIndex}
+            visible={viewerVisible}
+            images={viewerImages}
+            onRequestClose={() => setViewerVisible(false)}
+            animationType="fade"
+          />
+          <GlobalPopover
+            {...popover}
+            onClose={closePopover}
+            onDelete={(message: MessageModel) => handleDeleteMsg(message)}
+            onReply={() => {
+              console.log('onReply');
+              closePopover();
+            }}
+            onReact={() => console.log('onReact')}
+            onRecall={(message: MessageModel) => handleRecallMsg(message)}
+            onEmoji={async ({
+              emoji,
+              message,
+            }: {
+              emoji: string;
+              message: MessageModel;
+            }) => handleAddEmoji(emoji, message)}
+          />
+          {showPicker && (
+            <EmojiSelector
+              onEmojiSelected={emoji => {
+                setValue(prev => prev + emoji);
+                setShowPicker(false);
+              }}
+            />
+          )}
+        </Container>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

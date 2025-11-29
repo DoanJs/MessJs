@@ -27,7 +27,7 @@
     "react-native-blob-util": "^0.23.2",
     "react-native-compressor": "^1.13.0",
     "react-native-create-thumbnail": "^2.1.1",
-    "react-native-emoji-popup": "^0.3.3",
+    "react-native-emoji-selector": "^0.2.0",
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "^2.29.0",
     "react-native-get-random-values": "^2.0.0",
