@@ -225,12 +225,12 @@ const MessageContentComponent = React.memo((props: Props) => {
             styles={{
               flexDirection: 'column',
               backgroundColor:
-                msg.type === 'text'
+                (msg.type === 'text' || msg.type !== 'text' && (msg.deleted || msg.hiddenMsg))
                   ? user?.id !== msg.senderId
                     ? colors.gray + '80'
                     : colors.primaryBold
                   : colors.background,
-              padding: msg.type === 'text' ? 10 : 0,
+              padding: (msg.type === 'text' || msg.type !== 'text' && (msg.deleted || msg.hiddenMsg)) ? 10 : 0,
               borderRadius: 10,
               alignItems: 'flex-start',
             }}

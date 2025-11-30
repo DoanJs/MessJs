@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   doc,
   documentId,
   getDoc,
@@ -10,12 +9,10 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc,
+  updateDoc
 } from '@react-native-firebase/firestore';
-import { httpsCallable } from '@react-native-firebase/functions';
 import {
   Call,
-  CloseCircle,
   EmojiNormal,
   Image,
   Microphone2,
@@ -23,7 +20,7 @@ import {
   Send2,
   Setting2,
   Trash,
-  Video,
+  Video
 } from 'iconsax-react-native';
 import React, {
   useCallback,
@@ -37,17 +34,13 @@ import {
   KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
-  PermissionsAndroid,
   Platform,
-  TouchableOpacity,
-  View,
+  TouchableOpacity
 } from 'react-native';
-import RNBlobUtil from 'react-native-blob-util';
-import { Video as VideoCompressor } from 'react-native-compressor';
-import { createThumbnail } from 'react-native-create-thumbnail';
-import RNFS from 'react-native-fs';
+import { EmojiPopup } from 'react-native-emoji-popup';
+import EmojiSelector from 'react-native-emoji-selector';
 import 'react-native-get-random-values';
-import { Asset, launchImageLibrary } from 'react-native-image-picker';
+import { Asset } from 'react-native-image-picker';
 import ImageViewing from 'react-native-image-viewing';
 import Sound, { RecordBackType } from 'react-native-nitro-sound';
 import {
@@ -55,7 +48,7 @@ import {
   useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { v4 as uuidv4 } from 'uuid';
-import { db, functions } from '../../../firebase.config';
+import { db } from '../../../firebase.config';
 import {
   Container,
   GlobalPopover,
@@ -77,7 +70,9 @@ import {
   q_readStatus,
 } from '../../constants/firebase/query';
 import { fontFamillies } from '../../constants/fontFamilies';
+import { compress, createVideoThumbnail, getUploadUrl, handleAddEmoji, handleDeleteMsg, handleRecallMsg, loadMessagesFromBatchIds, mimeToExt, pickImage, preloadSignedUrls, requestAudioPermission, uploadBinaryToR2S3 } from '../../constants/functions';
 import {
+  delay,
   isEndOfTimeBlock,
   shouldShowBlockTime,
   shouldShowSmallTime,
@@ -87,8 +82,6 @@ import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
-import EmojiSelector from 'react-native-emoji-selector';
-import { EmojiPopup } from 'react-native-emoji-popup';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -111,7 +104,6 @@ const MessageDetailScreen = ({ route }: any) => {
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
   ];
-
   const flatListRef = useRef<FlatList>(null);
   const {
     addPendingMessage,
@@ -149,31 +141,7 @@ const MessageDetailScreen = ({ route }: any) => {
     setMembers(route.params.members);
   }, []);
 
-  useEffect(() => {
-    if (!chatRoom) return;
-
-    let cancelled = false; // <– flag để tránh setState sau khi unmount hoặc đổi phòng
-
-    const getCurrentBatch = async () => {
-      try {
-        const snapshot = await getDoc(q_chatRoomId(chatRoom.id));
-
-        if (!cancelled && snapshot.exists()) {
-          setLastBatchId(snapshot.data()?.lastBatchId || null);
-        }
-      } catch (error) {
-        console.error('Lỗi khi lấy batch hiện tại:', error);
-      }
-    };
-
-    getCurrentBatch();
-
-    return () => {
-      cancelled = true; // <– khi chatRoom đổi hoặc component unmount
-    };
-  }, [chatRoom]);
-  // Scroll khi có tin mới nhưng chỉ khi user đang ở đáy
-  useEffect(() => {
+  useEffect(() => {// Scroll khi có tin mới nhưng chỉ khi user đang ở đáy
     if (messages.length === 0 || !user) return;
 
     // Nếu là prepend → bỏ qua
@@ -196,7 +164,7 @@ const MessageDetailScreen = ({ route }: any) => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }
   }, [messages.length]);
-  //
+
   const enhancedMessages = useMemo(() => {
     return messages.map((msg, index) => {
       const prev = messages[index - 1];
@@ -224,8 +192,6 @@ const MessageDetailScreen = ({ route }: any) => {
       };
     });
   }, [messages]);
-
-  console.log(messages);
 
   const lastSentByUser = useMemo(() => {
     if (!messages || !user?.id) return undefined;
@@ -267,8 +233,53 @@ const MessageDetailScreen = ({ route }: any) => {
     return result;
   }, [readStatus, messageIndexMap]);
 
-  // Lắng nghe thay đổi lastBatchId trong chatRoom
-  useEffect(() => {
+  const renderItem = useCallback(
+    ({ item }: { item: MessageModel & any }) => (
+      <MessageContentComponent
+        currentUser={user}
+        users={users}
+        showBlockTime={item.showBlockTime}
+        shouldShowSmallTime={item.showSmallTime}
+        isEndOfTimeBlock={item.endOfTimeBlock}
+        showAvatar={item.showAvatar}
+        showDisplayName={item.showDisplayName}
+        lastSentByUser={lastSentByUser}
+        readers={readersByMessageId[item.id] ?? []}
+        members={members}
+        msg={item}
+        chatRoomId={chatRoom.id}
+        type={chatRoom.type}
+        onLongPress={onLongPressMessage}
+      />
+    ),
+    [lastSentByUser, readersByMessageId, members, chatRoom.type],
+  );
+
+  useEffect(() => {// setLastBatchId
+    if (!chatRoom) return;
+
+    let cancelled = false; // <– flag để tránh setState sau khi unmount hoặc đổi phòng
+
+    const getCurrentBatch = async () => {
+      try {
+        const snapshot = await getDoc(q_chatRoomId(chatRoom.id));
+
+        if (!cancelled && snapshot.exists()) {
+          setLastBatchId(snapshot.data()?.lastBatchId || null);
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy batch hiện tại:', error);
+      }
+    };
+
+    getCurrentBatch();
+
+    return () => {
+      cancelled = true; // <– khi chatRoom đổi hoặc component unmount
+    };
+  }, [chatRoom]);
+
+  useEffect(() => {// Lắng nghe thay đổi lastBatchId trong chatRoom
     if (!chatRoom) return;
 
     const unsubRoom = onSnapshot(q_chatRoomId(chatRoom.id), snap => {
@@ -288,15 +299,13 @@ const MessageDetailScreen = ({ route }: any) => {
       setReadStatus(data);
     });
 
-    // cleanup cả hai listener
     return () => {
       unsubRoom();
       unsubReadStatus();
     };
   }, [chatRoom]);
 
-  // load 3 batch đầu tiên vào ---> dạng prepend (false)
-  useEffect(() => {
+  useEffect(() => {// load 3 batch đầu tiên vào ---> dạng prepend (false)
     if (!chatRoom) return;
 
     let isMounted = true; // flag để cleanup
@@ -337,12 +346,11 @@ const MessageDetailScreen = ({ route }: any) => {
     load3Batch();
 
     return () => {
-      // Khi unmount hoặc chatRoom đổi → hủy task
       isMounted = false;
     };
   }, [chatRoom]);
 
-  useEffect(() => {
+  useEffect(() => {// listen myReaction
     if (!chatRoom || !user) return;
 
     const userMessageStateRef = collection(
@@ -350,7 +358,7 @@ const MessageDetailScreen = ({ route }: any) => {
       `chatRooms/${chatRoom.id}/userMessageState/${user.id}/messages`,
     );
 
-    // listen myReaction
+
     const unsub = onSnapshot(userMessageStateRef, docSnap => {
       let state: any = {};
       docSnap.forEach((doc: any) => {
@@ -359,13 +367,12 @@ const MessageDetailScreen = ({ route }: any) => {
       setUserMessageState(state);
     });
 
-    // cleanup
     return () => {
       unsub();
     };
   }, [chatRoom, user]);
 
-  useEffect(() => {
+  useEffect(() => {//listen new message in current Batch
     if (!chatRoom || !lastBatchId) return;
 
     // 🔥 Đăng ký lắng nghe realtime
@@ -396,17 +403,15 @@ const MessageDetailScreen = ({ route }: any) => {
     return () => {
       unsubscribe();
     };
-  }, [chatRoom, lastBatchId]); // <– dependency quan trọng
+  }, [chatRoom, lastBatchId]);
 
-  useEffect(() => {
+  useEffect(() => {//loadMoreBatches when atTop
     if (isAtTop) {
       loadMoreBatches();
     }
   }, [isAtTop]);
 
-  // --------------
-
-  // --------------
+  // Other
 
   const loadMoreBatches = async () => {
     if (loadedCount >= allBatchIds.length) return; // hết batch
@@ -424,34 +429,6 @@ const MessageDetailScreen = ({ route }: any) => {
       setIsPrepending(false);
     }, 0);
     setLoadedCount(prev => prev + next.length);
-  };
-  const loadMessagesFromBatchIds = async (
-    roomId: string,
-    batchIds: string[],
-  ) => {
-    const allMessages: any = [];
-
-    await Promise.all(
-      batchIds.map(async batchId => {
-        const q = query(
-          collection(db, `chatRooms/${roomId}/batches/${batchId}/messages`),
-          orderBy('createAt', 'asc'),
-        );
-
-        const snap = await getDocs(q);
-
-        const msgs = snap.docs.map((doc: any) => ({
-          id: doc.id,
-          ...doc.data(),
-          createAt: doc.data().createAt ?? new Date(),
-        }));
-
-        allMessages.push(...msgs);
-      }),
-    );
-
-    // sort toàn bộ theo thời gian
-    return allMessages.sort((a: any, b: any) => a.createAt - b.createAt);
   };
   const handleSendMessage = async ({
     typeMsg = 'text',
@@ -728,7 +705,6 @@ const MessageDetailScreen = ({ route }: any) => {
     setHasNewMessage(false);
     setIsAtBottom(true);
   };
-  const delay = (ms: any) => new Promise((res: any) => setTimeout(res, ms));
   const handleInitialScroll = async () => {
     await delay(500); // đợi layout ổn định
 
@@ -738,94 +714,9 @@ const MessageDetailScreen = ({ route }: any) => {
     await delay(3000); // đủ thời gian để scroll chạy xong thật sự
     setInitialLoad(false);
   };
-  const pickImage = async () => {
-    const res = await launchImageLibrary({
-      mediaType: 'mixed',
-      selectionLimit: 0, // chọn nhiều ảnh
-    });
-
-    if (res.didCancel || !res.assets) return null;
-
-    return res.assets;
-  };
-  const getUploadUrl = async (
-    fileType: string,
-    type: string,
-    isThumb: boolean,
-    roomId: string,
-    messageId: string,
-  ) => {
-    const callable = httpsCallable(functions, 'getUploadUrl');
-
-    const { uploadUrl, fileKey }: any = (
-      await callable({ fileType, type, isThumb, roomId, messageId })
-    ).data;
-
-    return { uploadUrl, fileKey };
-  };
-  const uploadBinaryToR2S3 = async (
-    uploadUrl: string,
-    fileUri: string,
-    mime: string,
-  ) => {
-    try {
-      const filePath = fileUri.replace('file://', '');
-
-      const res = await RNBlobUtil.fetch(
-        'PUT',
-        uploadUrl,
-        { 'Content-Type': mime },
-        RNBlobUtil.wrap(filePath),
-      );
-
-      return res.info().status === 200;
-    } catch (err) {
-      console.log('Upload to R2 error:', err);
-      return false;
-    }
-  };
-  const mimeToExt = (mime: string) => {
-    const ext = mime.split('/')[1];
-    if (ext === 'quicktime') return 'mov';
-    if (ext === 'mpeg') return 'mp3';
-    if (ext === 'x-m4a') return 'm4a';
-    return ext;
-  };
-  const createVideoThumbnail = async (asset: Asset) => {
-    try {
-      let fileName = asset.fileName || `video_${Date.now()}.mp4`;
-      let uri = asset.uri as string;
-      let srcPath = uri.replace('file://', '');
-      let destPath = `${RNFS.DocumentDirectoryPath}/${fileName}`;
-
-      // --- iOS: Không dùng file tmp ---
-      if (Platform.OS === 'ios' && srcPath.includes('/tmp/')) {
-        const exist = await RNFS.exists(destPath);
-        if (exist) await RNFS.unlink(destPath);
-
-        await RNFS.copyFile(srcPath, destPath);
-
-        srcPath = destPath; // <-- QUAN TRỌNG: dùng absolute path
-      }
-
-      // --- Kiểm tra path ---
-      const exists = await RNFS.exists(srcPath);
-      if (!exists) throw new Error('File not found: ' + srcPath);
-
-      // --- iOS: createThumbnail cần absolutePath, KHÔNG được có file:// ---
-      const thumbnail = await createThumbnail({
-        url: Platform.OS === 'ios' ? srcPath : uri,
-        timeStamp: 1000,
-      });
-
-      return { ok: true, ...thumbnail };
-    } catch (error) {
-      console.log('createVideoThumbnail error:', error);
-      return { ok: false, error };
-    }
-  };
 
   // Image and Video
+
   const handleOpenImage = async () => {
     const picked: any = await pickImage();
     if (!picked) return;
@@ -932,52 +823,13 @@ const MessageDetailScreen = ({ route }: any) => {
     setViewerImages(allImages);
     setViewerVisible(true);
   };
-  const getSignedUrl = async (fileKey: string) => {
-    const getViewUrl = httpsCallable(functions, 'getViewUrl');
-    const { data }: any = await getViewUrl({ fileKey });
-    return data.viewUrl;
-  };
-  const compress = async (uri: string) => {
-    const compressedUri = await VideoCompressor.compress(uri, {
-      compressionMethod: 'auto',
-    });
-    return compressedUri;
-  };
+
+  // Recording
+
   const handleOpenRecord = async () => {
     setIsRecord(true);
     setValue('Chuẩn bị ghi');
     await onStartRecord();
-  };
-
-  // Recording
-  const requestAudioPermission = async () => {
-    if (Platform.OS === 'android') {
-      try {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          {
-            title: 'Audio Recording Permission',
-            message:
-              'This app needs access to your microphone to record audio.',
-            buttonNeutral: 'Ask Me Later',
-            buttonNegative: 'Cancel',
-            buttonPositive: 'OK',
-          },
-        );
-
-        if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-          console.log('Recording permission granted');
-          return true;
-        } else {
-          console.log('Recording permission denied');
-          return false;
-        }
-      } catch (err) {
-        console.warn(err);
-        return false;
-      }
-    }
-    return true;
   };
   const onStartRecord = async () => {
     const ok = await requestAudioPermission();
@@ -985,9 +837,8 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
-        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-      } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+        } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -1060,142 +911,7 @@ const MessageDetailScreen = ({ route }: any) => {
     setValue('');
   };
 
-  // Pause/Resume Recording
-  // const onPauseRecord = async () => {
-  //   await Sound.pauseRecorder();
-  //   console.log('Recording paused');
-  // };
 
-  // const onResumeRecord = async () => {
-  //   await Sound.resumeRecorder();
-  //   console.log('Recording resumed');
-  // };
-
-  const renderItem = useCallback(
-    ({ item }: { item: MessageModel & any }) => (
-      <MessageContentComponent
-        currentUser={user}
-        users={users}
-        showBlockTime={item.showBlockTime}
-        shouldShowSmallTime={item.showSmallTime}
-        isEndOfTimeBlock={item.endOfTimeBlock}
-        showAvatar={item.showAvatar}
-        showDisplayName={item.showDisplayName}
-        lastSentByUser={lastSentByUser}
-        readers={readersByMessageId[item.id] ?? []}
-        members={members}
-        msg={item}
-        chatRoomId={chatRoom.id}
-        type={chatRoom.type}
-        onLongPress={onLongPressMessage}
-      />
-    ),
-    [lastSentByUser, readersByMessageId, members, chatRoom.type],
-  );
-  const preloadSignedUrls = async (messages: MessageModel[]) => {
-    const results = await Promise.all(
-      messages.map(async (msg: MessageModel) => {
-        if (['image', 'video', 'audio'].includes(msg.type)) {
-          if (msg.localURL) {
-            // msg.mediaURL = msg.localURL;
-            return msg;
-          }
-
-          if (msg.mediaURL) {
-            const signed = await getSignedUrl(msg.mediaURL);
-            msg.mediaURL = signed;
-          }
-        }
-        return msg;
-      }),
-    );
-
-    return results;
-  };
-  const handleAddEmoji = async (emoji: string, message: MessageModel) => {
-    if (emoji) {
-      // --- ADD OR UPDATE REACTION ---
-      await setDoc(
-        doc(
-          db,
-          `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
-          user?.id as string,
-        ),
-        {
-          reaction: emoji,
-          createAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-
-      await setDoc(
-        doc(
-          db,
-          `chatRooms/${chatRoom?.id}/userReactions/${user?.id}/reactions`,
-          message?.id as string,
-        ),
-        {
-          reaction: emoji,
-          batchId: message?.batchId,
-          createAt: serverTimestamp(),
-          updateAt: serverTimestamp(),
-        },
-        { merge: true },
-      );
-    } else {
-      // --- REMOVE REACTION ---
-      await deleteDoc(
-        doc(
-          db,
-          `chatRooms/${chatRoom?.id}/batches/${message?.batchId}/messages/${message?.id}/reactions`,
-          user?.id as string,
-        ),
-      );
-
-      await deleteDoc(
-        doc(
-          db,
-          `chatRooms/${chatRoom?.id}/userReactions/${user?.id}/reactions`,
-          message?.id as string,
-        ),
-      );
-    }
-
-    closePopover();
-  };
-  const handleDeleteMsg = async (message: MessageModel) => {
-    // thêm trạng thái tin nhắn vào chatRoomId
-    await setDoc(
-      doc(
-        db,
-        `chatRooms/${chatRoom.id}/userMessageState/${user?.id}/messages`,
-        message.id,
-      ),
-      {
-        deleted: true,
-        deletedAt: serverTimestamp(),
-      },
-      { merge: true },
-    );
-    closePopover();
-  };
-  const handleRecallMsg = async (message: MessageModel) => {
-    if (user && user.id === message.senderId) {
-      await updateDoc(
-        doc(
-          db,
-          `chatRooms/${chatRoom.id}/batches/${message.batchId}/messages`,
-          message.id,
-        ),
-        {
-          deleted: true,
-          deletedAt: serverTimestamp(),
-          deletedBy: user.id,
-        },
-      );
-      closePopover();
-    }
-  };
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1216,7 +932,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
               }}
-              onPress={() => {}}
+              onPress={() => { }}
             >
               <TextComponent
                 text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1240,7 +956,7 @@ const MessageDetailScreen = ({ route }: any) => {
               <SearchNormal1
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => {}}
+                onPress={() => { }}
               />
               {type === 'private' && (
                 <>
@@ -1248,7 +964,7 @@ const MessageDetailScreen = ({ route }: any) => {
                   <Call
                     size={sizes.bigTitle}
                     color={colors.background}
-                    onPress={() => {}}
+                    onPress={() => { }}
                   />
                 </>
               )}
@@ -1256,14 +972,14 @@ const MessageDetailScreen = ({ route }: any) => {
               <Video
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => {}}
+                onPress={() => { }}
                 variant="Bold"
               />
               <SpaceComponent width={16} />
               <Setting2
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => {}}
+                onPress={() => { }}
                 variant="Bold"
               />
             </RowComponent>
@@ -1424,20 +1140,20 @@ const MessageDetailScreen = ({ route }: any) => {
           <GlobalPopover
             {...popover}
             onClose={closePopover}
-            onDelete={(message: MessageModel) => handleDeleteMsg(message)}
+            onDelete={(message: MessageModel) => handleDeleteMsg({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
             onReply={() => {
               console.log('onReply');
               closePopover();
             }}
             onReact={() => console.log('onReact')}
-            onRecall={(message: MessageModel) => handleRecallMsg(message)}
+            onRecall={(message: MessageModel) => handleRecallMsg({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
             onEmoji={async ({
               emoji,
               message,
             }: {
               emoji: string;
               message: MessageModel;
-            }) => handleAddEmoji(emoji, message)}
+            }) => handleAddEmoji({ emoji, message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
           />
         </Container>
       </KeyboardAvoidingView>

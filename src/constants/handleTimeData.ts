@@ -152,3 +152,4 @@ export const shouldShowSmallTime = (
 
   return isLastOfGroup && !isIsolated;
 };
+export const delay = (ms: any) => new Promise((res: any) => setTimeout(res, ms));
