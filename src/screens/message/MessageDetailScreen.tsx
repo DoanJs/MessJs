@@ -13,6 +13,7 @@ import {
 } from '@react-native-firebase/firestore';
 import {
   Call,
+  CloseSquare,
   EmojiNormal,
   Image,
   Microphone2,
@@ -35,7 +36,8 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
-  TouchableOpacity
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { EmojiPopup } from 'react-native-emoji-popup';
 import EmojiSelector from 'react-native-emoji-selector';
@@ -70,7 +72,7 @@ import {
   q_readStatus,
 } from '../../constants/firebase/query';
 import { fontFamillies } from '../../constants/fontFamilies';
-import { compress, createVideoThumbnail, getUploadUrl, handleAddEmoji, handleDeleteMsg, handleRecallMsg, loadMessagesFromBatchIds, mimeToExt, pickImage, preloadSignedUrls, requestAudioPermission, uploadBinaryToR2S3 } from '../../constants/functions';
+import { compress, createVideoThumbnail, getUploadUrl, handleAddEmoji, handleDeleteMsg, handleRecallMsg, handleReply, loadMessagesFromBatchIds, mimeToExt, pickImage, preloadSignedUrls, requestAudioPermission, uploadBinaryToR2S3 } from '../../constants/functions';
 import {
   delay,
   isEndOfTimeBlock,
@@ -80,8 +82,9 @@ import {
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
-import { MessageModel, ReadStatusModel } from '../../models';
+import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
+import { convertInfoUserFromID } from '../../constants/convertData';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -125,6 +128,7 @@ const MessageDetailScreen = ({ route }: any) => {
   });
   const [userMessageState, setUserMessageState] = useState<any>();
   const [showPicker, setShowPicker] = useState(false);
+  const [msgReply, setMsgReply] = useState<MsgReplyModel | null>(null);
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
@@ -165,6 +169,14 @@ const MessageDetailScreen = ({ route }: any) => {
     }
   }, [messages.length]);
 
+  const handleReplyStatus = (msg: MessageModel) => {
+    if (!msg.replyTo) return false
+    const replyMsg = messages.find((_) => _.id === msg.replyTo?.messageId) as MessageModel
+    const replyStatus: boolean = replyMsg?.deleted || (userMessageState && userMessageState[replyMsg.id] && userMessageState[replyMsg.id].deleted)
+
+    return replyStatus
+  }
+
   const enhancedMessages = useMemo(() => {
     return messages.map((msg, index) => {
       const prev = messages[index - 1];
@@ -189,9 +201,11 @@ const MessageDetailScreen = ({ route }: any) => {
           userMessageState && userMessageState[msg.id]
             ? userMessageState[msg.id].deleted
             : false,
+        replyStatus: handleReplyStatus(msg)
       };
     });
   }, [messages]);
+
 
   const lastSentByUser = useMemo(() => {
     if (!messages || !user?.id) return undefined;
@@ -478,6 +492,8 @@ const MessageDetailScreen = ({ route }: any) => {
           deletedAt: null,
           deletedBy: null,
 
+          replyTo: msgReply,
+
           thumbKey: '',
           duration: 0,
           height: 0,
@@ -546,6 +562,7 @@ const MessageDetailScreen = ({ route }: any) => {
               deleted: false,
               deletedAt: null,
               deletedBy: null,
+              replyTo: msgReply,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -653,6 +670,7 @@ const MessageDetailScreen = ({ route }: any) => {
               deleted: false,
               deletedAt: null,
               deletedBy: null,
+              replyTo: msgReply,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -675,6 +693,7 @@ const MessageDetailScreen = ({ route }: any) => {
         console.log(error);
       }
       setValue('');
+      setMsgReply(null)
       // ⬇️ Sau khi gửi xong, cuộn xuống dưới cùng
       flatListRef.current?.scrollToEnd({ animated: true });
     }
@@ -751,6 +770,7 @@ const MessageDetailScreen = ({ route }: any) => {
             deleted: false,
             deletedAt: null,
             deletedBy: null,
+            replyTo: msgReply,
 
             thumbKey: '',
             duration:
@@ -874,6 +894,7 @@ const MessageDetailScreen = ({ route }: any) => {
         deleted: false,
         deletedAt: null,
         deletedBy: null,
+        replyTo: msgReply,
 
         thumbKey: '',
         duration,
@@ -1050,6 +1071,30 @@ const MessageDetailScreen = ({ route }: any) => {
             )}
           </SectionComponent>
 
+
+          {
+            msgReply &&
+            <SectionComponent styles={{
+              padding: 10,
+              backgroundColor: colors.gray
+            }}>
+              <RowComponent justify='space-between' styles={{ alignItems: 'flex-start' }}>
+                <View style={{
+                  width: '80%'
+                }}>
+                  <TextComponent text={`Đang trả lời ${msgReply.senderId === user?.id ? 'chính bạn' : convertInfoUserFromID(msgReply.senderId, users)?.displayName}`} />
+                  <TextComponent numberOfLine={1} text={msgReply.text} color={colors.gray3} />
+                </View>
+                <CloseSquare
+                  onPress={() => setMsgReply(null)}
+                  size={sizes.extraTitle}
+                  color={colors.textBold}
+                  variant="Bold"
+                />
+              </RowComponent>
+            </SectionComponent>
+          }
+
           <SectionComponent
             styles={{
               padding: 10,
@@ -1141,9 +1186,16 @@ const MessageDetailScreen = ({ route }: any) => {
             {...popover}
             onClose={closePopover}
             onDelete={(message: MessageModel) => handleDeleteMsg({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
-            onReply={() => {
-              console.log('onReply');
-              closePopover();
+            onReply={(message: MessageModel) => {
+              setMsgReply({
+                messageId: message.id,
+                senderId: message.senderId,
+                type: message.type,
+                text: message.type === 'text' ? message.text : `[${message.type}]`
+              })
+              // handleReply({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })
+
+              closePopover()
             }}
             onReact={() => console.log('onReact')}
             onRecall={(message: MessageModel) => handleRecallMsg({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
@@ -1157,6 +1209,7 @@ const MessageDetailScreen = ({ route }: any) => {
           />
         </Container>
       </KeyboardAvoidingView>
+
       {showPicker && (
         <EmojiSelector
           onEmojiSelected={emoji => {
@@ -1165,6 +1218,7 @@ const MessageDetailScreen = ({ route }: any) => {
           }}
         />
       )}
+
     </SafeAreaView>
   );
 };

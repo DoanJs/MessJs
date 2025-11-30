@@ -1,3 +1,4 @@
+import { doc, onSnapshot } from '@react-native-firebase/firestore';
 import moment from 'moment';
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
 import { Image, Pressable, TouchableOpacity, View } from 'react-native';
@@ -9,13 +10,13 @@ import {
   TextComponent,
   VideoPlayer,
 } from '.';
+import { db } from '../../firebase.config';
 import { colors } from '../constants/colors';
 import { convertInfoUserFromID } from '../constants/convertData';
+import { handleReaction } from '../constants/functions';
 import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
 import { sizes } from '../constants/sizes';
 import { MessageModel, UserModel } from '../models';
-import { collection, doc, onSnapshot } from '@react-native-firebase/firestore';
-import { db } from '../../firebase.config';
 
 interface Props {
   currentUser: UserModel | null;
@@ -156,21 +157,7 @@ const MessageContentComponent = React.memo((props: Props) => {
       },
     );
   };
-  const handleReaction = (reactions: Record<string, number>) => {
-    const reactionList = Object.entries(reactionCounts)
-      .filter(([emoji, count]) => count > 0)
-      .map(([emoji]) => emoji);
-    const totalReaction = Object.values(reactions).reduce(
-      (sum, n) => sum + n,
-      0,
-    );
-
-    return {
-      reactionList,
-      totalReaction,
-    };
-  };
-
+console.log(msg)
   return (
     <TouchableOpacity onLongPress={handleLongPress} delayLongPress={250}>
       {showBlockTime && (
@@ -221,6 +208,23 @@ const MessageContentComponent = React.memo((props: Props) => {
               />
             </RowComponent>
           )}
+          {
+            msg.replyTo &&
+            <View style={{
+              borderWidth: 1,
+              borderColor: 'coral',
+              borderRadius: 10,
+              padding: 6
+            }}>
+              <TextComponent text={`${user?.id === msg.replyTo.senderId ? 'Bạn đã trả lời chính mình' : convertInfoUserFromID(user?.id as string, users)?.displayName + ' đã trả lời tin nhắn'}`} color={colors.primaryLight} styles={{ fontStyle: 'italic' }} />
+              <TextComponent text={
+                msg.replyStatus
+                  ? 'Tin nhắn không tồn tại'
+                  : msg.replyTo.text
+              }
+                color={colors.gray3} numberOfLine={1} styles={{ fontStyle: 'italic' }} />
+            </View>
+          }
           <RowComponent
             styles={{
               flexDirection: 'column',
@@ -237,11 +241,10 @@ const MessageContentComponent = React.memo((props: Props) => {
           >
             {msg.deleted || msg.hiddenMsg ? (
               <TextComponent
-                text={`${
-                  msg.senderId === user?.id
-                    ? `Bạn đã ${msg.deleted ? 'thu hồi' : 'xóa'} tin nhắn`
-                    : `Tin nhắn đã bị ${msg.deleted ? 'thu hồi' : 'xóa'}`
-                }`}
+                text={`${msg.senderId === user?.id
+                  ? `Bạn đã ${msg.deleted ? 'thu hồi' : 'xóa'} tin nhắn`
+                  : `Tin nhắn đã bị ${msg.deleted ? 'thu hồi' : 'xóa'}`
+                  }`}
                 color={
                   msg.senderId === user?.id
                     ? colors.background + '66'
@@ -270,7 +273,7 @@ const MessageContentComponent = React.memo((props: Props) => {
                 }
               />
             )}
-            {handleReaction(reactionCounts).reactionList.length > 0 && (
+            {handleReaction({ reactions: reactionCounts, reactionCounts }).reactionList.length > 0 && (
               <RowComponent
                 styles={{
                   position: 'absolute',
@@ -278,21 +281,20 @@ const MessageContentComponent = React.memo((props: Props) => {
                   right: 0,
                 }}
               >
-                {handleReaction(reactionCounts).reactionList.map(
+                {handleReaction({ reactions: reactionCounts, reactionCounts }).reactionList.map(
                   (_, index) =>
                     index <= 2 && <TextComponent text={_} key={index} />,
                 )}
-                {handleReaction(reactionCounts).totalReaction > 3 && (
+                {handleReaction({ reactions: reactionCounts, reactionCounts }).totalReaction > 3 && (
                   <TextComponent
-                    text={`+${
-                      handleReaction(reactionCounts).totalReaction - 3
-                    }`}
+                    text={`+${handleReaction({ reactions: reactionCounts, reactionCounts }).totalReaction - 3
+                      }`}
                   />
                 )}
               </RowComponent>
             )}
           </RowComponent>
-          {handleReaction(reactionCounts).totalReaction > 0 && (
+          {handleReaction({ reactions: reactionCounts, reactionCounts }).totalReaction > 0 && (
             <SpaceComponent height={6} />
           )}
           {readers.length === 0 && (
@@ -300,17 +302,17 @@ const MessageContentComponent = React.memo((props: Props) => {
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                <TextComponent
-                  text={
-                    msg.status === 'failed'
-                      ? '❌ Lỗi gửi'
-                      : msg.status === 'pending'
-                      ? 'Đang gửi'
-                      : 'Đã gửi'
-                  }
-                  size={sizes.extraComment}
-                />
-              )}
+                  <TextComponent
+                    text={
+                      msg.status === 'failed'
+                        ? '❌ Lỗi gửi'
+                        : msg.status === 'pending'
+                          ? 'Đang gửi'
+                          : 'Đã gửi'
+                    }
+                    size={sizes.extraComment}
+                  />
+                )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />

@@ -268,3 +268,24 @@ export const handleRecallMsg = async ({ message, chatRoomId, userId, closePopove
     closePopover();
   }
 };
+export const handleReaction = ({ reactions, reactionCounts }: {
+  reactions: Record<string, number>, reactionCounts: {
+    [key: string]: number
+  }
+}) => {
+  const reactionList = Object.entries(reactionCounts)
+    .filter(([emoji, count]) => count > 0)
+    .map(([emoji]) => emoji);
+  const totalReaction = Object.values(reactions).reduce(
+    (sum, n) => sum + n,
+    0,
+  );
+
+  return {
+    reactionList,
+    totalReaction,
+  };
+};
+export const handleReply = ({ message, chatRoomId, userId, closePopover }: { message: MessageModel, chatRoomId: string, userId: string, closePopover: () => void }) => {
+console.log({message, chatRoomId, userId})
+}
