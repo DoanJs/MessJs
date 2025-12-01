@@ -58,6 +58,7 @@ const MessageContentComponent = React.memo((props: Props) => {
   }>({});
   const batchId = msg.batchId; // batchId được lưu trong message
   const ref = useRef<any>(null);
+  const isForwarded = msg.forwardedFrom && (msg.forwardedFrom.senderId !== user?.id || msg.senderId !== user?.id) as boolean
 
   useEffect(() => {
     if (!chatRoomId || !batchId || !user) return;
@@ -86,6 +87,9 @@ const MessageContentComponent = React.memo((props: Props) => {
           <TextComponent
             text={msg.text}
             styles={{
+              borderLeftWidth: isForwarded ? 2 : undefined,
+              borderLeftColor: isForwarded ? msg.senderId === user?.id ? colors.background : colors.text : undefined,
+              paddingLeft: isForwarded ? 6 : undefined,
               textAlign: 'justify',
               color:
                 user?.id !== msg.senderId ? colors.text : colors.background,
@@ -96,7 +100,7 @@ const MessageContentComponent = React.memo((props: Props) => {
       case 'image':
         result = (
           <TouchableOpacity
-            style={{ flex: 1, width: '100%' }}
+            style={{ flex: 1, width: '100%', marginVertical: 10 }}
             onPress={msg.onImagePressForItem}
           >
             <Image
@@ -117,7 +121,7 @@ const MessageContentComponent = React.memo((props: Props) => {
         break;
       case 'video':
         result = (
-          <TouchableOpacity style={{ flex: 1, width: '100%' }}>
+          <TouchableOpacity style={{ flex: 1, width: '100%', marginVertical: 10 }}>
             <VideoPlayer
               videoUrl={msg.status === 'pending' ? msg.localURL : msg.mediaURL}
               styles={{
@@ -157,7 +161,7 @@ const MessageContentComponent = React.memo((props: Props) => {
       },
     );
   };
-console.log(msg)
+
   return (
     <TouchableOpacity onLongPress={handleLongPress} delayLongPress={250}>
       {showBlockTime && (
@@ -214,7 +218,8 @@ console.log(msg)
               borderWidth: 1,
               borderColor: 'coral',
               borderRadius: 10,
-              padding: 6
+              padding: 6,
+              marginTop: 10
             }}>
               <TextComponent text={`${user?.id === msg.replyTo.senderId ? 'Bạn đã trả lời chính mình' : convertInfoUserFromID(user?.id as string, users)?.displayName + ' đã trả lời tin nhắn'}`} color={colors.primaryLight} styles={{ fontStyle: 'italic' }} />
               <TextComponent text={
@@ -223,6 +228,17 @@ console.log(msg)
                   : msg.replyTo.text
               }
                 color={colors.gray3} numberOfLine={1} styles={{ fontStyle: 'italic' }} />
+            </View>
+          }
+          {
+            isForwarded &&
+            <View style={{
+              borderRadius: 10,
+              padding: 6,
+              marginTop: 10
+            }}>
+              <TextComponent
+                text={`👉 ${msg.senderId === user?.id ? 'Bạn' : convertInfoUserFromID(msg.senderId, users)?.displayName} đã chuyển tiếp tin nhắn`} color={colors.primaryLight} styles={{ fontStyle: 'italic' }} />
             </View>
           }
           <RowComponent

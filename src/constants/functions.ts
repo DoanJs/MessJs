@@ -268,6 +268,22 @@ export const handleRecallMsg = async ({ message, chatRoomId, userId, closePopove
     closePopover();
   }
 };
+export const handleForwardMsg = async ({ message, chatRoomId, userId, closePopover }: { message: MessageModel, chatRoomId: string, userId: string, closePopover: () => void }) => {
+    // await updateDoc(
+    //   doc(
+    //     db,
+    //     `chatRooms/${chatRoomId}/batches/${message.batchId}/messages`,
+    //     message.id,
+    //   ),
+    //   {
+    //     deleted: true,
+    //     deletedAt: serverTimestamp(),
+    //     deletedBy: userId,
+    //   },
+    // );
+    console.log(message)
+    // closePopover();
+};
 export const handleReaction = ({ reactions, reactionCounts }: {
   reactions: Record<string, number>, reactionCounts: {
     [key: string]: number
@@ -286,6 +302,3 @@ export const handleReaction = ({ reactions, reactionCounts }: {
     totalReaction,
   };
 };
-export const handleReply = ({ message, chatRoomId, userId, closePopover }: { message: MessageModel, chatRoomId: string, userId: string, closePopover: () => void }) => {
-console.log({message, chatRoomId, userId})
-}

@@ -1,5 +1,5 @@
 import { FieldValue } from '@react-native-firebase/firestore';
-import { MsgReplyModel, TimeAtModel } from '.';
+import { MsgForwardModel, MsgReplyModel, TimeAtModel } from '.';
 
 export interface MessageModel {
   id: string;
@@ -22,4 +22,5 @@ export interface MessageModel {
   deletedBy: string | null
 
   replyTo: MsgReplyModel | null
+  forwardedFrom: MsgForwardModel | null
 }

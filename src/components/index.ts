@@ -19,6 +19,7 @@ import SectionComponent from './SectionComponent';
 import SpaceComponent from './SpaceComponent';
 import SpinnerComponent from './SpinnerComponent';
 import TextComponent from './TextComponent';
+import UserForwardComponent from './UserForwardComponent';
 import VideoPlayer from './VideoPlayerComponent';
 
 export {
@@ -35,7 +36,7 @@ export {
   GlobalPopover,
   InputComponent,
   KeyboardAwareScrollViewComponent,
-  MessageContentComponent,
+  MessageContentComponent,UserForwardComponent,
   MessageItemComponent,
   RowComponent,
   SearchComponent,

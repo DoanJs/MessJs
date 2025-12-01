@@ -66,13 +66,14 @@ import {
   shouldCreateNewBatch,
 } from '../../constants/checkNewBatch';
 import { colors } from '../../constants/colors';
+import { convertInfoUserFromID } from '../../constants/convertData';
 import {
   q_chatRoomId,
   q_messagesASC,
   q_readStatus,
 } from '../../constants/firebase/query';
 import { fontFamillies } from '../../constants/fontFamilies';
-import { compress, createVideoThumbnail, getUploadUrl, handleAddEmoji, handleDeleteMsg, handleRecallMsg, handleReply, loadMessagesFromBatchIds, mimeToExt, pickImage, preloadSignedUrls, requestAudioPermission, uploadBinaryToR2S3 } from '../../constants/functions';
+import { compress, createVideoThumbnail, getUploadUrl, handleAddEmoji, handleDeleteMsg, handleForwardMsg, handleRecallMsg, loadMessagesFromBatchIds, mimeToExt, pickImage, preloadSignedUrls, requestAudioPermission, uploadBinaryToR2S3 } from '../../constants/functions';
 import {
   delay,
   isEndOfTimeBlock,
@@ -82,9 +83,9 @@ import {
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
-import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
+import { MessageModel, MsgForwardModel, MsgReplyModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
-import { convertInfoUserFromID } from '../../constants/convertData';
+import { ForwardUserModal } from '../../components/modals';
 
 const MessageDetailScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -129,6 +130,8 @@ const MessageDetailScreen = ({ route }: any) => {
   const [userMessageState, setUserMessageState] = useState<any>();
   const [showPicker, setShowPicker] = useState(false);
   const [msgReply, setMsgReply] = useState<MsgReplyModel | null>(null);
+  const [msgForward, setMsgForward] = useState<any>(null);
+  const [visibleForwardUser, setVisibleForwardUser] = useState(false);
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
@@ -493,6 +496,7 @@ const MessageDetailScreen = ({ route }: any) => {
           deletedBy: null,
 
           replyTo: msgReply,
+          forwardedFrom: msgForward,
 
           thumbKey: '',
           duration: 0,
@@ -563,6 +567,7 @@ const MessageDetailScreen = ({ route }: any) => {
               deletedAt: null,
               deletedBy: null,
               replyTo: msgReply,
+              forwardedFrom: msgForward,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -671,6 +676,7 @@ const MessageDetailScreen = ({ route }: any) => {
               deletedAt: null,
               deletedBy: null,
               replyTo: msgReply,
+              forwardedFrom: msgForward,
 
               thumbKey,
               duration: asset ? (asset.duration as number) : 0,
@@ -698,6 +704,201 @@ const MessageDetailScreen = ({ route }: any) => {
       flatListRef.current?.scrollToEnd({ animated: true });
     }
   };
+  const handleForwardMsg = async ({ chatRoomId, friend, type, data }: { chatRoomId: string, friend: any, type: string, data: any }) => {
+    if (user) {
+      const messageId = uuidv4();
+
+      try {
+        const docSnap = await getDoc(doc(db, 'chatRooms', chatRoomId));
+
+        if (docSnap.exists()) {
+          const docSnapBatch = await getDoc(
+            doc(
+              db,
+              `chatRooms/${chatRoomId}/batches`,
+              docSnap.data()?.lastBatchId,
+            ),
+          );
+          let batchInfo = {
+            id: docSnapBatch.id,
+            messageCount: docSnapBatch.data()?.messageCount,
+          };
+
+          //check xem batch nay qua ngay moi hoac day chua
+          if (shouldCreateNewBatch(batchInfo)) {
+            // Tạo batchInfo (chứa batchId) tiếp theo
+            batchInfo = createNewBatch(batchInfo);
+            // Tạo batch mới
+            await setDoc(
+              doc(db, `chatRooms/${chatRoomId}/batches`, batchInfo.id),
+              {
+                id: batchInfo.id,
+                messageCount: 0,
+                preBatchId: docSnapBatch.id || null,
+                nextBatchId: null,
+              },
+              { merge: true },
+            );
+            // update lại nextBatchId cho batch cũ
+            await updateDoc(
+              doc(db, `chatRooms/${chatRoomId}/batches`, docSnapBatch.id),
+              {
+                nextBatchId: batchInfo.id,
+              },
+            );
+          }
+
+          // Thêm tin nhắn vào subCollection messages
+          await setDoc(
+            doc(
+              db,
+              `chatRooms/${chatRoomId}/batches/${batchInfo.id}/messages`,
+              messageId,
+            ),
+            {
+              senderId: user.id,
+              type: data.type,
+              text: data.text,
+              localURL: data.localURL,
+              mediaURL: data.mediaURL,
+
+              batchId: batchInfo.id,
+              reactionCounts: {},
+              deleted: false,
+              deletedAt: null,
+              deletedBy: null,
+              replyTo: null,
+
+              forwardedFrom: {
+                messageId: data.id,
+                senderId: data.senderId
+              },
+
+              thumbKey: data.thumbKey ?? '',
+              duration: data.duration ?? 0,
+              height: data.height ?? 0,
+              width: data.width ?? 0,
+
+              status: 'sent',
+              createAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        } else {
+          const batchInfo = createNewBatch(null);
+
+          await setDoc(
+            doc(db, 'chatRooms', chatRoomId),
+            {
+              type,
+              name: '',
+              avatarURL: '',
+              description: '',
+              createdBy: user.id,
+              createAt: serverTimestamp(),
+              lastMessageId: messageId,
+              lastMessageText: data.text,
+              lastMessageAt: serverTimestamp(),
+              lastSenderId: user.id,
+
+              lastBatchId: batchInfo.id,
+              memberCount: 2,
+              memberIds: [user.id, friend?.id],
+            },
+            { merge: true },
+          );
+
+          // Tạo members subcollection cho batch/id
+          const members = [
+            {
+              id: user.id,
+              role: 'admin',
+              joinedAt: serverTimestamp(),
+              nickName: user.displayName,
+              photoURL: user.photoURL,
+            },
+            {
+              id: friend?.id,
+              role: 'member',
+              joinedAt: serverTimestamp(),
+              nickName: friend?.displayName,
+              photoURL: friend?.photoURL,
+            },
+          ];
+
+          const promiseMember = members.map(_ => {
+            setDoc(doc(db, `chatRooms/${chatRoomId}/members`, _.id), _, {
+              merge: true,
+            });
+            // Thêm readStatus subcollection cho chatRoom
+            setDoc(
+              doc(db, `chatRooms/${chatRoomId}/readStatus`, _.id),
+              {
+                lastReadMessageId: _.id === user.id ? messageId : null,
+                lastReadAt: _.id === user.id ? serverTimestamp() : null,
+              },
+              {
+                merge: true,
+              },
+            );
+            // // Thêm unreadCounts subcollection cho chatRoom bằng CF rồi
+          });
+          await Promise.all(promiseMember);
+
+          // Tạo batch đầu tiên
+          await setDoc(
+            doc(db, `chatRooms/${chatRoomId}/batches`, batchInfo.id),
+            {
+              id: batchInfo.id,
+              messageCount: 0,
+              preBatchId: null,
+              nextBatchId: null,
+            },
+            { merge: true },
+          );
+
+          // Tạo messages subcollection cho batch/id
+          await setDoc(
+            doc(
+              db,
+              `chatRooms/${chatRoomId}/batches/${batchInfo.id}/messages`,
+              messageId,
+            ),
+            {
+              senderId: user.id,
+              type: data.type,
+              text: data.text,
+              localURL: data.localURL ?? '',
+              mediaURL: data.mediaURL ?? '',
+
+              batchId: batchInfo.id,
+              reactionCounts: {},
+              deleted: false,
+              deletedAt: null,
+              deletedBy: null,
+              replyTo: null,
+
+              forwardedFrom: {
+                messageId,
+                senderId: data.senderId
+              },
+
+              thumbKey: data.thumbKey,
+              duration: data.duration ?? 0,
+              height: data.height ?? 0,
+              width: data.width ?? 0,
+
+              status: 'sent',
+              createAt: serverTimestamp(),
+            },
+            { merge: true },
+          );
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    }
+  }
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
 
@@ -771,6 +972,7 @@ const MessageDetailScreen = ({ route }: any) => {
             deletedAt: null,
             deletedBy: null,
             replyTo: msgReply,
+            forwardedFrom: msgForward,
 
             thumbKey: '',
             duration:
@@ -895,6 +1097,7 @@ const MessageDetailScreen = ({ route }: any) => {
         deletedAt: null,
         deletedBy: null,
         replyTo: msgReply,
+        forwardedFrom: msgForward,
 
         thumbKey: '',
         duration,
@@ -1071,7 +1274,6 @@ const MessageDetailScreen = ({ route }: any) => {
             )}
           </SectionComponent>
 
-
           {
             msgReply &&
             <SectionComponent styles={{
@@ -1193,11 +1395,13 @@ const MessageDetailScreen = ({ route }: any) => {
                 type: message.type,
                 text: message.type === 'text' ? message.text : `[${message.type}]`
               })
-              // handleReply({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })
-
               closePopover()
             }}
-            onReact={() => console.log('onReact')}
+            onReact={(message: MessageModel) => {
+              closePopover()
+              setMsgForward(message)
+              setVisibleForwardUser(true)
+            }}
             onRecall={(message: MessageModel) => handleRecallMsg({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
             onEmoji={async ({
               emoji,
@@ -1218,6 +1422,20 @@ const MessageDetailScreen = ({ route }: any) => {
           }}
         />
       )}
+
+      <ForwardUserModal
+        visible={visibleForwardUser}
+        users={users}
+        onClose={() => setVisibleForwardUser(false)}
+        onSelectUser={(val) => {
+          handleForwardMsg({
+            chatRoomId: val.chatRoomId,
+            type: val.type,
+            friend: val.friend,
+            data: msgForward
+          })
+        }}
+      />
 
     </SafeAreaView>
   );
