@@ -9,7 +9,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
-  updateDoc
+  updateDoc,
 } from '@react-native-firebase/firestore';
 import {
   Call,
@@ -21,7 +21,7 @@ import {
   Send2,
   Setting2,
   Trash,
-  Video
+  Video,
 } from 'iconsax-react-native';
 import React, {
   useCallback,
@@ -37,7 +37,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { EmojiPopup } from 'react-native-emoji-popup';
 import EmojiSelector from 'react-native-emoji-selector';
@@ -73,7 +73,21 @@ import {
   q_readStatus,
 } from '../../constants/firebase/query';
 import { fontFamillies } from '../../constants/fontFamilies';
-import { compress, createVideoThumbnail, getUploadUrl, handleAddEmoji, handleDeleteMsg, handleForwardMsg, handleRecallMsg, loadMessagesFromBatchIds, mimeToExt, pickImage, preloadSignedUrls, requestAudioPermission, uploadBinaryToR2S3 } from '../../constants/functions';
+import {
+  compress,
+  createVideoThumbnail,
+  getUploadUrl,
+  handleAddEmoji,
+  handleDeleteMsg,
+  handleForwardMsg,
+  handleRecallMsg,
+  loadMessagesFromBatchIds,
+  mimeToExt,
+  pickImage,
+  preloadSignedUrls,
+  requestAudioPermission,
+  uploadBinaryToR2S3,
+} from '../../constants/functions';
 import {
   delay,
   isEndOfTimeBlock,
@@ -83,7 +97,12 @@ import {
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
-import { MessageModel, MsgForwardModel, MsgReplyModel, ReadStatusModel } from '../../models';
+import {
+  MessageModel,
+  MsgForwardModel,
+  MsgReplyModel,
+  ReadStatusModel,
+} from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
 import { ForwardUserModal } from '../../components/modals';
 
@@ -148,7 +167,8 @@ const MessageDetailScreen = ({ route }: any) => {
     setMembers(route.params.members);
   }, []);
 
-  useEffect(() => {// Scroll khi có tin mới nhưng chỉ khi user đang ở đáy
+  useEffect(() => {
+    // Scroll khi có tin mới nhưng chỉ khi user đang ở đáy
     if (messages.length === 0 || !user) return;
 
     // Nếu là prepend → bỏ qua
@@ -173,12 +193,18 @@ const MessageDetailScreen = ({ route }: any) => {
   }, [messages.length]);
 
   const handleReplyStatus = (msg: MessageModel) => {
-    if (!msg.replyTo) return false
-    const replyMsg = messages.find((_) => _.id === msg.replyTo?.messageId) as MessageModel
-    const replyStatus: boolean = replyMsg?.deleted || (userMessageState && userMessageState[replyMsg.id] && userMessageState[replyMsg.id].deleted)
+    if (!msg.replyTo) return false;
+    const replyMsg = messages.find(
+      _ => _.id === msg.replyTo?.messageId,
+    ) as MessageModel;
+    const replyStatus: boolean =
+      (replyMsg && replyMsg.deleted) ||
+      (userMessageState &&
+        userMessageState[replyMsg?.id] &&
+        userMessageState[replyMsg.id].deleted);
 
-    return replyStatus
-  }
+    return replyStatus;
+  };
 
   const enhancedMessages = useMemo(() => {
     return messages.map((msg, index) => {
@@ -204,11 +230,10 @@ const MessageDetailScreen = ({ route }: any) => {
           userMessageState && userMessageState[msg.id]
             ? userMessageState[msg.id].deleted
             : false,
-        replyStatus: handleReplyStatus(msg)
+        replyStatus: handleReplyStatus(msg),
       };
     });
   }, [messages]);
-
 
   const lastSentByUser = useMemo(() => {
     if (!messages || !user?.id) return undefined;
@@ -272,7 +297,8 @@ const MessageDetailScreen = ({ route }: any) => {
     [lastSentByUser, readersByMessageId, members, chatRoom.type],
   );
 
-  useEffect(() => {// setLastBatchId
+  useEffect(() => {
+    // setLastBatchId
     if (!chatRoom) return;
 
     let cancelled = false; // <– flag để tránh setState sau khi unmount hoặc đổi phòng
@@ -296,7 +322,8 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom]);
 
-  useEffect(() => {// Lắng nghe thay đổi lastBatchId trong chatRoom
+  useEffect(() => {
+    // Lắng nghe thay đổi lastBatchId trong chatRoom
     if (!chatRoom) return;
 
     const unsubRoom = onSnapshot(q_chatRoomId(chatRoom.id), snap => {
@@ -322,7 +349,8 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom]);
 
-  useEffect(() => {// load 3 batch đầu tiên vào ---> dạng prepend (false)
+  useEffect(() => {
+    // load 3 batch đầu tiên vào ---> dạng prepend (false)
     if (!chatRoom) return;
 
     let isMounted = true; // flag để cleanup
@@ -367,14 +395,14 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom]);
 
-  useEffect(() => {// listen myReaction
+  useEffect(() => {
+    // listen myReaction
     if (!chatRoom || !user) return;
 
     const userMessageStateRef = collection(
       db,
       `chatRooms/${chatRoom.id}/userMessageState/${user.id}/messages`,
     );
-
 
     const unsub = onSnapshot(userMessageStateRef, docSnap => {
       let state: any = {};
@@ -389,7 +417,8 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom, user]);
 
-  useEffect(() => {//listen new message in current Batch
+  useEffect(() => {
+    //listen new message in current Batch
     if (!chatRoom || !lastBatchId) return;
 
     // 🔥 Đăng ký lắng nghe realtime
@@ -422,7 +451,8 @@ const MessageDetailScreen = ({ route }: any) => {
     };
   }, [chatRoom, lastBatchId]);
 
-  useEffect(() => {//loadMoreBatches when atTop
+  useEffect(() => {
+    //loadMoreBatches when atTop
     if (isAtTop) {
       loadMoreBatches();
     }
@@ -699,12 +729,22 @@ const MessageDetailScreen = ({ route }: any) => {
         console.log(error);
       }
       setValue('');
-      setMsgReply(null)
+      setMsgReply(null);
       // ⬇️ Sau khi gửi xong, cuộn xuống dưới cùng
       flatListRef.current?.scrollToEnd({ animated: true });
     }
   };
-  const handleForwardMsg = async ({ chatRoomId, friend, type, data }: { chatRoomId: string, friend: any, type: string, data: any }) => {
+  const handleForwardMsg = async ({
+    chatRoomId,
+    friend,
+    type,
+    data,
+  }: {
+    chatRoomId: string;
+    friend: any;
+    type: string;
+    data: any;
+  }) => {
     if (user) {
       const messageId = uuidv4();
 
@@ -771,7 +811,7 @@ const MessageDetailScreen = ({ route }: any) => {
 
               forwardedFrom: {
                 messageId: data.id,
-                senderId: data.senderId
+                senderId: data.senderId,
               },
 
               thumbKey: data.thumbKey ?? '',
@@ -880,7 +920,7 @@ const MessageDetailScreen = ({ route }: any) => {
 
               forwardedFrom: {
                 messageId,
-                senderId: data.senderId
+                senderId: data.senderId,
               },
 
               thumbKey: data.thumbKey,
@@ -898,7 +938,7 @@ const MessageDetailScreen = ({ route }: any) => {
         console.log(error);
       }
     }
-  }
+  };
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
 
@@ -1059,8 +1099,9 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-        } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
+        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+      } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -1135,7 +1176,6 @@ const MessageDetailScreen = ({ route }: any) => {
     setValue('');
   };
 
-
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1156,7 +1196,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
               }}
-              onPress={() => { }}
+              onPress={() => {}}
             >
               <TextComponent
                 text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1180,7 +1220,7 @@ const MessageDetailScreen = ({ route }: any) => {
               <SearchNormal1
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
               />
               {type === 'private' && (
                 <>
@@ -1188,7 +1228,7 @@ const MessageDetailScreen = ({ route }: any) => {
                   <Call
                     size={sizes.bigTitle}
                     color={colors.background}
-                    onPress={() => { }}
+                    onPress={() => {}}
                   />
                 </>
               )}
@@ -1196,14 +1236,14 @@ const MessageDetailScreen = ({ route }: any) => {
               <Video
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
                 variant="Bold"
               />
               <SpaceComponent width={16} />
               <Setting2
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
                 variant="Bold"
               />
             </RowComponent>
@@ -1274,18 +1314,35 @@ const MessageDetailScreen = ({ route }: any) => {
             )}
           </SectionComponent>
 
-          {
-            msgReply &&
-            <SectionComponent styles={{
-              padding: 10,
-              backgroundColor: colors.gray
-            }}>
-              <RowComponent justify='space-between' styles={{ alignItems: 'flex-start' }}>
-                <View style={{
-                  width: '80%'
-                }}>
-                  <TextComponent text={`Đang trả lời ${msgReply.senderId === user?.id ? 'chính bạn' : convertInfoUserFromID(msgReply.senderId, users)?.displayName}`} />
-                  <TextComponent numberOfLine={1} text={msgReply.text} color={colors.gray3} />
+          {msgReply && (
+            <SectionComponent
+              styles={{
+                padding: 10,
+                backgroundColor: colors.gray,
+              }}
+            >
+              <RowComponent
+                justify="space-between"
+                styles={{ alignItems: 'flex-start' }}
+              >
+                <View
+                  style={{
+                    width: '80%',
+                  }}
+                >
+                  <TextComponent
+                    text={`Đang trả lời ${
+                      msgReply.senderId === user?.id
+                        ? 'chính bạn'
+                        : convertInfoUserFromID(msgReply.senderId, users)
+                            ?.displayName
+                    }`}
+                  />
+                  <TextComponent
+                    numberOfLine={1}
+                    text={msgReply.text}
+                    color={colors.gray3}
+                  />
                 </View>
                 <CloseSquare
                   onPress={() => setMsgReply(null)}
@@ -1295,7 +1352,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 />
               </RowComponent>
             </SectionComponent>
-          }
+          )}
 
           <SectionComponent
             styles={{
@@ -1387,29 +1444,52 @@ const MessageDetailScreen = ({ route }: any) => {
           <GlobalPopover
             {...popover}
             onClose={closePopover}
-            onDelete={(message: MessageModel) => handleDeleteMsg({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
+            onDelete={(message: MessageModel) =>
+              handleDeleteMsg({
+                message,
+                chatRoomId: chatRoom?.id as string,
+                userId: user?.id as string,
+                closePopover,
+              })
+            }
             onReply={(message: MessageModel) => {
               setMsgReply({
                 messageId: message.id,
                 senderId: message.senderId,
                 type: message.type,
-                text: message.type === 'text' ? message.text : `[${message.type}]`
-              })
-              closePopover()
+                text:
+                  message.type === 'text' ? message.text : `[${message.type}]`,
+              });
+              closePopover();
             }}
             onReact={(message: MessageModel) => {
-              closePopover()
-              setMsgForward(message)
-              setVisibleForwardUser(true)
+              closePopover();
+              setMsgForward(message);
+              setVisibleForwardUser(true);
             }}
-            onRecall={(message: MessageModel) => handleRecallMsg({ message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
+            onRecall={(message: MessageModel) =>
+              handleRecallMsg({
+                message,
+                chatRoomId: chatRoom?.id as string,
+                userId: user?.id as string,
+                closePopover,
+              })
+            }
             onEmoji={async ({
               emoji,
               message,
             }: {
               emoji: string;
               message: MessageModel;
-            }) => handleAddEmoji({ emoji, message, chatRoomId: chatRoom?.id as string, userId: user?.id as string, closePopover })}
+            }) =>
+              handleAddEmoji({
+                emoji,
+                message,
+                chatRoomId: chatRoom?.id as string,
+                userId: user?.id as string,
+                closePopover,
+              })
+            }
           />
         </Container>
       </KeyboardAvoidingView>
@@ -1427,16 +1507,15 @@ const MessageDetailScreen = ({ route }: any) => {
         visible={visibleForwardUser}
         users={users}
         onClose={() => setVisibleForwardUser(false)}
-        onSelectUser={(val) => {
+        onSelectUser={val => {
           handleForwardMsg({
             chatRoomId: val.chatRoomId,
             type: val.type,
             friend: val.friend,
-            data: msgForward
-          })
+            data: msgForward,
+          });
         }}
       />
-
     </SafeAreaView>
   );
 };

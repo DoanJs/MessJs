@@ -58,7 +58,10 @@ const MessageContentComponent = React.memo((props: Props) => {
   }>({});
   const batchId = msg.batchId; // batchId được lưu trong message
   const ref = useRef<any>(null);
-  const isForwarded = msg.forwardedFrom && (msg.forwardedFrom.senderId !== user?.id || msg.senderId !== user?.id) as boolean
+  const isForwarded =
+    msg.forwardedFrom &&
+    ((msg.forwardedFrom.senderId !== user?.id ||
+      msg.senderId !== user?.id) as boolean);
 
   useEffect(() => {
     if (!chatRoomId || !batchId || !user) return;
@@ -88,7 +91,11 @@ const MessageContentComponent = React.memo((props: Props) => {
             text={msg.text}
             styles={{
               borderLeftWidth: isForwarded ? 2 : undefined,
-              borderLeftColor: isForwarded ? msg.senderId === user?.id ? colors.background : colors.text : undefined,
+              borderLeftColor: isForwarded
+                ? msg.senderId === user?.id
+                  ? colors.background
+                  : colors.text
+                : undefined,
               paddingLeft: isForwarded ? 6 : undefined,
               textAlign: 'justify',
               color:
@@ -121,7 +128,9 @@ const MessageContentComponent = React.memo((props: Props) => {
         break;
       case 'video':
         result = (
-          <TouchableOpacity style={{ flex: 1, width: '100%', marginVertical: 10 }}>
+          <TouchableOpacity
+            style={{ flex: 1, width: '100%', marginVertical: 10 }}
+          >
             <VideoPlayer
               videoUrl={msg.status === 'pending' ? msg.localURL : msg.mediaURL}
               styles={{
@@ -212,55 +221,83 @@ const MessageContentComponent = React.memo((props: Props) => {
               />
             </RowComponent>
           )}
-          {
-            msg.replyTo &&
-            <View style={{
-              borderWidth: 1,
-              borderColor: 'coral',
-              borderRadius: 10,
-              padding: 6,
-              marginTop: 10
-            }}>
-              <TextComponent text={`${user?.id === msg.replyTo.senderId ? 'Bạn đã trả lời chính mình' : convertInfoUserFromID(user?.id as string, users)?.displayName + ' đã trả lời tin nhắn'}`} color={colors.primaryLight} styles={{ fontStyle: 'italic' }} />
-              <TextComponent text={
-                msg.replyStatus
-                  ? 'Tin nhắn không tồn tại'
-                  : msg.replyTo.text
-              }
-                color={colors.gray3} numberOfLine={1} styles={{ fontStyle: 'italic' }} />
-            </View>
-          }
-          {
-            isForwarded &&
-            <View style={{
-              borderRadius: 10,
-              padding: 6,
-              marginTop: 10
-            }}>
+          {msg.replyTo && (
+            <View
+              style={{
+                borderWidth: 1,
+                borderColor: 'coral',
+                borderRadius: 10,
+                padding: 6,
+                marginTop: 10,
+              }}
+            >
               <TextComponent
-                text={`👉 ${msg.senderId === user?.id ? 'Bạn' : convertInfoUserFromID(msg.senderId, users)?.displayName} đã chuyển tiếp tin nhắn`} color={colors.primaryLight} styles={{ fontStyle: 'italic' }} />
+                text={`${msg.senderId === user?.id 
+                  ?  user?.id === msg.replyTo.senderId 
+                    ? 'Bạn đã trả lời chính mình'
+                    : 'Bạn đã trả lời tin nhắn của ' +
+                      convertInfoUserFromID(user?.id as string, users)
+                        ?.displayName
+                  : convertInfoUserFromID(user?.id as string, users)
+                        ?.displayName + ' đã trả lời tin nhắn'}`}
+                color={colors.primaryLight}
+                styles={{ fontStyle: 'italic' }}
+              />
+              <TextComponent
+                text={
+                  msg.replyStatus ? 'Tin nhắn không tồn tại' : msg.replyTo.text
+                }
+                color={colors.gray3}
+                numberOfLine={1}
+                styles={{ fontStyle: 'italic' }}
+              />
             </View>
-          }
+          )}
+          {isForwarded && (
+            <View
+              style={{
+                borderRadius: 10,
+                padding: 6,
+                marginTop: 10,
+              }}
+            >
+              <TextComponent
+                text={`👉 ${
+                  msg.senderId === user?.id
+                    ? 'Bạn'
+                    : convertInfoUserFromID(msg.senderId, users)?.displayName
+                } đã chuyển tiếp tin nhắn`}
+                color={colors.primaryLight}
+                styles={{ fontStyle: 'italic' }}
+              />
+            </View>
+          )}
           <RowComponent
             styles={{
               flexDirection: 'column',
               backgroundColor:
-                (msg.type === 'text' || msg.type !== 'text' && (msg.deleted || msg.hiddenMsg))
+                msg.type === 'text' ||
+                (msg.type !== 'text' && (msg.deleted || msg.hiddenMsg))
                   ? user?.id !== msg.senderId
                     ? colors.gray + '80'
                     : colors.primaryBold
                   : colors.background,
-              padding: (msg.type === 'text' || msg.type !== 'text' && (msg.deleted || msg.hiddenMsg)) ? 10 : 0,
+              padding:
+                msg.type === 'text' ||
+                (msg.type !== 'text' && (msg.deleted || msg.hiddenMsg))
+                  ? 10
+                  : 0,
               borderRadius: 10,
               alignItems: 'flex-start',
             }}
           >
             {msg.deleted || msg.hiddenMsg ? (
               <TextComponent
-                text={`${msg.senderId === user?.id
-                  ? `Bạn đã ${msg.deleted ? 'thu hồi' : 'xóa'} tin nhắn`
-                  : `Tin nhắn đã bị ${msg.deleted ? 'thu hồi' : 'xóa'}`
-                  }`}
+                text={`${
+                  msg.senderId === user?.id
+                    ? `Bạn đã ${msg.deleted ? 'thu hồi' : 'xóa'} tin nhắn`
+                    : `Tin nhắn đã bị ${msg.deleted ? 'thu hồi' : 'xóa'}`
+                }`}
                 color={
                   msg.senderId === user?.id
                     ? colors.background + '66'
@@ -289,7 +326,8 @@ const MessageContentComponent = React.memo((props: Props) => {
                 }
               />
             )}
-            {handleReaction({ reactions: reactionCounts, reactionCounts }).reactionList.length > 0 && (
+            {handleReaction({ reactions: reactionCounts, reactionCounts })
+              .reactionList.length > 0 && (
               <RowComponent
                 styles={{
                   position: 'absolute',
@@ -297,38 +335,45 @@ const MessageContentComponent = React.memo((props: Props) => {
                   right: 0,
                 }}
               >
-                {handleReaction({ reactions: reactionCounts, reactionCounts }).reactionList.map(
+                {handleReaction({
+                  reactions: reactionCounts,
+                  reactionCounts,
+                }).reactionList.map(
                   (_, index) =>
                     index <= 2 && <TextComponent text={_} key={index} />,
                 )}
-                {handleReaction({ reactions: reactionCounts, reactionCounts }).totalReaction > 3 && (
+                {handleReaction({ reactions: reactionCounts, reactionCounts })
+                  .totalReaction > 3 && (
                   <TextComponent
-                    text={`+${handleReaction({ reactions: reactionCounts, reactionCounts }).totalReaction - 3
-                      }`}
+                    text={`+${
+                      handleReaction({
+                        reactions: reactionCounts,
+                        reactionCounts,
+                      }).totalReaction - 3
+                    }`}
                   />
                 )}
               </RowComponent>
             )}
           </RowComponent>
-          {handleReaction({ reactions: reactionCounts, reactionCounts }).totalReaction > 0 && (
-            <SpaceComponent height={6} />
-          )}
+          {handleReaction({ reactions: reactionCounts, reactionCounts })
+            .totalReaction > 0 && <SpaceComponent height={6} />}
           {readers.length === 0 && (
             <RowComponent justify="flex-end">
               {(msg.status === 'failed' ||
                 msg.status === 'pending' ||
                 (msg.status === 'sent' && msg.id === lastSentByUser?.id)) && (
-                  <TextComponent
-                    text={
-                      msg.status === 'failed'
-                        ? '❌ Lỗi gửi'
-                        : msg.status === 'pending'
-                          ? 'Đang gửi'
-                          : 'Đã gửi'
-                    }
-                    size={sizes.extraComment}
-                  />
-                )}
+                <TextComponent
+                  text={
+                    msg.status === 'failed'
+                      ? '❌ Lỗi gửi'
+                      : msg.status === 'pending'
+                      ? 'Đang gửi'
+                      : 'Đã gửi'
+                  }
+                  size={sizes.extraComment}
+                />
+              )}
             </RowComponent>
           )}
           <SpaceComponent height={4} />

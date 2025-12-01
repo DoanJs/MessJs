@@ -30,12 +30,12 @@ export default function SearchComponent(props: Props) {
   useEffect(() => {
     let items: any = [];
     switch (type) {
-      case 'searchTarget':
-        // items = (arrSource as TargetModel[]).filter(
-        //   target =>
-        //     target.name.toLowerCase().includes(value.toLowerCase()) ||
-        //     target.level === Number(value),
-        // );
+      case 'chatRoom':
+        items = (arrSource as any[]).filter(
+          _ =>
+            _.displayName?.toLowerCase().includes(value.toLowerCase()) ||
+            _.name?.toLowerCase().includes(value.toLowerCase()) 
+        );
         break;
       case 'searchChild':
         // items = (arrSource as ChildrenModel[]).filter(target =>
@@ -79,7 +79,7 @@ export default function SearchComponent(props: Props) {
     <View style={styles}>
       <InputComponent
         value={value}
-        onChange={val => setValue(val)}
+        onChangeText={setValue}
         placeholder={placeholder}
         allowClear
       />
