@@ -37,7 +37,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { EmojiPopup } from 'react-native-emoji-popup';
 import EmojiSelector from 'react-native-emoji-selector';
@@ -77,6 +77,7 @@ import { fontFamillies } from '../../constants/fontFamilies';
 import {
   compress,
   createVideoThumbnail,
+  extractFileKey,
   getUploadUrl,
   handleAddEmoji,
   handleDeleteMsg,
@@ -86,7 +87,7 @@ import {
   pickImage,
   preloadSignedUrls,
   requestAudioPermission,
-  uploadBinaryToR2S3
+  uploadBinaryToR2S3,
 } from '../../constants/functions';
 import {
   delay,
@@ -97,11 +98,7 @@ import {
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
-import {
-  MessageModel,
-  MsgReplyModel,
-  ReadStatusModel
-} from '../../models';
+import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
 
 const MessageDetailScreen = ({ route }: any) => {
@@ -797,8 +794,8 @@ const MessageDetailScreen = ({ route }: any) => {
               senderId: user.id,
               type: data.type,
               text: data.text,
-              localURL: data.localURL,
-              mediaURL: data.mediaURL,
+              localURL: data.localURL ?? '',
+              mediaURL: data.mediaURL ? extractFileKey(data.mediaURL) : '',
 
               batchId: batchInfo.id,
               reactionCounts: {},
@@ -907,7 +904,7 @@ const MessageDetailScreen = ({ route }: any) => {
               type: data.type,
               text: data.text,
               localURL: data.localURL ?? '',
-              mediaURL: data.mediaURL ?? '',
+              mediaURL: data.mediaURL ? extractFileKey(data.mediaURL) : '',
 
               batchId: batchInfo.id,
               reactionCounts: {},
@@ -1097,8 +1094,9 @@ const MessageDetailScreen = ({ route }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-        } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
+        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+      } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -1173,7 +1171,6 @@ const MessageDetailScreen = ({ route }: any) => {
     setValue('');
   };
 
-
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1194,7 +1191,7 @@ const MessageDetailScreen = ({ route }: any) => {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
               }}
-              onPress={() => { }}
+              onPress={() => {}}
             >
               <TextComponent
                 text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1218,7 +1215,7 @@ const MessageDetailScreen = ({ route }: any) => {
               <SearchNormal1
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
               />
               {type === 'private' && (
                 <>
@@ -1226,7 +1223,7 @@ const MessageDetailScreen = ({ route }: any) => {
                   <Call
                     size={sizes.bigTitle}
                     color={colors.background}
-                    onPress={() => { }}
+                    onPress={() => {}}
                   />
                 </>
               )}
@@ -1234,14 +1231,14 @@ const MessageDetailScreen = ({ route }: any) => {
               <Video
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
                 variant="Bold"
               />
               <SpaceComponent width={16} />
               <Setting2
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
                 variant="Bold"
               />
             </RowComponent>
@@ -1329,11 +1326,12 @@ const MessageDetailScreen = ({ route }: any) => {
                   }}
                 >
                   <TextComponent
-                    text={`Đang trả lời ${msgReply.senderId === user?.id
-                      ? 'chính bạn'
-                      : convertInfoUserFromID(msgReply.senderId, users)
-                        ?.displayName
-                      }`}
+                    text={`Đang trả lời ${
+                      msgReply.senderId === user?.id
+                        ? 'chính bạn'
+                        : convertInfoUserFromID(msgReply.senderId, users)
+                            ?.displayName
+                    }`}
                   />
                   <TextComponent
                     numberOfLine={1}
@@ -1460,12 +1458,10 @@ const MessageDetailScreen = ({ route }: any) => {
               closePopover();
             }}
             onReact={(message: MessageModel) => {
-              closePopover();
+              // setTimeout(() => setVisibleForwardUser(true), 1000);
+              setVisibleForwardUser(true)
               setMsgForward(message);
-              setTimeout(() => setVisibleForwardUser(true), 1000);
-              // setImmediate(() => {
-              //   setVisibleForwardUser(true);
-              // });
+              setTimeout(() => closePopover(), 1000)
             }}
             onRecall={(message: MessageModel) =>
               handleRecallMsg({
@@ -1491,11 +1487,8 @@ const MessageDetailScreen = ({ route }: any) => {
               })
             }
           />
-
         </Container>
-
       </KeyboardAvoidingView>
-
 
       {showPicker && (
         <EmojiSelector

@@ -1,14 +1,23 @@
-import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc } from "@react-native-firebase/firestore";
-import { httpsCallable } from "@react-native-firebase/functions";
-import { PermissionsAndroid, Platform } from "react-native";
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  orderBy,
+  query,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from '@react-native-firebase/firestore';
+import { httpsCallable } from '@react-native-firebase/functions';
+import { PermissionsAndroid, Platform } from 'react-native';
 import RNBlobUtil from 'react-native-blob-util';
 import { Video as VideoCompressor } from 'react-native-compressor';
-import { createThumbnail } from "react-native-create-thumbnail";
+import { createThumbnail } from 'react-native-create-thumbnail';
 import RNFS from 'react-native-fs';
-import { Asset, launchImageLibrary } from "react-native-image-picker";
-import { db, functions } from "../../firebase.config";
-import { MessageModel, UserModel } from "../models";
-
+import { Asset, launchImageLibrary } from 'react-native-image-picker';
+import { db, functions } from '../../firebase.config';
+import { MessageModel, UserModel } from '../models';
 
 export const loadMessagesFromBatchIds = async (
   roomId: string,
@@ -142,8 +151,7 @@ export const requestAudioPermission = async () => {
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
         {
           title: 'Audio Recording Permission',
-          message:
-            'This app needs access to your microphone to record audio.',
+          message: 'This app needs access to your microphone to record audio.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',
           buttonPositive: 'OK',
@@ -184,7 +192,19 @@ export const preloadSignedUrls = async (messages: MessageModel[]) => {
 
   return results;
 };
-export const handleAddEmoji = async ({ emoji, message, chatRoomId, userId, closePopover }: { emoji: string, message: MessageModel, chatRoomId: string, userId: string, closePopover: () => void }) => {
+export const handleAddEmoji = async ({
+  emoji,
+  message,
+  chatRoomId,
+  userId,
+  closePopover,
+}: {
+  emoji: string;
+  message: MessageModel;
+  chatRoomId: string;
+  userId: string;
+  closePopover: () => void;
+}) => {
   if (emoji) {
     // --- ADD OR UPDATE REACTION ---
     await setDoc(
@@ -235,7 +255,17 @@ export const handleAddEmoji = async ({ emoji, message, chatRoomId, userId, close
 
   closePopover();
 };
-export const handleDeleteMsg = async ({ message, chatRoomId, userId, closePopover }: { message: MessageModel, chatRoomId: string, userId: string, closePopover: () => void }) => {
+export const handleDeleteMsg = async ({
+  message,
+  chatRoomId,
+  userId,
+  closePopover,
+}: {
+  message: MessageModel;
+  chatRoomId: string;
+  userId: string;
+  closePopover: () => void;
+}) => {
   // thêm trạng thái tin nhắn vào chatRoomId
   await setDoc(
     doc(
@@ -251,7 +281,17 @@ export const handleDeleteMsg = async ({ message, chatRoomId, userId, closePopove
   );
   closePopover();
 };
-export const handleRecallMsg = async ({ message, chatRoomId, userId, closePopover }: { message: MessageModel, chatRoomId: string, userId: string, closePopover: () => void }) => {
+export const handleRecallMsg = async ({
+  message,
+  chatRoomId,
+  userId,
+  closePopover,
+}: {
+  message: MessageModel;
+  chatRoomId: string;
+  userId: string;
+  closePopover: () => void;
+}) => {
   if (userId === message.senderId) {
     await updateDoc(
       doc(
@@ -268,37 +308,26 @@ export const handleRecallMsg = async ({ message, chatRoomId, userId, closePopove
     closePopover();
   }
 };
-export const handleForwardMsg = async ({ message, chatRoomId, userId, closePopover }: { message: MessageModel, chatRoomId: string, userId: string, closePopover: () => void }) => {
-    // await updateDoc(
-    //   doc(
-    //     db,
-    //     `chatRooms/${chatRoomId}/batches/${message.batchId}/messages`,
-    //     message.id,
-    //   ),
-    //   {
-    //     deleted: true,
-    //     deletedAt: serverTimestamp(),
-    //     deletedBy: userId,
-    //   },
-    // );
-    console.log(message)
-    // closePopover();
-};
-export const handleReaction = ({ reactions, reactionCounts }: {
-  reactions: Record<string, number>, reactionCounts: {
-    [key: string]: number
-  }
+export const handleReaction = ({
+  reactions,
+  reactionCounts,
+}: {
+  reactions: Record<string, number>;
+  reactionCounts: {
+    [key: string]: number;
+  };
 }) => {
   const reactionList = Object.entries(reactionCounts)
     .filter(([emoji, count]) => count > 0)
     .map(([emoji]) => emoji);
-  const totalReaction = Object.values(reactions).reduce(
-    (sum, n) => sum + n,
-    0,
-  );
+  const totalReaction = Object.values(reactions).reduce((sum, n) => sum + n, 0);
 
   return {
     reactionList,
     totalReaction,
   };
 };
+export function extractFileKey(signedUrl: string) {
+  const url = new URL(signedUrl);
+  return url.pathname.substring(1); // bỏ dấu "/" đầu
+}

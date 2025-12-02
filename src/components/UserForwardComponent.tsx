@@ -35,12 +35,11 @@ const UserForwardComponent = (props: Props) => {
         alignItems: 'center',
       }}
     >
-      {
-        item.type === 'group' ?
-          <AvatarGroupComponent memberGroup={item.members} />
-          :
-          <AvatarComponent uri={item.photoURL } size={sizes.smallHeader} />
-      }
+      {item.type === 'group' ? (
+        <AvatarGroupComponent memberGroup={item.members} />
+      ) : (
+        <AvatarComponent uri={item.photoURL} size={sizes.smallHeader} />
+      )}
       <SpaceComponent width={10} />
       <TextComponent text={item.displayName ?? item.name} flex={1} />
       {isloading ? (
@@ -56,7 +55,14 @@ const UserForwardComponent = (props: Props) => {
                 item.type === 'group'
                   ? item.id
                   : makeContactId(userCurrent?.uid as string, item.id),
-              friend: item.type === 'group' ? null : { id: item.id },
+              friend:
+                item.type === 'group'
+                  ? null
+                  : {
+                      id: item.id,
+                      displayName: item.displayName,
+                      photoURL: item.photoURL,
+                    },
               type: item.type ?? 'private',
             });
             setIsloading(false);

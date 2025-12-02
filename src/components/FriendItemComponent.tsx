@@ -42,9 +42,9 @@ const FriendItemComponent = (props: Props) => {
           type: 'private',
           friend,
           chatRoom: {
-            id: makeContactId(user?.id as string, friend.id)
+            id: makeContactId(user?.id as string, friend.id),
           },
-          members: []
+          members: [],
         });
       });
     } catch (error) {
@@ -54,12 +54,12 @@ const FriendItemComponent = (props: Props) => {
 
   return (
     <RowComponent justify="space-between" styles={{ marginVertical: 10 }}>
-      <RowComponent onPress={onNavigateDetail}>
+      <RowComponent onPress={onNavigateDetail} styles={{ flex: 1 }}>
         <AvatarComponent size={sizes.header} uri={friend.photoURL} />
         <SpaceComponent width={10} />
         <TextComponent text={friend.displayName} />
       </RowComponent>
-      <RowComponent>
+      <RowComponent styles={{ paddingHorizontal: 10 }}>
         <Call size={sizes.smallTitle} color={colors.gray3} onPress={() => {}} />
         <SpaceComponent width={16} />
         <Video

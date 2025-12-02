@@ -228,7 +228,6 @@ const MessageContentComponent = React.memo((props: Props) => {
                 borderColor: 'coral',
                 borderRadius: 10,
                 padding: 6,
-                marginTop: 10,
               }}
             >
               <TextComponent
@@ -258,7 +257,6 @@ const MessageContentComponent = React.memo((props: Props) => {
               style={{
                 borderRadius: 10,
                 padding: 6,
-                marginTop: 10,
               }}
             >
               <TextComponent
