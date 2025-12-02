@@ -20,6 +20,7 @@ interface Props {
 
 const ForwardUserModal = (props: Props) => {
   const { visible, onClose, users, onSelectUser } = props;
+  const [resourceChatRooms, setResourceChatRooms] = useState<any[]>([]);
   const [chatRooms, setChatRooms] = useState<any[]>([]);
   const userCurrent = auth.currentUser;
 
@@ -30,8 +31,10 @@ const ForwardUserModal = (props: Props) => {
 
     const loadChatRooms = async () => {
       try {
+        // 1. Query chatRooms
         const q_batches = query(
           collection(db, `chatRooms`),
+          where('memberIds', 'array-contains', userCurrent.uid),
           where('type', '==', 'group'),
         );
 
@@ -39,15 +42,40 @@ const ForwardUserModal = (props: Props) => {
 
         if (!isMounted) return; // ❗ nếu unmount thì dừng luôn
 
+        // Convert rooms
         const resultSnap = snap.docs.map((d: any) => ({
           id: d.id,
           ...d.data(),
         }));
+
+        // 2. Lấy subcollection members của từng room (song song)
+        const roomsWithMembers = await Promise.all(
+          resultSnap.map(async (room: any) => {
+            const membersRef = collection(
+              db,
+              `chatRooms/${room.id}/members`
+            );
+
+            const membersSnap = await getDocs(membersRef);
+            const members = membersSnap.docs.map((m: any) => ({
+              id: m.id,
+              ...m.data(),
+            }));
+
+            return {
+              ...room,
+              members, // <-- thêm vào đây
+            };
+          })
+        );
+
+        if (!isMounted) return; // ❗ kiểm tra lại trước khi setState
+
         const resultUser = users.filter(_ => _.id !== userCurrent.uid);
 
-        setChatRooms([...resultSnap, ...resultUser]);
-        // 2. Load message của top3 batch (song song)
-        if (!isMounted) return; // ❗ kiểm tra lại trước khi setState
+        setChatRooms([...roomsWithMembers, ...resultUser]);
+        setResourceChatRooms([...roomsWithMembers, ...resultUser]);
+
         // messages = await preloadSignedUrls(messages);
       } catch (err) {
         console.log('loadChatRooms error', err);
@@ -65,7 +93,7 @@ const ForwardUserModal = (props: Props) => {
     <Modal
       isVisible={visible}
       onBackdropPress={onClose}
-      style={{ justifyContent: 'center', margin: 0 }}
+      style={{ justifyContent: 'center', margin: 0 , flex: 1}}
     >
       <View
         style={{
@@ -83,7 +111,7 @@ const ForwardUserModal = (props: Props) => {
         <SearchComponent
           placeholder="Tìm kiếm bạn bè/nhóm"
           onChange={val => setChatRooms(val)}
-          arrSource={chatRooms}
+          arrSource={resourceChatRooms}
           type="chatRoom"
         />
         <FlatList

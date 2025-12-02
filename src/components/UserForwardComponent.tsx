@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator } from 'react-native';
 import {
   AvatarComponent,
+  AvatarGroupComponent,
   RowComponent,
   SpaceComponent,
   TextComponent,
@@ -34,7 +35,12 @@ const UserForwardComponent = (props: Props) => {
         alignItems: 'center',
       }}
     >
-      <AvatarComponent uri={item.photoURL} size={sizes.smallHeader} />
+      {
+        item.type === 'group' ?
+          <AvatarGroupComponent memberGroup={item.members} />
+          :
+          <AvatarComponent uri={item.photoURL } size={sizes.smallHeader} />
+      }
       <SpaceComponent width={10} />
       <TextComponent text={item.displayName ?? item.name} flex={1} />
       {isloading ? (
