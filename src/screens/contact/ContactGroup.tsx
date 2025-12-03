@@ -1,5 +1,5 @@
 import { Profile2User } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -11,40 +11,32 @@ import {
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
-import { auth } from '../../../firebase.config';
-import { getDocsData } from '../../constants/firebase/getDocsData';
-import { where } from '@react-native-firebase/firestore';
-import { ChatRoomModel } from '../../models/ChatRoomModel';
+import { useBadgeStore, useChatRoomStore } from '../../zustand';
+import { useNavigation } from '@react-navigation/native';
 
 const ContactGroup = () => {
+  const navigation: any = useNavigation()
   const insets = useSafeAreaInsets();
-  const userCurrent = auth.currentUser
   const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
-  const [chatRooms, setChatRooms] = useState<ChatRoomModel[]>([]);
-
-  useEffect(() => {
-    if (userCurrent) {
-      getDocsData({
-        nameCollect: 'chatRooms',
-        condition: [where('memberIds', 'array-contains', userCurrent.uid)],
-        setData: setChatRooms,
-      });
-    }
-  }, [userCurrent]);
-
-  console.log(chatRooms)
+  const { chatRooms } = useChatRoomStore();
+  const { badges } = useBadgeStore();
+  const chatGroups = chatRooms.filter(_ => _.type === 'group') ?? [];
 
   const onRefresh = () => {
     setRefreshing(true);
     try {
-      // getDocsData({
-      //   nameCollect: 'fields',
-      //   setData: setFields,
-      // });
+      // if (userCurrent) {
+      //   getDocsData({
+      //     nameCollect: 'chatRooms',
+      //     condition: [where('memberIds', 'array-contains', userCurrent.uid)],
+      //     setData: setChatRooms,
+      //   });
+      // }
     } finally {
       setRefreshing(false);
     }
   };
+
   return (
     <View>
       <RowComponent
@@ -53,7 +45,7 @@ const ContactGroup = () => {
           borderBottomColor: colors.gray2,
           borderBottomWidth: 1,
         }}
-        onPress={() => { }}
+        onPress={() => navigation.navigate('AddGroupScreen')}
       >
         <View
           style={{
@@ -74,7 +66,7 @@ const ContactGroup = () => {
 
       <RowComponent>
         <TextComponent
-          text="Nhóm đang tham gia (38)"
+          text={`Nhóm đang tham gia (${chatGroups.length})`}
           size={sizes.smallText}
           font={fontFamillies.poppinsBold}
         />
@@ -88,8 +80,10 @@ const ContactGroup = () => {
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
-        data={Array.from({ length: 20 })}
-        renderItem={({ item }) => <MessageItemComponent type={'group'} />}
+        data={chatGroups}
+        renderItem={({ item }) => (
+          <MessageItemComponent chatRoom={item} count={badges[item.id]} />
+        )}
         ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
       />
     </View>

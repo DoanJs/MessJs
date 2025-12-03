@@ -1,7 +1,12 @@
-import { doc, onSnapshot } from '@react-native-firebase/firestore';
+import {
+  collection,
+  doc,
+  onSnapshot,
+  query,
+} from '@react-native-firebase/firestore';
 import { Add, ScanBarcode, SearchNormal1 } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
-import { FlatList, RefreshControl } from 'react-native';
+import { FlatList } from 'react-native';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -17,54 +22,37 @@ import {
 } from '../../components';
 import { AddRoomModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
-import { getDocData } from '../../constants/firebase/getDocData';
-import { getDocsData } from '../../constants/firebase/getDocsData';
 import { q_chatRoomsWithMember } from '../../constants/firebase/query';
 import { sizes } from '../../constants/sizes';
-import { useUsersStore, useUserStore } from '../../zustand';
-import { ChatRoomModel } from '../../models/ChatRoomModel';
-type BadgeMap = { [roomId: string]: number };
+import { UserModel } from '../../models';
+import {
+  useBadgeStore,
+  useChatRoomStore,
+  useUsersStore,
+  useUserStore,
+} from '../../zustand';
 
 const MessageScreen = () => {
   const insets = useSafeAreaInsets();
-  const userServer = auth.currentUser;
+  const userCurrent = auth.currentUser;
   const { setUser } = useUserStore();
   const { setUsers } = useUsersStore();
-  const [rooms, setRooms] = useState<ChatRoomModel[]>([]);
-  const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
   const [isVisibleAddRoom, setIsVisibleAddRoom] = useState(false);
-  const [badges, setBadges] = useState<BadgeMap>({}); // { roomId: count }
+  const { badges, setBadges } = useBadgeStore();
+  const { chatRooms, setChatRooms } = useChatRoomStore();
 
   useEffect(() => {
-    if (!userServer) return;
-    let cancelled = false;
-    // Gộp phần setUser trong zustand ở đây luôn
-    (async () => {
-      if (!cancelled)
-        getDocData({
-          id: userServer.uid,
-          nameCollect: 'users',
-          setData: setUser,
-        });
-    })();
-
-    (async () => {
-      if (!cancelled)
-        getDocsData({
-          nameCollect: 'users',
-          setData: setUsers,
-        });
-    })();
-
+    if (!userCurrent) return;
     // Lắng nghe realtime
-    const unsubscribe = onSnapshot(
-      q_chatRoomsWithMember(userServer.uid),
+
+    const unsubChatRooms = onSnapshot(
+      q_chatRoomsWithMember(userCurrent.uid),
       snapshot => {
         const data = snapshot.docs.map((doc: any) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setRooms(
+        setChatRooms(
           data.sort((a: any, b: any) => b.lastMessageAt - a.lastMessageAt),
         );
       },
@@ -72,24 +60,52 @@ const MessageScreen = () => {
         console.error('Error listening chatRooms:', error);
       },
     );
+    const unsubUsers = onSnapshot(
+      query(collection(db, 'users')),
+      snapshot => {
+        const data = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+        setUsers(data);
+      },
+      error => {
+        console.error('Error listening users:', error);
+      },
+    );
+    const unsubUser = onSnapshot(
+      doc(db, 'users', userCurrent.uid),
+      snap => {
+        if (snap.exists()) {
+          setUser({
+            id: snap.id,
+            ...snap.data(),
+          } as UserModel);
+        }
+      },
+      error => {
+        console.error('Error listening user:', error);
+      },
+    );
 
     // Cleanup listener khi component unmount
     return () => {
-      cancelled = true;
-      unsubscribe();
+      unsubChatRooms();
+      unsubUsers();
+      unsubUser();
     };
-  }, [userServer]);
+  }, [userCurrent]);
 
   useEffect(() => {
-    if (!rooms.length) return;
+    if (!chatRooms.length) return;
 
     const unsubList: any[] = [];
 
     // Lắng nghe từng unreadCount của user trong mỗi room
-    rooms.forEach((room: any) => {
+    chatRooms.forEach((room: any) => {
       const unreadRef = doc(
         db,
-        `chatRooms/${room.id}/unreadCounts/${userServer?.uid}`,
+        `chatRooms/${room.id}/unreadCounts/${userCurrent?.uid}`,
       );
       const unsub = onSnapshot(unreadRef, snap => {
         setBadges(prev => ({
@@ -102,20 +118,7 @@ const MessageScreen = () => {
 
     // Cleanup tất cả listener khi unmount
     return () => unsubList.forEach(u => u());
-  }, [rooms, userServer]);
-
-  console.log(badges)
-  const onRefresh = () => {
-    setRefreshing(true);
-    try {
-      // getDocsData({
-      //   nameCollect: 'fields',
-      //   setData: setFields,
-      // });
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  }, [chatRooms, userCurrent]);
 
   return (
     <SafeAreaView
@@ -161,14 +164,11 @@ const MessageScreen = () => {
             contentContainerStyle={{
               paddingBottom: insets.bottom + 80,
             }}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
-            data={rooms}
+            data={chatRooms}
             renderItem={({ item: chatRoom }) => (
               <MessageItemComponent
                 chatRoom={chatRoom}
-                count={badges[chatRoom.id]}//truyền count vào để show ngoài badge
+                count={badges[chatRoom.id]} //truyền count vào để show ngoài badge
               />
             )}
           />

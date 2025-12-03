@@ -1,7 +1,6 @@
-import { where } from '@react-native-firebase/firestore';
 import { Profile2User } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import React, { useState } from 'react';
+import { FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActivityLoadingComponent,
@@ -11,41 +10,17 @@ import {
   TextComponent,
 } from '../../components';
 import { colors } from '../../constants/colors';
-import { getDocsData } from '../../constants/firebase/getDocsData';
 import { sizes } from '../../constants/sizes';
-import { useUserStore } from '../../zustand';
+import { useUsersStore, useUserStore } from '../../zustand';
 
 const ContactPrivate = () => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
+  const { users } = useUsersStore();
   const [type, setType] = useState('Tất cả');
-  const [friends, setFriends] = useState([]);
-  const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
-
-  useEffect(() => {
-    if (user) {
-      getDocsData({
-        nameCollect: 'users',
-        condition: [where('email', '!=', user?.email)],
-        setData: setFriends,
-      });
-    }
-  }, [user]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    try {
-      if (user) {
-        getDocsData({
-          nameCollect: 'users',
-          condition: [where('email', '!=', user?.email)],
-          setData: setFriends,
-        });
-      }
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const [friends, setFriends] = useState(
+    users.filter(_ => _.email !== user?.email), //them field phai la friend, con chua la frien thi thoi
+  );
 
   if (!user) return <ActivityLoadingComponent />;
   return (
@@ -115,9 +90,6 @@ const ContactPrivate = () => {
         contentContainerStyle={{
           paddingBottom: insets.bottom + 80,
         }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
         showsVerticalScrollIndicator={false}
         data={friends}
         renderItem={({ item }) => <FriendItemComponent friend={item} />}

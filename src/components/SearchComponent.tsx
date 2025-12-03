@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleProp, View, ViewStyle } from 'react-native';
 import { InputComponent } from '.';
+import { UserModel } from '../models';
 // import {
 //   ChildrenModel,
 //   PlanModel,
@@ -13,12 +14,12 @@ interface Props {
   placeholder: string;
   type?: string;
   width?: number | string;
-  arrSource: any
-    // | TargetModel[]
-    // | ChildrenModel[]
-    // | PlanModel[]
-    // | SuggestModel[]
-    // | ReportModel[];
+  arrSource: any;
+  // | TargetModel[]
+  // | ChildrenModel[]
+  // | PlanModel[]
+  // | SuggestModel[]
+  // | ReportModel[];
   styles?: StyleProp<ViewStyle>;
   onChange: (val: any) => void;
 }
@@ -34,13 +35,15 @@ export default function SearchComponent(props: Props) {
         items = (arrSource as any[]).filter(
           _ =>
             _.displayName?.toLowerCase().includes(value.toLowerCase()) ||
-            _.name?.toLowerCase().includes(value.toLowerCase()) 
+            _.name?.toLowerCase().includes(value.toLowerCase()),
         );
         break;
-      case 'searchChild':
-        // items = (arrSource as ChildrenModel[]).filter(target =>
-        //   target.fullName.toLowerCase().includes(value.toLowerCase()),
-        // );
+      case 'user':
+        items = (arrSource as UserModel[]).filter(
+          user =>
+            user.displayName?.toLowerCase().includes(value.toLowerCase()) ||
+            user.email?.toLowerCase().includes(value.toLowerCase()),
+        );
         break;
       case 'searchPlan':
         // items = (arrSource as PlanModel[]).filter(plan =>

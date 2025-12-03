@@ -1,12 +1,7 @@
-import {
-  doc,
-  serverTimestamp,
-  setDoc,
-  where,
-} from '@react-native-firebase/firestore';
+import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { Bezier, TickCircle } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import { FlatList, View } from 'react-native';
 import 'react-native-get-random-values';
 import {
   SafeAreaView,
@@ -25,41 +20,19 @@ import {
 } from '../../components';
 import { createNewBatch } from '../../constants/checkNewBatch';
 import { colors } from '../../constants/colors';
-import { getDocsData } from '../../constants/firebase/getDocsData';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
+import { useUsersStore, useUserStore } from '../../zustand';
 import { UserModel } from '../../models';
-import { useUserStore } from '../../zustand';
 
 const AddGroupScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
-  const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
+  const { users } = useUsersStore();
   const [nameGroup, setNameGroup] = useState('');
-  const [friends, setFriends] = useState<UserModel[]>([]);
   const [memberGroup, setMemberGroup] = useState([user]);
-
-  useEffect(() => {
-    if (user) {
-      getDocsData({
-        nameCollect: 'users',
-        condition: [where('email', '!=', user?.email)],
-        setData: setFriends,
-      });
-    }
-  }, [user]);
-
-  const onRefresh = () => {
-    setRefreshing(true);
-    try {
-      // getDocsData({
-      //   nameCollect: 'fields',
-      //   setData: setFields,
-      // });
-    } finally {
-      setRefreshing(false);
-    }
-  };
+  const resourceFriends = users.filter(_ => _.email !== user?.email);
+  const [friends, setFriends] = useState<UserModel[]>(resourceFriends);
 
   const handleAddGroup = async () => {
     if (user) {
@@ -96,7 +69,7 @@ const AddGroupScreen = ({ navigation }: any) => {
             role: _.id === user.id ? 'admin' : 'member',
             joinedAt: serverTimestamp(),
             nickName: _.displayName,
-            photoURL: _.photoURL
+            photoURL: _.photoURL,
           },
           {
             merge: true,
@@ -129,7 +102,46 @@ const AddGroupScreen = ({ navigation }: any) => {
       );
 
       // redirect tới chatRoom nếu đã tạo thành công
-      navigation.navigate('MessageDetailScreen', {
+      // navigation.reset({
+      //   index: 1,
+      //   routes: [
+      //     {
+      //       name: 'Main', // TabNavigator
+      //       state: {
+      //         routes: [
+      //           {
+      //             name: 'Message', // Tab "MessageNavigator"
+      //           },
+      //         ],
+      //       },
+      //     },
+      //     {
+      //       name: 'MessageDetailScreen',
+      //       params: {
+      //         type: 'group',
+      //         friend: null,
+      //         chatRoom: {
+      //           id,
+      //           type: 'group',
+      //           name: nameGroup ?? '',
+      //           avatarURL: '',
+      //           description: '',
+      //           createdBy: user.id,
+      //           createAt: serverTimestamp(),
+      //           lastMessageText: '',
+      //           lastMessageAt: serverTimestamp(),
+      //           lastSenderId: '',
+
+      //           lastBatchId: batchInfo.id,
+      //           memberCount: memberGroup.length,
+      //           memberIds: memberGroup.map((_: any) => _.id),
+      //         },
+      //       },
+      //     },
+      //   ],
+      // });
+
+      navigation.replace('MessageDetailScreen', {
         type: 'group',
         friend: null,
         chatRoom: {
@@ -211,9 +223,10 @@ const AddGroupScreen = ({ navigation }: any) => {
             />
 
             <SearchComponent
-              arrSource={[]}
-              onChange={() => {}}
+              arrSource={resourceFriends}
+              onChange={val => setFriends(val)}
               placeholder="Tìm tên hoặc email"
+              type="user"
             />
             <SpaceComponent height={16} />
           </View>
@@ -224,9 +237,6 @@ const AddGroupScreen = ({ navigation }: any) => {
               paddingBottom: insets.bottom + 80,
             }}
             data={friends}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-            }
             renderItem={({ item: friend }) => (
               <CheckboxUserComponent
                 friend={friend}

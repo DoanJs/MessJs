@@ -1,4 +1,6 @@
+import { BadgeModel } from './BadgeModal';
 import { BatchModel } from './BatchModel';
+import { ChatRoomModel } from './ChatRoomModel';
 import { ContactModel } from './ContactModel';
 import { MemberModel } from './MemberModel';
 import { MessageModel } from './MessageModel';
@@ -9,11 +11,15 @@ import { TimeAtModel } from './TimeAtModel';
 import { UserModel } from './UserModel';
 
 export type {
+  BadgeModel,
   BatchModel,
+  ChatRoomModel,
   ContactModel,
   MemberModel,
-  MessageModel, MsgForwardModel, MsgReplyModel, ReadStatusModel,
+  MessageModel,
+  MsgForwardModel,
+  MsgReplyModel,
+  ReadStatusModel,
   TimeAtModel,
-  UserModel
+  UserModel,
 };
-
