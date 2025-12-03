@@ -104,6 +104,7 @@ const MessageScreen = () => {
     return () => unsubList.forEach(u => u());
   }, [rooms, userServer]);
 
+  console.log(badges)
   const onRefresh = () => {
     setRefreshing(true);
     try {

@@ -1,7 +1,7 @@
 import { serverTimestamp } from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import { Call, Video } from 'iconsax-react-native';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   AvatarComponent,
   RowComponent,
@@ -23,7 +23,6 @@ const FriendItemComponent = (props: Props) => {
   const { friend } = props;
   const navigation: any = useNavigation();
   const { user } = useUserStore();
-  const [members, setMembers] = useState<UserModel[]>([]);
 
   const onNavigateDetail = () => {
     try {
@@ -60,12 +59,12 @@ const FriendItemComponent = (props: Props) => {
         <TextComponent text={friend.displayName} />
       </RowComponent>
       <RowComponent styles={{ paddingHorizontal: 10 }}>
-        <Call size={sizes.smallTitle} color={colors.gray3} onPress={() => {}} />
+        <Call size={sizes.smallTitle} color={colors.gray3} onPress={() => { }} />
         <SpaceComponent width={16} />
         <Video
           size={sizes.smallTitle}
           color={colors.gray3}
-          onPress={() => {}}
+          onPress={() => { }}
         />
       </RowComponent>
     </RowComponent>

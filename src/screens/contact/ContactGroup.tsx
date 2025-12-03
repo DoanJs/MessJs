@@ -1,5 +1,5 @@
 import { Profile2User } from 'iconsax-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -11,10 +11,28 @@ import {
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
+import { auth } from '../../../firebase.config';
+import { getDocsData } from '../../constants/firebase/getDocsData';
+import { where } from '@react-native-firebase/firestore';
+import { ChatRoomModel } from '../../models/ChatRoomModel';
 
 const ContactGroup = () => {
   const insets = useSafeAreaInsets();
+  const userCurrent = auth.currentUser
   const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
+  const [chatRooms, setChatRooms] = useState<ChatRoomModel[]>([]);
+
+  useEffect(() => {
+    if (userCurrent) {
+      getDocsData({
+        nameCollect: 'chatRooms',
+        condition: [where('memberIds', 'array-contains', userCurrent.uid)],
+        setData: setChatRooms,
+      });
+    }
+  }, [userCurrent]);
+
+  console.log(chatRooms)
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -35,7 +53,7 @@ const ContactGroup = () => {
           borderBottomColor: colors.gray2,
           borderBottomWidth: 1,
         }}
-        onPress={() => {}}
+        onPress={() => { }}
       >
         <View
           style={{

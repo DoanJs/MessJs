@@ -35,10 +35,13 @@ const ContactPrivate = () => {
   const onRefresh = () => {
     setRefreshing(true);
     try {
-      // getDocsData({
-      //   nameCollect: 'fields',
-      //   setData: setFields,
-      // });
+      if (user) {
+        getDocsData({
+          nameCollect: 'users',
+          condition: [where('email', '!=', user?.email)],
+          setData: setFriends,
+        });
+      }
     } finally {
       setRefreshing(false);
     }
