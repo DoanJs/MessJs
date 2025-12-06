@@ -24,7 +24,7 @@ import { AddRoomModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
 import { q_chatRoomsWithMember } from '../../constants/firebase/query';
 import { sizes } from '../../constants/sizes';
-import { UserModel } from '../../models';
+import { FriendShipModel, UserModel } from '../../models';
 import {
   useBadgeStore,
   useChatRoomStore,
@@ -40,6 +40,7 @@ const MessageScreen = () => {
   const [isVisibleAddRoom, setIsVisibleAddRoom] = useState(false);
   const { badges, setBadges } = useBadgeStore();
   const { chatRooms, setChatRooms } = useChatRoomStore();
+  const [friendShips, setFriendShips] = useState<FriendShipModel[]>([]);
 
   useEffect(() => {
     if (!userCurrent) return;
@@ -128,7 +129,7 @@ const MessageScreen = () => {
       <Container
         bg={colors.primaryLight}
         title={
-          <RowComponent styles={{ flex: 1 }} onPress={() => {}}>
+          <RowComponent styles={{ flex: 1 }} onPress={() => { }}>
             <SearchNormal1 size={sizes.bigTitle} color={colors.background} />
             <SpaceComponent width={16} />
             <TextComponent text="Tìm kiếm" color={colors.background} />
@@ -139,7 +140,7 @@ const MessageScreen = () => {
             <ScanBarcode
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
             <SpaceComponent width={16} />
@@ -177,7 +178,7 @@ const MessageScreen = () => {
 
       <AddRoomModal
         visible={isVisibleAddRoom}
-        onChange={val => {}}
+        onChange={val => { }}
         onClose={() => setIsVisibleAddRoom(false)}
       />
     </SafeAreaView>

@@ -1,7 +1,9 @@
+import { collection, onSnapshot, query, where } from '@react-native-firebase/firestore';
 import { SearchNormal1, UserAdd } from 'iconsax-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { auth, db } from '../../../firebase.config';
 import {
   Container,
   RowComponent,
@@ -14,9 +16,53 @@ import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
 import ContactGroup from './ContactGroup';
 import ContactPrivate from './ContactPrivate';
+import useFriendRequestStore from '../../zustand/useFriendRequestStore';
+import { ActionModal } from '../../components/modals';
 
 const ContactScreen = () => {
   const [type, setType] = useState('Bạn bè');
+  const userCurrent = auth.currentUser
+  const { setFriendRequests } = useFriendRequestStore()
+
+  useEffect(() => {
+    if (!userCurrent) return;
+
+    // Lắng nghe realtime
+    const unsubFrienRequest = onSnapshot(
+      query(collection(db, 'friendRequests'), where('memberIds', 'array-contains', userCurrent.uid)),
+      snapshot => {
+        const data = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setFriendRequests(data)
+      },
+      error => {
+        console.error('Error listening users:', error);
+      },
+    );
+
+    // const unsubFriendShips = onSnapshot(
+    //   collection(db, `friendShips/${userCurrent.uid}/friends`),
+    //   (snapshot) => {
+    //     const data = snapshot.docChanges().map((doc: any) => ({
+    //       id: doc.id,
+    //       ...doc.data(),
+    //     }));
+
+    //     console.log(data)
+    //   },
+    //   error => {
+    //     console.error('Error listening friendShips:', error);
+    //   },);
+
+    // Cleanup listener khi component unmount
+    return () => {
+      unsubFrienRequest()
+      // unsubFriendShips()
+    };
+  }, [userCurrent])
 
   return (
     <SafeAreaView
@@ -26,7 +72,7 @@ const ContactScreen = () => {
       <Container
         bg={colors.primaryLight}
         title={
-          <RowComponent styles={{ flex: 1 }} onPress={() => {}}>
+          <RowComponent styles={{ flex: 1 }} onPress={() => { }}>
             <SearchNormal1 size={sizes.bigTitle} color={colors.background} />
             <SpaceComponent width={16} />
             <TextComponent text="Tìm kiếm" color={colors.background} />
@@ -37,7 +83,7 @@ const ContactScreen = () => {
             <UserAdd
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => { }}
               variant="Bold"
             />
           </RowComponent>
@@ -74,7 +120,9 @@ const ContactScreen = () => {
 
           <SpaceComponent height={10} />
 
-          {type === 'Bạn bè' ? <ContactPrivate /> : <ContactGroup />}
+          {type === 'Bạn bè' ? 
+          <ContactPrivate /> : 
+          <ContactGroup />}
         </SectionComponent>
       </Container>
     </SafeAreaView>

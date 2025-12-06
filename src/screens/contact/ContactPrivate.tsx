@@ -9,6 +9,7 @@ import {
   SpaceComponent,
   TextComponent,
 } from '../../components';
+import { ActionModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
 import { sizes } from '../../constants/sizes';
 import { useUsersStore, useUserStore } from '../../zustand';
@@ -21,6 +22,8 @@ const ContactPrivate = () => {
   const [friends, setFriends] = useState(
     users.filter(_ => _.email !== user?.email), //them field phai la friend, con chua la frien thi thoi
   );
+
+  const [visibleAction, setVisibleAction] = useState(false);
 
   if (!user) return <ActivityLoadingComponent />;
   return (
@@ -92,8 +95,13 @@ const ContactPrivate = () => {
         }}
         showsVerticalScrollIndicator={false}
         data={friends}
-        renderItem={({ item }) => <FriendItemComponent friend={item} />}
+        renderItem={({ item }) => <FriendItemComponent setVisibleAction={setVisibleAction} friend={item} />}
         ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
+      />
+
+      <ActionModal visible={visibleAction}
+        onChange={() => { }}
+        onClose={() => setVisibleAction(false)}
       />
     </View>
   );
