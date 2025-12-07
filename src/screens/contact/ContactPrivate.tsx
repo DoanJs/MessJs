@@ -23,7 +23,11 @@ const ContactPrivate = () => {
     users.filter(_ => _.email !== user?.email), //them field phai la friend, con chua la frien thi thoi
   );
 
-  const [visibleAction, setVisibleAction] = useState(false);
+  const [infoModal, setInfoModal] = useState({
+    visibleModal: false,
+    status: '',
+    fromUser: false
+  });
 
   if (!user) return <ActivityLoadingComponent />;
   return (
@@ -95,13 +99,21 @@ const ContactPrivate = () => {
         }}
         showsVerticalScrollIndicator={false}
         data={friends}
-        renderItem={({ item }) => <FriendItemComponent setVisibleAction={setVisibleAction} friend={item} />}
+        renderItem={({ item }) => (
+          <FriendItemComponent
+            friend={item}
+            setInfoModal={setInfoModal}
+          />
+        )}
         ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
       />
 
-      <ActionModal visible={visibleAction}
-        onChange={() => { }}
-        onClose={() => setVisibleAction(false)}
+      <ActionModal
+        visible={infoModal.visibleModal}
+        setInfoModal={setInfoModal}
+        infoModal={infoModal}
+        onChange={() => {}}
+        onClose={() => setInfoModal({...infoModal, visibleModal: false})}
       />
     </View>
   );

@@ -19,11 +19,11 @@ import useFriendRequestStore from '../zustand/useFriendRequestStore';
 
 interface Props {
   friend: UserModel;
-  setVisibleAction: any
+  setInfoModal: any
 }
 
 const FriendItemComponent = (props: Props) => {
-  const { friend , setVisibleAction} = props;
+  const { friend , setInfoModal} = props;
   const navigation: any = useNavigation();
   const { user } = useUserStore();
   const [isLoading, setIsLoading] = useState(false);
@@ -81,7 +81,7 @@ const FriendItemComponent = (props: Props) => {
   }
 
   const showStatus = () => {
-    if (!friendRequest || !user) return ''
+    if (!friendRequest || !user) return 'Người lạ'
 
     let result = ''
     const status = friendRequest.status
@@ -133,7 +133,11 @@ const FriendItemComponent = (props: Props) => {
           size={sizes.title}
           variant='Bold'
           color={colors.textBold}
-          onPress={() => setVisibleAction(true)} />
+          onPress={() => setInfoModal({
+            visibleModal: true,
+            status: friendRequest?.status,
+            fromUser: friendRequest?.from === user?.id
+          })} />
       </RowComponent>
     </RowComponent>
   );
