@@ -136,7 +136,8 @@ const FriendItemComponent = (props: Props) => {
           onPress={() => setInfoModal({
             visibleModal: true,
             status: friendRequest?.status,
-            fromUser: friendRequest?.from === user?.id
+            fromUser: friendRequest?.from === user?.id,
+            friend
           })} />
       </RowComponent>
     </RowComponent>

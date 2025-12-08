@@ -1,4 +1,9 @@
-import { useNavigation } from '@react-navigation/native';
+import {
+  doc,
+  serverTimestamp,
+  setDoc,
+  updateDoc,
+} from '@react-native-firebase/firestore';
 import {
   CloseCircle,
   TickCircle,
@@ -10,9 +15,12 @@ import React, { Fragment, ReactNode } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Modal from 'react-native-modal';
 import { RowComponent, SpaceComponent, TextComponent } from '..';
+import { auth, db } from '../../../firebase.config';
 import { DeniedSvg } from '../../assets/vector';
 import { colors } from '../../constants/colors';
+import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
+import { UserModel } from '../../models';
 
 interface Props {
   visible: boolean;
@@ -20,30 +28,28 @@ interface Props {
     visibleModal: boolean;
     status: string;
     fromUser: boolean;
+    friend: UserModel | null;
   };
   setInfoModal: any;
-  // title: string
-  // setTitle: any
   onClose: () => void;
-  onChange: (val: string) => void;
-  // handleAddEditPlan: () => void
 }
 
 export default function ActionModal(props: Props) {
-  const navigation: any = useNavigation();
-  const { visible, onClose, onChange, infoModal, setInfoModal } = props;
+  const { visible, onClose, infoModal, setInfoModal } = props;
+  const userCurrent = auth.currentUser;
+  const { friend, status, fromUser } = infoModal;
 
   const showActions = () => {
     let actions = [];
 
-    switch (infoModal.status) {
+    switch (status) {
       case 'pending':
-        actions = infoModal.fromUser
+        actions = fromUser
           ? ['Hủy kết bạn', 'Chặn']
           : ['Đồng ý', 'Từ chối', 'Chặn'];
         break;
       case 'denied':
-        actions = infoModal.fromUser ? ['Bỏ chặn'] : ['Chặn'];
+        actions = fromUser ? ['Bỏ chặn'] : ['Chặn'];
         break;
       case 'accepted':
         actions = ['Hủy bạn bè', 'Chặn'];
@@ -129,9 +135,42 @@ export default function ActionModal(props: Props) {
 
     return result;
   };
+  const handleAction = async (type: string) => {
+    if (!userCurrent || !friend) return;
 
-  const handleAction = () => {
-    console.log('ok');
+    const id = makeContactId(userCurrent.uid, friend.id);
+
+    if (!status) {
+      await setDoc(
+        doc(db, `friendRequests`, id),
+        {
+          id,
+          from: userCurrent.uid as string,
+          to: friend.id as string,
+          status:
+            type === 'Chặn'
+              ? 'denied'
+              : type === 'Kết bạn'
+              ? 'pending'
+              : 'cancelled',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          memberIds: [userCurrent.uid, friend.id],
+        },
+        { merge: true },
+      );
+    } else {
+      await updateDoc(doc(db, 'friendRequests', id), {
+        status:
+          type === 'Chặn'
+            ? 'denied'
+            : type === 'Kết bạn'
+            ? 'pending'
+            : 'cancelled',
+        updatedAt: serverTimestamp(),
+      });
+    }
+
     setInfoModal({ ...infoModal, visibleModal: false });
   };
 
@@ -152,7 +191,7 @@ export default function ActionModal(props: Props) {
         <SpaceComponent height={16} />
         {showActions().map((_, index) => (
           <Fragment key={index}>
-            <RowComponent onPress={() => handleAction()}>
+            <RowComponent onPress={() => handleAction(_)}>
               {showIconAction(_)}
               <SpaceComponent width={16} />
               <TextComponent text={_} />

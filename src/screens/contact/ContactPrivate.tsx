@@ -26,7 +26,8 @@ const ContactPrivate = () => {
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
-    fromUser: false
+    fromUser: false,
+    friend: null
   });
 
   if (!user) return <ActivityLoadingComponent />;
@@ -112,7 +113,6 @@ const ContactPrivate = () => {
         visible={infoModal.visibleModal}
         setInfoModal={setInfoModal}
         infoModal={infoModal}
-        onChange={() => {}}
         onClose={() => setInfoModal({...infoModal, visibleModal: false})}
       />
     </View>
