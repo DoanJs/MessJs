@@ -1,5 +1,5 @@
 import { Profile2User } from 'iconsax-react-native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -12,7 +12,7 @@ import {
 import { ActionModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
 import { sizes } from '../../constants/sizes';
-import { useUsersStore, useUserStore } from '../../zustand';
+import { useFriendShipStore, useUsersStore, useUserStore } from '../../zustand';
 
 const ContactPrivate = () => {
   const insets = useSafeAreaInsets();
@@ -22,14 +22,16 @@ const ContactPrivate = () => {
   const [friends, setFriends] = useState(
     users.filter(_ => _.email !== user?.email), //them field phai la friend, con chua la frien thi thoi
   );
+  const { friendShips } = useFriendShipStore();
 
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
     fromUser: false,
-    friend: null
+    friend: null,
   });
 
+  console.log(friendShips)
   if (!user) return <ActivityLoadingComponent />;
   return (
     <View>
@@ -66,7 +68,7 @@ const ContactPrivate = () => {
         {[
           {
             title: 'Tất cả',
-            quantity: friends.length,
+            quantity: friendShips.length,
           },
           {
             title: 'Bạn mới',
@@ -99,12 +101,9 @@ const ContactPrivate = () => {
           paddingBottom: insets.bottom + 80,
         }}
         showsVerticalScrollIndicator={false}
-        data={friends}
+        data={friendShips}
         renderItem={({ item }) => (
-          <FriendItemComponent
-            friend={item}
-            setInfoModal={setInfoModal}
-          />
+          <FriendItemComponent friend={item} setInfoModal={setInfoModal} />
         )}
         ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
       />
@@ -113,7 +112,7 @@ const ContactPrivate = () => {
         visible={infoModal.visibleModal}
         setInfoModal={setInfoModal}
         infoModal={infoModal}
-        onClose={() => setInfoModal({...infoModal, visibleModal: false})}
+        onClose={() => setInfoModal({ ...infoModal, visibleModal: false })}
       />
     </View>
   );

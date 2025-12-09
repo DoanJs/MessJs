@@ -1,4 +1,5 @@
 import {
+  deleteDoc,
   doc,
   serverTimestamp,
   setDoc,
@@ -161,14 +162,49 @@ export default function ActionModal(props: Props) {
       );
     } else {
       await updateDoc(doc(db, 'friendRequests', id), {
+        from: userCurrent.uid,
+        to: friend.id,
         status:
           type === 'Chặn'
             ? 'denied'
             : type === 'Kết bạn'
             ? 'pending'
+            : type === 'Đồng ý'
+            ? 'accepted'
             : 'cancelled',
         updatedAt: serverTimestamp(),
       });
+
+      if (type === 'Đồng ý') {
+        await setDoc(
+          doc(db, `friendShips/${userCurrent.uid}/friends`, friend.id),
+          {
+            id: friend.id,
+            displayName: friend.displayName,
+            photoURL: friend.photoURL,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+        await setDoc(
+          doc(db, `friendShips/${friend.id}/friends`, userCurrent.uid),
+          {
+            id: userCurrent.uid,
+            displayName: userCurrent.displayName,
+            photoURL: userCurrent.photoURL,
+            createdAt: serverTimestamp(),
+          },
+          { merge: true },
+        );
+      }
+      if (type === 'Hủy bạn bè') {
+        await deleteDoc(
+          doc(db, `friendShips/${userCurrent.uid}/friends`, friend.id),
+        );
+        await deleteDoc(
+          doc(db, `friendShips/${friend.id}/friends`, userCurrent.uid),
+        );
+      }
     }
 
     setInfoModal({ ...infoModal, visibleModal: false });

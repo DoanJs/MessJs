@@ -1,4 +1,9 @@
-import { collection, onSnapshot, query, where } from '@react-native-firebase/firestore';
+import {
+  collection,
+  onSnapshot,
+  query,
+  where,
+} from '@react-native-firebase/firestore';
 import { SearchNormal1, UserAdd } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
 import { TouchableOpacity } from 'react-native';
@@ -14,29 +19,33 @@ import {
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
+import { useFriendShipStore } from '../../zustand';
+import useFriendRequestStore from '../../zustand/useFriendRequestStore';
 import ContactGroup from './ContactGroup';
 import ContactPrivate from './ContactPrivate';
-import useFriendRequestStore from '../../zustand/useFriendRequestStore';
-import { ActionModal } from '../../components/modals';
 
 const ContactScreen = () => {
   const [type, setType] = useState('Bạn bè');
-  const userCurrent = auth.currentUser
-  const { setFriendRequests } = useFriendRequestStore()
+  const userCurrent = auth.currentUser;
+  const { setFriendRequests } = useFriendRequestStore();
+  const { setFriendShips } = useFriendShipStore();
 
   useEffect(() => {
     if (!userCurrent) return;
 
     // Lắng nghe realtime
     const unsubFrienRequest = onSnapshot(
-      query(collection(db, 'friendRequests'), where('memberIds', 'array-contains', userCurrent.uid)),
+      query(
+        collection(db, 'friendRequests'),
+        where('memberIds', 'array-contains', userCurrent.uid),
+      ),
       snapshot => {
         const data = snapshot.docs.map((doc: any) => ({
           id: doc.id,
           ...doc.data(),
         }));
 
-        setFriendRequests(data)
+        setFriendRequests(data);
       },
       error => {
         console.error('Error listening users:', error);
@@ -45,24 +54,41 @@ const ContactScreen = () => {
 
     // const unsubFriendShips = onSnapshot(
     //   collection(db, `friendShips/${userCurrent.uid}/friends`),
-    //   (snapshot) => {
-    //     const data = snapshot.docChanges().map((doc: any) => ({
-    //       id: doc.id,
-    //       ...doc.data(),
+    //   snapshot => {
+    //     const data = snapshot.docChanges().map((change: any) => ({
+    //       id: change.doc.id,
+    //       ...change.doc.data(),
     //     }));
 
+    //     setFriendShips(data);
     //     console.log(data)
     //   },
     //   error => {
     //     console.error('Error listening friendShips:', error);
-    //   },);
+    //   },
+    // );
+    const unsubFriendShips = onSnapshot(
+      collection(db, `friendShips/${userCurrent.uid}/friends`),
+      snapshot => {
+        const friends = snapshot.docs.map((doc: any) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setFriendShips(friends);
+        console.log('friends:', friends);
+      },
+      error => {
+        console.error('Error listening friendShips:', error);
+      },
+    );
 
     // Cleanup listener khi component unmount
     return () => {
-      unsubFrienRequest()
-      // unsubFriendShips()
+      unsubFrienRequest();
+      unsubFriendShips();
     };
-  }, [userCurrent])
+  }, [userCurrent]);
 
   return (
     <SafeAreaView
@@ -72,7 +98,7 @@ const ContactScreen = () => {
       <Container
         bg={colors.primaryLight}
         title={
-          <RowComponent styles={{ flex: 1 }} onPress={() => { }}>
+          <RowComponent styles={{ flex: 1 }} onPress={() => {}}>
             <SearchNormal1 size={sizes.bigTitle} color={colors.background} />
             <SpaceComponent width={16} />
             <TextComponent text="Tìm kiếm" color={colors.background} />
@@ -83,7 +109,7 @@ const ContactScreen = () => {
             <UserAdd
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => { }}
+              onPress={() => {}}
               variant="Bold"
             />
           </RowComponent>
@@ -120,9 +146,7 @@ const ContactScreen = () => {
 
           <SpaceComponent height={10} />
 
-          {type === 'Bạn bè' ? 
-          <ContactPrivate /> : 
-          <ContactGroup />}
+          {type === 'Bạn bè' ? <ContactPrivate /> : <ContactGroup />}
         </SectionComponent>
       </Container>
     </SafeAreaView>

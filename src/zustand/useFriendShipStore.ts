@@ -1,43 +1,38 @@
 import { create } from 'zustand';
-import { FriendShipModel } from '../models';
+import { UserModel } from '../models';
 
 interface FriendShipState {
-  friendShips: FriendShipModel;
+  friendShips: UserModel[];
   loading: boolean;
   error: string | null;
-
-  setFriendShips: (update: FriendShipModel | ((prev: FriendShipModel) => FriendShipModel)) => void;
-  setFriendShip: (roomId: string, count: number) => void;
-  clearFriendShip: (roomId: string) => void;
-  clearAllFriendShips: () => void;
+  setFriendShips: (friendShips: UserModel[]) => void;
+  addFriendShip: (friendShip: UserModel) => void;
+  editFriendShip: (id: string, friendShip: UserModel) => void;
+  removeFriendShip: (id: string) => void;
+  clearFriendShips: () => void;
 }
 
 const useFriendShipStore = create<FriendShipState>(set => ({
-  friendShips: {},
+  friendShips: [],
   loading: false,
   error: null,
 
-  setFriendShips: update =>
-    set(state => ({
-      friendShips: typeof update === 'function' ? update(state.friendShips) : update,
-    })),
-
-  setFriendShip: (roomId, count) =>
-    set(state => ({
-      friendShips: {
-        ...state.friendShips,
-        [roomId]: count,
-      },
-    })),
-
-  clearFriendShip: roomId =>
-    set(state => {
-      const updated = { ...state.friendShips };
-      delete updated[roomId];
-      return { friendShips: updated };
+  setFriendShips: (friendShips: UserModel[]) => set({ friendShips }),
+  addFriendShip: (friendShip: UserModel) =>
+    set((state: any) => ({ friendShips: [...state.friendShips, friendShip] })),
+  editFriendShip: (id: string, friendShip: UserModel) =>
+    set((state: any) => {
+      const index = state.friendShips.findIndex((item: any) => item.id === id);
+      state.friendShips[index] = friendShip;
+      return { friendShips: [...state.friendShips] };
     }),
-
-  clearAllFriendShips: () => set({ friendShips: {} }),
+  removeFriendShip: (id: string) =>
+    set((state: any) => ({
+      friendShips: state.friendShips.filter(
+        (item: UserModel) => item.id !== id,
+      ),
+    })),
+  clearFriendShips: () => set({ friendShips: [] }),
 }));
 
 export default useFriendShipStore;
