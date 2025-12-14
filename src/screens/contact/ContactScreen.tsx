@@ -19,19 +19,28 @@ import {
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
-import { useFriendShipStore } from '../../zustand';
-import useFriendRequestStore from '../../zustand/useFriendRequestStore';
+import {
+  useBlockStore,
+  useFriendRequestStore,
+  useFriendShipStore,
+} from '../../zustand';
 import ContactGroup from './ContactGroup';
 import ContactPrivate from './ContactPrivate';
+import { UserModel } from '../../models';
 
 const ContactScreen = () => {
   const [type, setType] = useState('Bạn bè');
   const userCurrent = auth.currentUser;
-  const { setFriendRequests } = useFriendRequestStore();
-  const { setFriendShips } = useFriendShipStore();
+  const setFriendRequests = useFriendRequestStore(s => s.setFriendRequests);
+  const setFriendShips = useFriendShipStore(s => s.setFriendShips);
+  const setFriendList = useFriendShipStore(s => s.setFriendList);
+  const setBlockedByMe = useBlockStore(s => s.setBlockedByMe);
+  const friendShips = useFriendShipStore(s => s.friendShips);
+  const friendList = useFriendShipStore(s => s.friendList);
+  console.log(friendList);
 
   useEffect(() => {
-    if (!userCurrent) return;
+    if (!userCurrent?.uid) return;
 
     // Lắng nghe realtime
     const unsubFrienRequest = onSnapshot(
@@ -40,46 +49,50 @@ const ContactScreen = () => {
         where('memberIds', 'array-contains', userCurrent.uid),
       ),
       snapshot => {
-        const data = snapshot.docs.map((doc: any) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const map: Record<string, 'pending_in' | 'pending_out'> = {};
 
-        setFriendRequests(data);
-      },
-      error => {
-        console.error('Error listening users:', error);
+        snapshot.docs.forEach((doc: any) => {
+          const data = doc.data();
+          if (data.status !== 'pending') return;
+
+          const otherId = data.from === userCurrent.uid ? data.to : data.from;
+
+          map[otherId] =
+            data.from === userCurrent.uid ? 'pending_out' : 'pending_in';
+        });
+
+        setFriendRequests(map);
       },
     );
 
-    // const unsubFriendShips = onSnapshot(
-    //   collection(db, `friendShips/${userCurrent.uid}/friends`),
-    //   snapshot => {
-    //     const data = snapshot.docChanges().map((change: any) => ({
-    //       id: change.doc.id,
-    //       ...change.doc.data(),
-    //     }));
-
-    //     setFriendShips(data);
-    //     console.log(data)
-    //   },
-    //   error => {
-    //     console.error('Error listening friendShips:', error);
-    //   },
-    // );
     const unsubFriendShips = onSnapshot(
       collection(db, `friendShips/${userCurrent.uid}/friends`),
       snapshot => {
-        const friends = snapshot.docs.map((doc: any) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        const map: Record<string, true> = {};
+        const users: UserModel[] = [];
 
-        setFriendShips(friends);
-        console.log('friends:', friends);
+        snapshot.docs.forEach((doc: any) => {
+          map[doc.id] = true;
+
+          users.push({
+            ...(doc.data() as UserModel),
+          });
+        });
+
+        setFriendShips(map);
+        setFriendList(users);
       },
-      error => {
-        console.error('Error listening friendShips:', error);
+    );
+
+    // 1️⃣ Mình chặn người khác
+    const unsubBlockedByMe = onSnapshot(
+      collection(db, `blocks/${userCurrent.uid}/blocked`),
+      snapshot => {
+        const map: Record<string, true> = {};
+        snapshot.docs.forEach((doc: any) => {
+          map[doc.id] = true;
+        });
+        setBlockedByMe(map);
       },
     );
 
@@ -87,8 +100,9 @@ const ContactScreen = () => {
     return () => {
       unsubFrienRequest();
       unsubFriendShips();
+      unsubBlockedByMe();
     };
-  }, [userCurrent]);
+  }, [userCurrent?.uid]);
 
   return (
     <SafeAreaView

@@ -1,5 +1,5 @@
 import { Profile2User } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -7,6 +7,7 @@ import {
   FriendItemComponent,
   RowComponent,
   SpaceComponent,
+  SpinnerComponent,
   TextComponent,
 } from '../../components';
 import { ActionModal } from '../../components/modals';
@@ -31,7 +32,6 @@ const ContactPrivate = () => {
     friend: null,
   });
 
-  console.log(friendShips)
   if (!user) return <ActivityLoadingComponent />;
   return (
     <View>
@@ -101,7 +101,7 @@ const ContactPrivate = () => {
           paddingBottom: insets.bottom + 80,
         }}
         showsVerticalScrollIndicator={false}
-        data={friendShips}
+        data={friends}
         renderItem={({ item }) => (
           <FriendItemComponent friend={item} setInfoModal={setInfoModal} />
         )}

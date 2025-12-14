@@ -1,38 +1,24 @@
 import { create } from 'zustand';
 import { UserModel } from '../models';
 
-interface FriendShipState {
-  friendShips: UserModel[];
-  loading: boolean;
-  error: string | null;
-  setFriendShips: (friendShips: UserModel[]) => void;
-  addFriendShip: (friendShip: UserModel) => void;
-  editFriendShip: (id: string, friendShip: UserModel) => void;
-  removeFriendShip: (id: string) => void;
-  clearFriendShips: () => void;
+interface FriendShipStore {
+  friendShips: Record<string, true>;
+  friendList: UserModel[];
+
+  setFriendShips: (map: Record<string, true>) => void;
+  setFriendList: (list: UserModel[]) => void;
+
+  clear: () => void;
 }
 
-const useFriendShipStore = create<FriendShipState>(set => ({
-  friendShips: [],
-  loading: false,
-  error: null,
+const useFriendShipStore = create<FriendShipStore>(set => ({
+  friendShips: {},
+  friendList: [],
 
-  setFriendShips: (friendShips: UserModel[]) => set({ friendShips }),
-  addFriendShip: (friendShip: UserModel) =>
-    set((state: any) => ({ friendShips: [...state.friendShips, friendShip] })),
-  editFriendShip: (id: string, friendShip: UserModel) =>
-    set((state: any) => {
-      const index = state.friendShips.findIndex((item: any) => item.id === id);
-      state.friendShips[index] = friendShip;
-      return { friendShips: [...state.friendShips] };
-    }),
-  removeFriendShip: (id: string) =>
-    set((state: any) => ({
-      friendShips: state.friendShips.filter(
-        (item: UserModel) => item.id !== id,
-      ),
-    })),
-  clearFriendShips: () => set({ friendShips: [] }),
+  setFriendShips: map => set({ friendShips: map }),
+  setFriendList: list => set({ friendList: list }),
+
+  clear: () => set({ friendShips: {}, friendList: [] }),
 }));
 
 export default useFriendShipStore;

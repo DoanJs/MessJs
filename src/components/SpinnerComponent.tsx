@@ -11,7 +11,7 @@ const SpinnerComponent = (props: Props) => {
     <Spinner
       visible={loading}
       textContent={'Đang xử lý...'}
-      textStyle={{ color: colors.background }}
+      textStyle={{ color: colors.background, zIndex: 1000 }}
       overlayColor={colors.spinner}
     />
   );

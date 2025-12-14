@@ -17,7 +17,7 @@ import { createThumbnail } from 'react-native-create-thumbnail';
 import RNFS from 'react-native-fs';
 import { Asset, launchImageLibrary } from 'react-native-image-picker';
 import { db, functions } from '../../firebase.config';
-import { MessageModel, UserModel } from '../models';
+import { MessageModel } from '../models';
 
 export const loadMessagesFromBatchIds = async (
   roomId: string,
@@ -71,6 +71,48 @@ export const getUploadUrl = async (
   ).data;
 
   return { uploadUrl, fileKey };
+};
+export const sendFriendRequest = async (to: string) => {
+  const callable = httpsCallable(functions, 'sendFriendRequest');
+
+  const { result }: any = (await callable({ to })).data;
+  return result;
+};
+export const cancelFriendRequest = async (pairId: string) => {
+  const callable = httpsCallable(functions, 'cancelFriendRequest');
+
+  const { result }: any = (await callable({ pairId })).data;
+  return result;
+};
+export const acceptFriendRequest = async (pairId: string) => {
+  const callable = httpsCallable(functions, 'acceptFriendRequest');
+
+  const { result }: any = (await callable({ pairId })).data;
+  return result;
+};
+export const declineFriendRequest = async (pairId: string) => {
+  const callable = httpsCallable(functions, 'declineFriendRequest');
+
+  const { result }: any = (await callable({ pairId })).data;
+  return result;
+};
+export const unfriend = async  (friendId: string) => {
+  const callable = httpsCallable(functions, 'unfriend');
+
+  const { result }: any = (await callable({ friendId })).data;
+  return result;
+};
+export const blockUser = async (targetId: string) => {
+  const callable = httpsCallable(functions, 'blockUser');
+
+  const { result }: any = (await callable({ targetId })).data;
+  return result;
+};
+export const unblockUser = async (targetId: string) => {
+  const callable = httpsCallable(functions, 'unblockUser');
+
+  const { result }: any = (await callable({ targetId })).data;
+  return result;
 };
 export const uploadBinaryToR2S3 = async (
   uploadUrl: string,

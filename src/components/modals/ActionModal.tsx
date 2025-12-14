@@ -1,24 +1,32 @@
 import {
-  deleteDoc,
-  doc,
-  serverTimestamp,
-  setDoc,
-  updateDoc,
-} from '@react-native-firebase/firestore';
-import {
   CloseCircle,
   TickCircle,
   UserAdd,
   UserMinus,
   UserRemove,
 } from 'iconsax-react-native';
-import React, { Fragment, ReactNode } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { Fragment, ReactNode, useState } from 'react';
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Modal from 'react-native-modal';
 import { RowComponent, SpaceComponent, TextComponent } from '..';
-import { auth, db } from '../../../firebase.config';
+import { auth } from '../../../firebase.config';
 import { DeniedSvg } from '../../assets/vector';
 import { colors } from '../../constants/colors';
+import {
+  acceptFriendRequest,
+  blockUser,
+  cancelFriendRequest,
+  declineFriendRequest,
+  sendFriendRequest,
+  unblockUser,
+  unfriend,
+} from '../../constants/functions';
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { UserModel } from '../../models';
@@ -39,24 +47,31 @@ export default function ActionModal(props: Props) {
   const { visible, onClose, infoModal, setInfoModal } = props;
   const userCurrent = auth.currentUser;
   const { friend, status, fromUser } = infoModal;
+  const [loading, setLoading] = useState(false);
 
   const showActions = () => {
-    let actions = [];
+    let actions: string[] = [];
 
     switch (status) {
-      case 'pending':
-        actions = fromUser
-          ? ['Hủy kết bạn', 'Chặn']
-          : ['Đồng ý', 'Từ chối', 'Chặn'];
+      case 'blocked_me':
+        actions = []; // ❌ không cho làm gì
+        // hoặc ['Báo cáo'] nếu app có
         break;
-      case 'denied':
-        actions = fromUser ? ['Bỏ chặn'] : ['Chặn'];
+
+      case 'blocked_by_me':
+        actions = ['Bỏ chặn'];
         break;
-      case 'accepted':
+        
+      case 'pending_in':
+        actions = ['Đồng ý', 'Từ chối', 'Chặn'];
+        break;
+
+      case 'pending_out':
+        actions = ['Hủy kết bạn', 'Chặn'];
+        break;
+
+      case 'friend':
         actions = ['Hủy bạn bè', 'Chặn'];
-        break;
-      case 'cancelled':
-        actions = ['Kết bạn', 'Chặn'];
         break;
 
       default:
@@ -111,6 +126,7 @@ export default function ActionModal(props: Props) {
           />
         );
         break;
+
       case 'Bỏ chặn':
         result = (
           <DeniedSvg
@@ -139,73 +155,114 @@ export default function ActionModal(props: Props) {
   const handleAction = async (type: string) => {
     if (!userCurrent || !friend) return;
 
-    const id = makeContactId(userCurrent.uid, friend.id);
+    setLoading(true);
+    try {
+      let result: string;
+      switch (type) {
+        case 'Kết bạn':
+          result = await sendFriendRequest(friend.id);
+          break;
+        case 'Hủy kết bạn':
+          result = await cancelFriendRequest(
+            makeContactId(userCurrent.uid, friend.id),
+          );
+          break;
+        case 'Hủy bạn bè':
+          result = await unfriend(friend.id);
+          break;
+        case 'Đồng ý':
+          result = await acceptFriendRequest(
+            makeContactId(userCurrent.uid, friend.id),
+          );
+          break;
+        case 'Từ chối':
+          result = await declineFriendRequest(
+            makeContactId(userCurrent.uid, friend.id),
+          );
+          break;
+        case 'Chặn':
+          result = await blockUser(friend.id);
+          break;
+        case 'Bỏ chặn':
+          result = await unblockUser(friend.id);
+          break;
 
-    if (!status) {
-      await setDoc(
-        doc(db, `friendRequests`, id),
-        {
-          id,
-          from: userCurrent.uid as string,
-          to: friend.id as string,
-          status:
-            type === 'Chặn'
-              ? 'denied'
-              : type === 'Kết bạn'
-              ? 'pending'
-              : 'cancelled',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          memberIds: [userCurrent.uid, friend.id],
-        },
-        { merge: true },
-      );
-    } else {
-      await updateDoc(doc(db, 'friendRequests', id), {
-        from: userCurrent.uid,
-        to: friend.id,
-        status:
-          type === 'Chặn'
-            ? 'denied'
-            : type === 'Kết bạn'
-            ? 'pending'
-            : type === 'Đồng ý'
-            ? 'accepted'
-            : 'cancelled',
-        updatedAt: serverTimestamp(),
-      });
-
-      if (type === 'Đồng ý') {
-        await setDoc(
-          doc(db, `friendShips/${userCurrent.uid}/friends`, friend.id),
-          {
-            id: friend.id,
-            displayName: friend.displayName,
-            photoURL: friend.photoURL,
-            createdAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
-        await setDoc(
-          doc(db, `friendShips/${friend.id}/friends`, userCurrent.uid),
-          {
-            id: userCurrent.uid,
-            displayName: userCurrent.displayName,
-            photoURL: userCurrent.photoURL,
-            createdAt: serverTimestamp(),
-          },
-          { merge: true },
-        );
+        default:
+          break;
       }
-      if (type === 'Hủy bạn bè') {
-        await deleteDoc(
-          doc(db, `friendShips/${userCurrent.uid}/friends`, friend.id),
-        );
-        await deleteDoc(
-          doc(db, `friendShips/${friend.id}/friends`, userCurrent.uid),
-        );
-      }
+      setLoading(false);
+    } catch (error) {
+      setLoading(false);
+      console.log(error);
     }
+
+    // const id = makeContactId(userCurrent.uid, friend.id);
+
+    // if (!status) {
+    //   await setDoc(
+    //     doc(db, `friendRequests`, id),
+    //     {
+    //       id,
+    //       from: userCurrent.uid as string,
+    //       to: friend.id as string,
+    //       status:
+    //         type === 'Chặn'
+    //           ? 'denied'
+    //           : type === 'Kết bạn'
+    //           ? 'pending'
+    //           : 'cancelled',
+    //       createdAt: serverTimestamp(),
+    //       updatedAt: serverTimestamp(),
+    //       memberIds: [userCurrent.uid, friend.id],
+    //     },
+    //     { merge: true },
+    //   );
+    // } else {
+    //   await updateDoc(doc(db, 'friendRequests', id), {
+    //     from: userCurrent.uid,
+    //     to: friend.id,
+    //     status:
+    //       type === 'Chặn'
+    //         ? 'denied'
+    //         : type === 'Kết bạn'
+    //         ? 'pending'
+    //         : type === 'Đồng ý'
+    //         ? 'accepted'
+    //         : 'cancelled',
+    //     updatedAt: serverTimestamp(),
+    //   });
+
+    //   if (type === 'Đồng ý') {
+    //     await setDoc(
+    //       doc(db, `friendShips/${userCurrent.uid}/friends`, friend.id),
+    //       {
+    //         id: friend.id,
+    //         displayName: friend.displayName,
+    //         photoURL: friend.photoURL,
+    //         createdAt: serverTimestamp(),
+    //       },
+    //       { merge: true },
+    //     );
+    //     await setDoc(
+    //       doc(db, `friendShips/${friend.id}/friends`, userCurrent.uid),
+    //       {
+    //         id: userCurrent.uid,
+    //         displayName: userCurrent.displayName,
+    //         photoURL: userCurrent.photoURL,
+    //         createdAt: serverTimestamp(),
+    //       },
+    //       { merge: true },
+    //     );
+    //   }
+    //   if (type === 'Hủy bạn bè') {
+    //     await deleteDoc(
+    //       doc(db, `friendShips/${userCurrent.uid}/friends`, friend.id),
+    //     );
+    //     await deleteDoc(
+    //       doc(db, `friendShips/${friend.id}/friends`, userCurrent.uid),
+    //     );
+    //   }
+    // }
 
     setInfoModal({ ...infoModal, visibleModal: false });
   };
@@ -225,16 +282,20 @@ export default function ActionModal(props: Props) {
           </TouchableOpacity>
         </RowComponent>
         <SpaceComponent height={16} />
-        {showActions().map((_, index) => (
-          <Fragment key={index}>
-            <RowComponent onPress={() => handleAction(_)}>
-              {showIconAction(_)}
-              <SpaceComponent width={16} />
-              <TextComponent text={_} />
-            </RowComponent>
-            <SpaceComponent height={16} />
-          </Fragment>
-        ))}
+        {loading ? (
+          <ActivityIndicator />
+        ) : (
+          showActions().map((_, index) => (
+            <Fragment key={index}>
+              <RowComponent onPress={() => handleAction(_)}>
+                {showIconAction(_)}
+                <SpaceComponent width={16} />
+                <TextComponent text={_} />
+              </RowComponent>
+              <SpaceComponent height={16} />
+            </Fragment>
+          ))
+        )}
       </View>
     </Modal>
   );
