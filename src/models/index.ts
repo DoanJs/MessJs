@@ -3,7 +3,6 @@ import { BatchModel } from './BatchModel';
 import { ChatRoomModel } from './ChatRoomModel';
 import { ContactModel } from './ContactModel';
 import { FriendRequestModel } from './FriendRequestModel';
-import { FriendShipModel } from './FriendShipModel';
 import { MemberModel } from './MemberModel';
 import { MessageModel } from './MessageModel';
 import { MsgForwardModel } from './MsgForwardModel';
@@ -16,7 +15,7 @@ export type {
   BadgeModel,
   BatchModel,
   ChatRoomModel,
-  ContactModel, FriendRequestModel, FriendShipModel, MemberModel,
+  ContactModel, FriendRequestModel, MemberModel,
   MessageModel,
   MsgForwardModel,
   MsgReplyModel,

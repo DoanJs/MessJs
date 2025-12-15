@@ -1,6 +1,7 @@
+import { useNavigation } from '@react-navigation/native';
 import { Profile2User } from 'iconsax-react-native';
-import React, { useState } from 'react';
-import { FlatList, RefreshControl, View } from 'react-native';
+import React from 'react';
+import { FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   MessageItemComponent,
@@ -12,30 +13,14 @@ import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
 import { useBadgeStore, useChatRoomStore } from '../../zustand';
-import { useNavigation } from '@react-navigation/native';
 
 const ContactGroup = () => {
   const navigation: any = useNavigation()
   const insets = useSafeAreaInsets();
-  const [refreshing, setRefreshing] = useState(false); // loading khi kéo xuống
   const { chatRooms } = useChatRoomStore();
   const { badges } = useBadgeStore();
   const chatGroups = chatRooms.filter(_ => _.type === 'group') ?? [];
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    try {
-      // if (userCurrent) {
-      //   getDocsData({
-      //     nameCollect: 'chatRooms',
-      //     condition: [where('memberIds', 'array-contains', userCurrent.uid)],
-      //     setData: setChatRooms,
-      //   });
-      // }
-    } finally {
-      setRefreshing(false);
-    }
-  };
 
   return (
     <View>
@@ -77,9 +62,6 @@ const ContactGroup = () => {
         contentContainerStyle={{
           paddingBottom: insets.bottom + 80,
         }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
         data={chatGroups}
         renderItem={({ item }) => (
           <MessageItemComponent chatRoom={item} count={badges[item.id]} />

@@ -19,7 +19,7 @@ import { makeContactId } from '../constants/makeContactId';
 import { sizes } from '../constants/sizes';
 import { useFriendState } from '../hooks/useFriendState';
 import { UserModel } from '../models';
-import { useBlockStore, useFriendShipStore, useUserStore } from '../zustand';
+import { useBlockStore, useUserStore } from '../zustand';
 
 interface Props {
   friend: UserModel;
@@ -31,7 +31,7 @@ const FriendItemComponent = (props: Props) => {
   const navigation: any = useNavigation();
   const { user } = useUserStore();
   const friendState = useFriendState(friend.id as string);
-  const setBlockedMe = useBlockStore(s => s.setBlockedMe);  
+  const setBlockedMe = useBlockStore(s => s.setBlockedMe);
 
   useEffect(() => {
     if (!user?.id || !friend.id) return;

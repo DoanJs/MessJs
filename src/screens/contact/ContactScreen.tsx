@@ -28,16 +28,13 @@ import ContactGroup from './ContactGroup';
 import ContactPrivate from './ContactPrivate';
 import { UserModel } from '../../models';
 
-const ContactScreen = () => {
+const ContactScreen = ({navigation}: any) => {
   const [type, setType] = useState('Bạn bè');
   const userCurrent = auth.currentUser;
   const setFriendRequests = useFriendRequestStore(s => s.setFriendRequests);
   const setFriendShips = useFriendShipStore(s => s.setFriendShips);
   const setFriendList = useFriendShipStore(s => s.setFriendList);
   const setBlockedByMe = useBlockStore(s => s.setBlockedByMe);
-  const friendShips = useFriendShipStore(s => s.friendShips);
-  const friendList = useFriendShipStore(s => s.friendList);
-  console.log(friendList);
 
   useEffect(() => {
     if (!userCurrent?.uid) return;
@@ -112,7 +109,7 @@ const ContactScreen = () => {
       <Container
         bg={colors.primaryLight}
         title={
-          <RowComponent styles={{ flex: 1 }} onPress={() => {}}>
+          <RowComponent styles={{ flex: 1 }} onPress={() => navigation.navigate('SearchScreen')}>
             <SearchNormal1 size={sizes.bigTitle} color={colors.background} />
             <SpaceComponent width={16} />
             <TextComponent text="Tìm kiếm" color={colors.background} />
@@ -123,7 +120,9 @@ const ContactScreen = () => {
             <UserAdd
               size={sizes.bigTitle}
               color={colors.background}
-              onPress={() => {}}
+              onPress={() => {
+                navigation.navigate('AddFriendScreen');
+              }}
               variant="Bold"
             />
           </RowComponent>

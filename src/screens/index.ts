@@ -3,19 +3,21 @@ import ForgotPasswordScreen from './auth/ForgotPasswordScreen';
 import Login from './auth/Login';
 import Register from './auth/Register';
 import ContactScreen from './contact/ContactScreen';
+import AddFriendScreen from './message/AddFriendScreen';
 import AddGroupScreen from './message/AddGroupScreen';
 import MessageDetailScreen from './message/MessageDetailScreen';
 import MessageScreen from './message/MessageScreen';
+import SearchScreen from './message/SearchScreen';
 import ProfileScreen from './profile/ProfileScreen';
 
 export {
-  AddGroupScreen,
-  AuthHomeScreen,
+  AddFriendScreen, AddGroupScreen, AuthHomeScreen,
   ContactScreen,
   ForgotPasswordScreen,
   Login,
   MessageDetailScreen,
   MessageScreen,
   ProfileScreen,
-  Register,
+  Register, SearchScreen
 };
+

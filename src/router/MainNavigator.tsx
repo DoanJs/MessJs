@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from '.';
-import { AddGroupScreen, MessageDetailScreen } from '../screens';
+import { AddFriendScreen, AddGroupScreen, MessageDetailScreen, SearchScreen } from '../screens';
 
 const MainNavigator = () => {
   const Stack = createNativeStackNavigator();
@@ -9,6 +9,8 @@ const MainNavigator = () => {
       <Stack.Screen name="Main" component={TabNavigator} />
       <Stack.Screen name="MessageDetailScreen" component={MessageDetailScreen} />
       <Stack.Screen name="AddGroupScreen" component={AddGroupScreen} />
+      <Stack.Screen name="AddFriendScreen" component={AddFriendScreen} />
+      <Stack.Screen name="SearchScreen" component={SearchScreen} />
     </Stack.Navigator>
   );
 };

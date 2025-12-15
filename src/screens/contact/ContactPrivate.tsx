@@ -7,24 +7,18 @@ import {
   FriendItemComponent,
   RowComponent,
   SpaceComponent,
-  SpinnerComponent,
-  TextComponent,
+  TextComponent
 } from '../../components';
 import { ActionModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
 import { sizes } from '../../constants/sizes';
-import { useFriendShipStore, useUsersStore, useUserStore } from '../../zustand';
+import { useFriendShipStore, useUserStore } from '../../zustand';
 
 const ContactPrivate = () => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
-  const { users } = useUsersStore();
   const [type, setType] = useState('Tất cả');
-  const [friends, setFriends] = useState(
-    users.filter(_ => _.email !== user?.email), //them field phai la friend, con chua la frien thi thoi
-  );
-  const { friendShips } = useFriendShipStore();
-
+  const friendList = useFriendShipStore(s => s.friendList);
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
@@ -68,7 +62,7 @@ const ContactPrivate = () => {
         {[
           {
             title: 'Tất cả',
-            quantity: friendShips.length,
+            quantity: friendList.length,
           },
           {
             title: 'Bạn mới',
@@ -101,7 +95,7 @@ const ContactPrivate = () => {
           paddingBottom: insets.bottom + 80,
         }}
         showsVerticalScrollIndicator={false}
-        data={friends}
+        data={friendList}
         renderItem={({ item }) => (
           <FriendItemComponent friend={item} setInfoModal={setInfoModal} />
         )}

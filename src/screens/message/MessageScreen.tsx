@@ -24,7 +24,7 @@ import { AddRoomModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
 import { q_chatRoomsWithMember } from '../../constants/firebase/query';
 import { sizes } from '../../constants/sizes';
-import { FriendShipModel, UserModel } from '../../models';
+import { UserModel } from '../../models';
 import {
   useBadgeStore,
   useChatRoomStore,
@@ -32,7 +32,7 @@ import {
   useUserStore,
 } from '../../zustand';
 
-const MessageScreen = () => {
+const MessageScreen = ({navigation}: any) => {
   const insets = useSafeAreaInsets();
   const userCurrent = auth.currentUser;
   const { setUser } = useUserStore();
@@ -40,7 +40,6 @@ const MessageScreen = () => {
   const [isVisibleAddRoom, setIsVisibleAddRoom] = useState(false);
   const { badges, setBadges } = useBadgeStore();
   const { chatRooms, setChatRooms } = useChatRoomStore();
-  const [friendShips, setFriendShips] = useState<FriendShipModel[]>([]);
 
   useEffect(() => {
     if (!userCurrent) return;
@@ -129,7 +128,7 @@ const MessageScreen = () => {
       <Container
         bg={colors.primaryLight}
         title={
-          <RowComponent styles={{ flex: 1 }} onPress={() => { }}>
+          <RowComponent styles={{ flex: 1 }} onPress={() => navigation.navigate('SearchScreen')}>
             <SearchNormal1 size={sizes.bigTitle} color={colors.background} />
             <SpaceComponent width={16} />
             <TextComponent text="Tìm kiếm" color={colors.background} />

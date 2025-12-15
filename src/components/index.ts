@@ -13,6 +13,7 @@ import InputComponent from './InputComponent';
 import KeyboardAwareScrollViewComponent from './KeyboardAwareScrollViewComponent';
 import MessageContentComponent from './MessageContentComponent';
 import MessageItemComponent from './MessageItemComponent';
+import ProfileItemComponent from './ProfileItemComponent';
 import RowComponent from './RowComponent';
 import SearchComponent from './SearchComponent';
 import SectionComponent from './SectionComponent';
@@ -36,7 +37,7 @@ export {
   GlobalPopover,
   InputComponent,
   KeyboardAwareScrollViewComponent,
-  MessageContentComponent,UserForwardComponent,
+  MessageContentComponent,UserForwardComponent,ProfileItemComponent,
   MessageItemComponent,
   RowComponent,
   SearchComponent,

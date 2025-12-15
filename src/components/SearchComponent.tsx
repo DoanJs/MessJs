@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { StyleProp, View, ViewStyle } from 'react-native';
 import { InputComponent } from '.';
-import { UserModel } from '../models';
+import { ChatRoomModel, UserModel } from '../models';
 // import {
 //   ChildrenModel,
 //   PlanModel,
@@ -45,10 +45,11 @@ export default function SearchComponent(props: Props) {
             user.email?.toLowerCase().includes(value.toLowerCase()),
         );
         break;
-      case 'searchPlan':
-        // items = (arrSource as PlanModel[]).filter(plan =>
-        //   plan.title.toLowerCase().includes(value.toLowerCase()),
-        // );
+      case 'searchScreen':
+        items = (arrSource).filter((_: any) =>
+          _.displayName?.toLowerCase().includes(value.toLowerCase()) ||
+          _.name?.toLowerCase().includes(value.toLowerCase())
+        );
         break;
       case 'searchSuggest':
         // items = (arrSource as SuggestModel[]).filter(suggest =>

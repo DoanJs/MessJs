@@ -36,7 +36,10 @@ export default function AddRoomModal(props: Props) {
         </RowComponent>
         <SpaceComponent height={16} />
 
-        <RowComponent onPress={() => {}}>
+        <RowComponent onPress={() => {
+            navigation.navigate('AddFriendScreen');
+            onClose();
+          }}>
           <UserAdd size={sizes.title} color={colors.textBold} variant="Bold" />
           <SpaceComponent width={16} />
           <TextComponent text="Thêm bạn" />
