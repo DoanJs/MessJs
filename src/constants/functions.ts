@@ -96,7 +96,7 @@ export const declineFriendRequest = async (pairId: string) => {
   const { result }: any = (await callable({ pairId })).data;
   return result;
 };
-export const unfriend = async  (friendId: string) => {
+export const unfriend = async (friendId: string) => {
   const callable = httpsCallable(functions, 'unfriend');
 
   const { result }: any = (await callable({ friendId })).data;
@@ -373,3 +373,12 @@ export function extractFileKey(signedUrl: string) {
   const url = new URL(signedUrl);
   return url.pathname.substring(1); // bỏ dấu "/" đầu
 }
+export const chunk = <T,>(arr: T[], size = 10): T[][] => {
+  const result: T[][] = [];
+
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
+  }
+
+  return result;
+};

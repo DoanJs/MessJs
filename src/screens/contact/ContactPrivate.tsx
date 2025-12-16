@@ -1,4 +1,3 @@
-import { Profile2User } from 'iconsax-react-native';
 import React, { useState } from 'react';
 import { FlatList, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,46 +10,29 @@ import {
 } from '../../components';
 import { ActionModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
-import { sizes } from '../../constants/sizes';
-import { useFriendShipStore, useUserStore } from '../../zustand';
+import { useFriendRequestStore, useFriendShipStore, usePendingRequestUsersStore, useUserStore } from '../../zustand';
 
 const ContactPrivate = () => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
   const [type, setType] = useState('Tất cả');
   const friendList = useFriendShipStore(s => s.friendList);
+  const friendRequests = useFriendRequestStore(s => s.friendRequests);
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
     fromUser: false,
     friend: null,
   });
+  const users = usePendingRequestUsersStore(s => s.users);
+  const pendingList = Object.keys(friendRequests).map(uid => ({
+    user: users[uid],
+    status: friendRequests[uid],
+  }));
 
   if (!user) return <ActivityLoadingComponent />;
   return (
     <View>
-      <RowComponent>
-        <View
-          style={{
-            backgroundColor: colors.primaryDark,
-            padding: 4,
-            borderRadius: 10,
-          }}
-        >
-          <Profile2User
-            variant="Bold"
-            size={sizes.title}
-            color={colors.textBold}
-          />
-        </View>
-        <SpaceComponent width={16} />
-        <TextComponent text="Lời mời kết bạn" />
-        <SpaceComponent width={6} />
-        <TextComponent text="(17)" color={colors.gray3} />
-      </RowComponent>
-
-      <SpaceComponent height={10} />
-
       <RowComponent
         justify="space-around"
         styles={{
@@ -65,8 +47,10 @@ const ContactPrivate = () => {
             quantity: friendList.length,
           },
           {
-            title: 'Bạn mới',
-            quantity: 0,
+            title: 'Lời mời kết bạn',
+            quantity: Object.values(friendRequests)
+              .filter(v => v === 'pending_in')
+              .length
           },
         ].map((_, index) => (
           <RowComponent
@@ -89,18 +73,34 @@ const ContactPrivate = () => {
       </RowComponent>
 
       <SpaceComponent height={10} />
-
-      <FlatList
-        contentContainerStyle={{
-          paddingBottom: insets.bottom + 80,
-        }}
-        showsVerticalScrollIndicator={false}
-        data={friendList}
-        renderItem={({ item }) => (
-          <FriendItemComponent friend={item} setInfoModal={setInfoModal} />
-        )}
-        ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
-      />
+      {
+        type === 'Tất cả' &&
+        <FlatList
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 80,
+          }}
+          showsVerticalScrollIndicator={false}
+          data={friendList}
+          renderItem={({ item }) => (
+            <FriendItemComponent friend={item} setInfoModal={setInfoModal} />
+          )}
+          ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
+        />
+      }
+      {
+        type === 'Lời mời kết bạn' &&
+        <FlatList
+          contentContainerStyle={{
+            paddingBottom: insets.bottom + 80,
+          }}
+          showsVerticalScrollIndicator={false}
+          data={pendingList.filter(s =>s.status === 'pending_in')}
+          renderItem={({ item }) => (
+            <FriendItemComponent friend={item.user} setInfoModal={setInfoModal} />
+          )}
+          ListFooterComponent={<View style={{ height: insets.bottom + 100 }} />}
+        />
+      }
 
       <ActionModal
         visible={infoModal.visibleModal}

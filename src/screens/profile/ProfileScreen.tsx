@@ -1,7 +1,9 @@
+import { signOut } from '@react-native-firebase/auth';
 import { ArrowRight2, Camera, Logout, UserSquare } from 'iconsax-react-native';
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, View } from 'react-native';
+import { Image, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { auth } from '../../../firebase.config';
 import {
   ActivityLoadingComponent,
   Container,
@@ -9,13 +11,11 @@ import {
   SectionComponent,
   SpaceComponent,
   SpinnerComponent,
-  TextComponent,
+  TextComponent
 } from '../../components';
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
-import { signOut } from '@react-native-firebase/auth';
-import { auth } from '../../../firebase.config';
 import { useUserStore } from '../../zustand';
 
 const ProfileScreen = () => {
@@ -101,7 +101,7 @@ const ProfileScreen = () => {
             paddingTop: 120,
           }}
         >
-          <RowComponent justify="space-between" onPress={() => {}}>
+          <RowComponent justify="space-between" onPress={() => { }}>
             <RowComponent>
               <UserSquare
                 size={sizes.title}
@@ -128,7 +128,10 @@ const ProfileScreen = () => {
             />
           </RowComponent>
         </SectionComponent>
+        
+        <SpinnerComponent loading={isLoading} />
       </Container>
+
     </SafeAreaView>
   );
 };

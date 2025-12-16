@@ -5,6 +5,7 @@ import { useChatStore } from './useChatStore';
 import useFriendRequestStore from './useFriendRequestStore';
 import useFriendShipStore from './useFriendShipStore';
 import useMembersStore from './useMemberStore';
+import usePendingRequestUsersStore from './usePendingRequestUsersStore';
 import useUsersStore from './usePlanStore';
 import useUserStore from './useUserStore';
 
@@ -17,5 +18,5 @@ export {
   useFriendShipStore,
   useMembersStore,
   useUsersStore,
-  useUserStore,
+  useUserStore,usePendingRequestUsersStore
 };

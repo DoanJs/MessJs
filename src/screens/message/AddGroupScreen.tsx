@@ -1,6 +1,6 @@
 import { doc, serverTimestamp, setDoc } from '@react-native-firebase/firestore';
 import { Bezier, TickCircle } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { FlatList, View } from 'react-native';
 import 'react-native-get-random-values';
 import {
@@ -22,17 +22,16 @@ import { createNewBatch } from '../../constants/checkNewBatch';
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { sizes } from '../../constants/sizes';
-import { useUsersStore, useUserStore } from '../../zustand';
 import { UserModel } from '../../models';
+import { useFriendShipStore, useUserStore } from '../../zustand';
 
 const AddGroupScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
-  const { users } = useUsersStore();
   const [nameGroup, setNameGroup] = useState('');
   const [memberGroup, setMemberGroup] = useState([user]);
-  const resourceFriends = users.filter(_ => _.email !== user?.email);
-  const [friends, setFriends] = useState<UserModel[]>(resourceFriends);
+  const friendList = useFriendShipStore(e => e.friendList)
+  const [friends, setFriends] = useState<UserModel[]>(friendList);
 
   const handleAddGroup = async () => {
     if (user) {
@@ -100,46 +99,6 @@ const AddGroupScreen = ({ navigation }: any) => {
         },
         { merge: true },
       );
-
-      // redirect tới chatRoom nếu đã tạo thành công
-      // navigation.reset({
-      //   index: 1,
-      //   routes: [
-      //     {
-      //       name: 'Main', // TabNavigator
-      //       state: {
-      //         routes: [
-      //           {
-      //             name: 'Message', // Tab "MessageNavigator"
-      //           },
-      //         ],
-      //       },
-      //     },
-      //     {
-      //       name: 'MessageDetailScreen',
-      //       params: {
-      //         type: 'group',
-      //         friend: null,
-      //         chatRoom: {
-      //           id,
-      //           type: 'group',
-      //           name: nameGroup ?? '',
-      //           avatarURL: '',
-      //           description: '',
-      //           createdBy: user.id,
-      //           createAt: serverTimestamp(),
-      //           lastMessageText: '',
-      //           lastMessageAt: serverTimestamp(),
-      //           lastSenderId: '',
-
-      //           lastBatchId: batchInfo.id,
-      //           memberCount: memberGroup.length,
-      //           memberIds: memberGroup.map((_: any) => _.id),
-      //         },
-      //       },
-      //     },
-      //   ],
-      // });
 
       navigation.replace('MessageDetailScreen', {
         type: 'group',
@@ -223,13 +182,16 @@ const AddGroupScreen = ({ navigation }: any) => {
             />
 
             <SearchComponent
-              arrSource={resourceFriends}
+              arrSource={friendList}
               onChange={val => setFriends(val)}
               placeholder="Tìm tên hoặc email"
               type="user"
             />
             <SpaceComponent height={16} />
           </View>
+
+          <SpaceComponent height={10} />
+          <TextComponent text={`Bạn bè (${friendList.length})`} />
 
           <FlatList
             showsVerticalScrollIndicator={false}

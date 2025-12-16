@@ -49,6 +49,7 @@ const ContactGroup = () => {
         <TextComponent text="Tạo nhóm" />
       </RowComponent>
 
+      <SpaceComponent height={10} />
       <RowComponent>
         <TextComponent
           text={`Nhóm đang tham gia (${chatGroups.length})`}

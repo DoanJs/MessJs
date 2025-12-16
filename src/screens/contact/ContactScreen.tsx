@@ -1,5 +1,6 @@
 import {
   collection,
+  getDocs,
   onSnapshot,
   query,
   where,
@@ -18,23 +19,26 @@ import {
 } from '../../components';
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
+import { chunk } from '../../constants/functions';
 import { sizes } from '../../constants/sizes';
+import { UserModel } from '../../models';
 import {
   useBlockStore,
   useFriendRequestStore,
   useFriendShipStore,
+  usePendingRequestUsersStore,
 } from '../../zustand';
 import ContactGroup from './ContactGroup';
 import ContactPrivate from './ContactPrivate';
-import { UserModel } from '../../models';
 
-const ContactScreen = ({navigation}: any) => {
+const ContactScreen = ({ navigation }: any) => {
   const [type, setType] = useState('Bạn bè');
   const userCurrent = auth.currentUser;
   const setFriendRequests = useFriendRequestStore(s => s.setFriendRequests);
   const setFriendShips = useFriendShipStore(s => s.setFriendShips);
   const setFriendList = useFriendShipStore(s => s.setFriendList);
   const setBlockedByMe = useBlockStore(s => s.setBlockedByMe);
+
 
   useEffect(() => {
     if (!userCurrent?.uid) return;
@@ -45,7 +49,7 @@ const ContactScreen = ({navigation}: any) => {
         collection(db, 'friendRequests'),
         where('memberIds', 'array-contains', userCurrent.uid),
       ),
-      snapshot => {
+      async snapshot => {
         const map: Record<string, 'pending_in' | 'pending_out'> = {};
 
         snapshot.docs.forEach((doc: any) => {
@@ -59,6 +63,8 @@ const ContactScreen = ({navigation}: any) => {
         });
 
         setFriendRequests(map);
+        // ✅ 2. Sync users song song
+        await syncPendingRequestUsers(map);
       },
     );
 
@@ -100,6 +106,40 @@ const ContactScreen = ({navigation}: any) => {
       unsubBlockedByMe();
     };
   }, [userCurrent?.uid]);
+
+  const syncPendingRequestUsers = async (
+    map: Record<string, 'pending_in' | 'pending_out'>,
+  ) => {
+    const ids = Object.keys(map);
+
+    // Không còn pending → clear users
+    if (!ids.length) {
+      usePendingRequestUsersStore.getState().clear();
+      return;
+    }
+
+    const chunks = chunk(ids, 10);
+    const users: Record<string, UserModel> = {};
+
+    for (const group of chunks) {
+      const q = query(
+        collection(db, 'users'),
+        where('id', 'in', group),
+      );
+
+      const snap = await getDocs(q);
+
+      snap.docs.forEach((doc: any) => {
+        const user = doc.data() as UserModel;
+        users[user.id] = user;
+      });
+    }
+
+    usePendingRequestUsersStore
+      .getState()
+      .setUsers(users);
+  };
+
 
   return (
     <SafeAreaView
