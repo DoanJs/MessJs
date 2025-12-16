@@ -1,11 +1,11 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import { StyleProp, Text, TextStyle } from 'react-native';
 import { colors } from '../constants/colors';
 import { sizes } from '../constants/sizes';
 import { fontFamillies } from '../constants/fontFamilies';
 
 interface Props {
-  text: string;
+  text: string | ReactNode;
   size?: number;
   font?: string;
   flex?: number;

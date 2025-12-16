@@ -1,7 +1,7 @@
 import { doc, onSnapshot } from '@react-native-firebase/firestore';
 import moment from 'moment';
 import React, { ReactNode, useEffect, useRef, useState } from 'react';
-import { Image, Pressable, TouchableOpacity, View } from 'react-native';
+import { Image, Pressable, Text, TouchableOpacity, View } from 'react-native';
 import {
   AudioPlayerComponent,
   AvatarComponent,
@@ -13,7 +13,7 @@ import {
 import { db } from '../../firebase.config';
 import { colors } from '../constants/colors';
 import { convertInfoUserFromID } from '../constants/convertData';
-import { handleReaction } from '../constants/functions';
+import { handleReaction, highlightText } from '../constants/functions';
 import { formatMessageBlockTime, toMs } from '../constants/handleTimeData';
 import { sizes } from '../constants/sizes';
 import { MessageModel, UserModel } from '../models';
@@ -34,6 +34,7 @@ interface Props {
   type: string;
   members: UserModel[];
   onLongPress: ({ msg, rect }: any) => void;
+  keyword?: string;
 }
 
 const MessageContentComponent = React.memo((props: Props) => {
@@ -52,6 +53,7 @@ const MessageContentComponent = React.memo((props: Props) => {
     type,
     members,
     onLongPress,
+    keyword,
   } = props;
   const [reactionCounts, setReactionCounts] = useState<{
     [key: string]: number;
@@ -82,13 +84,33 @@ const MessageContentComponent = React.memo((props: Props) => {
     };
   }, [chatRoomId, batchId, msg.id, user?.id]);
 
+  
+
   const showContent = () => {
     let result: ReactNode;
     switch (msg.type) {
       case 'text':
         result = (
           <TextComponent
-            text={msg.text}
+            text={highlightText(msg.text, keyword ? keyword : '').map(
+              (part, index) => (
+                <Text
+                  key={index}
+                  style={
+                    part.highlight
+                      ? {
+                          backgroundColor: '#FFE066',
+                          color: '#000',
+                          fontWeight: '600',
+                        }
+                      : undefined
+                  }
+                >
+                  {part.text}
+                </Text>
+              ),
+            )}
+            // text={msg.text}
             styles={{
               borderLeftWidth: isForwarded ? 2 : undefined,
               borderLeftColor: isForwarded
@@ -231,14 +253,16 @@ const MessageContentComponent = React.memo((props: Props) => {
               }}
             >
               <TextComponent
-                text={`${msg.senderId === user?.id 
-                  ?  user?.id === msg.replyTo.senderId 
-                    ? 'Bạn đã trả lời chính mình'
-                    : 'Bạn đã trả lời tin nhắn của ' +
-                      convertInfoUserFromID(user?.id as string, users)
-                        ?.displayName
-                  : convertInfoUserFromID(user?.id as string, users)
-                        ?.displayName + ' đã trả lời tin nhắn'}`}
+                text={`${
+                  msg.senderId === user?.id
+                    ? user?.id === msg.replyTo.senderId
+                      ? 'Bạn đã trả lời chính mình'
+                      : 'Bạn đã trả lời tin nhắn của ' +
+                        convertInfoUserFromID(user?.id as string, users)
+                          ?.displayName
+                    : convertInfoUserFromID(user?.id as string, users)
+                        ?.displayName + ' đã trả lời tin nhắn'
+                }`}
                 color={colors.primaryLight}
                 styles={{ fontStyle: 'italic' }}
               />

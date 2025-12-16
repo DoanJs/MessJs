@@ -373,7 +373,7 @@ export function extractFileKey(signedUrl: string) {
   const url = new URL(signedUrl);
   return url.pathname.substring(1); // bỏ dấu "/" đầu
 }
-export const chunk = <T,>(arr: T[], size = 10): T[][] => {
+export const chunk = <T>(arr: T[], size = 10): T[][] => {
   const result: T[][] = [];
 
   for (let i = 0; i < arr.length; i += size) {
@@ -381,4 +381,23 @@ export const chunk = <T,>(arr: T[], size = 10): T[][] => {
   }
 
   return result;
+};
+export const highlightText = (text: string, keyword: string) => {
+  if (!keyword) return [{ text, highlight: false }];
+
+  const regex = new RegExp(`(${keyword})`, 'gi');
+  const parts = text.split(regex);
+
+  return parts.map(part => ({
+    text: part,
+    highlight: part.toLowerCase() === keyword.toLowerCase(),
+  }));
+};
+export const countKeywordInText = (text: string, keyword: string) => {
+  if (!keyword) return 0;
+
+  const regex = new RegExp(keyword, 'gi');
+  const matches = text.match(regex);
+
+  return matches ? matches.length : 0;
 };

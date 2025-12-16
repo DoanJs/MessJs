@@ -16,16 +16,18 @@ const GlobalPopover = ({
   visible,
   rect,
   message,
+  isSearch,
   onClose,
   onDelete,
   onReply,
   onReact,
   onEmoji,
-  onRecall
+  onRecall,
 }: any) => {
   const userCurrent = auth.currentUser;
   const [value, setValue] = useState<string | null>('');
   const [myReactions, setMyReactions] = useState<any[]>([]);
+
 
   useEffect(() => {
     if (!message) return;
@@ -113,13 +115,15 @@ const GlobalPopover = ({
       </RowComponent>
       <SpaceComponent height={10} />
       <RowComponent justify="space-around">
-        <TouchableOpacity onPress={() => onReply(message)}>
-          <ReplyMsg
-            fill={colors.textBold}
-            width={sizes.extraTitle}
-            height={sizes.extraTitle}
-          />
-        </TouchableOpacity>
+        {!isSearch && (
+          <TouchableOpacity onPress={() => onReply(message)}>
+            <ReplyMsg
+              fill={colors.textBold}
+              width={sizes.extraTitle}
+              height={sizes.extraTitle}
+            />
+          </TouchableOpacity>
+        )}
 
         <TouchableOpacity onPress={() => onReact(message)}>
           <ForwardMsg
@@ -128,12 +132,15 @@ const GlobalPopover = ({
             height={sizes.smallHeader}
           />
         </TouchableOpacity>
-        {
-          userCurrent?.uid === message?.senderId &&
+        {userCurrent?.uid === message?.senderId && (
           <TouchableOpacity onPress={() => onRecall(message)}>
-            <Refresh2 size={sizes.extraTitle} color={colors.blue} variant="Bold" />
+            <Refresh2
+              size={sizes.extraTitle}
+              color={colors.blue}
+              variant="Bold"
+            />
           </TouchableOpacity>
-        }
+        )}
         <TouchableOpacity onPress={() => onDelete(message)}>
           <Trash size={sizes.extraTitle} color={colors.red} variant="Bold" />
         </TouchableOpacity>

@@ -11,10 +11,7 @@ import {
   setDoc,
   updateDoc,
 } from '@react-native-firebase/firestore';
-import {
-  CloseSquare,
-  SearchNormal1
-} from 'iconsax-react-native';
+import { CloseSquare, SearchNormal1 } from 'iconsax-react-native';
 import React, {
   useCallback,
   useEffect,
@@ -28,6 +25,7 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
+  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -47,7 +45,7 @@ import {
   MessageContentComponent,
   RowComponent,
   SectionComponent,
-  TextComponent
+  TextComponent,
 } from '../../components';
 import { ForwardUserModal } from '../../components/modals';
 import {
@@ -62,12 +60,13 @@ import {
   q_readStatus,
 } from '../../constants/firebase/query';
 import {
+  countKeywordInText,
   extractFileKey,
   handleAddEmoji,
   handleDeleteMsg,
   handleRecallMsg,
   loadMessagesFromBatchIds,
-  preloadSignedUrls
+  preloadSignedUrls,
 } from '../../constants/functions';
 import {
   delay,
@@ -75,7 +74,6 @@ import {
   shouldShowBlockTime,
   shouldShowSmallTime,
 } from '../../constants/handleTimeData';
-import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
@@ -86,7 +84,7 @@ const SearchMsgScreen = ({ route }: any) => {
   const { users } = useUsersStore();
   const { type, friend, chatRoom } = route.params;
   const [members, setMembers] = useState(route.params.members);
-  const [value, setValue] = useState('');
+  const [keyword, setKeyword] = useState('');
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const { messagesByRoom, pendingMessages } = useChatStore();
   const [isAtBottom, setIsAtBottom] = useState(true);
@@ -100,9 +98,7 @@ const SearchMsgScreen = ({ route }: any) => {
     ...(pendingMessages[chatRoom.id] || []),
   ];
   const flatListRef = useRef<FlatList>(null);
-  const {
-    setMessagesForRoom,
-  } = useChatStore.getState();
+  const { setMessagesForRoom } = useChatStore.getState();
   const [readStatus, setReadStatus] = useState<Record<string, ReadStatusModel>>(
     {},
   );
@@ -116,13 +112,33 @@ const SearchMsgScreen = ({ route }: any) => {
     message: null,
   });
   const [userMessageState, setUserMessageState] = useState<any>();
-  const [showPicker, setShowPicker] = useState(false);
-  const [msgReply, setMsgReply] = useState<MsgReplyModel | null>(null);
+  // const [showPicker, setShowPicker] = useState(false);
+  // const [msgReply, setMsgReply] = useState<MsgReplyModel | null>(null);
   const [msgForward, setMsgForward] = useState<any>(null);
   const [visibleForwardUser, setVisibleForwardUser] = useState(false);
+  const [messageMatchCount, setMessageMatchCount] = useState(0);
+  const [totalMessageMatch, setTotalMessageMatch] = useState(0);
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
+
+  useEffect(() => {
+    if (!keyword) return;
+    const messageText =
+      messagesByRoom[chatRoom.id].filter(m => !m.deleted) ?? [];
+
+    const matchedMessages = messageText.filter(m =>
+      m.text.toLowerCase().includes(keyword.toLowerCase()),
+    );
+
+    const msgCount = matchedMessages.length;
+    const totalMatchCount = messageText.reduce((total, m) => {
+      return total + countKeywordInText(m.text, keyword);
+    }, 0);
+
+    setMessageMatchCount(msgCount);
+    setTotalMessageMatch(totalMatchCount);
+  }, [keyword]);
 
   const onLongPressMessage = ({ msg, rect }: any) => {
     setPopover({ visible: true, rect, message: msg });
@@ -261,6 +277,7 @@ const SearchMsgScreen = ({ route }: any) => {
         chatRoomId={chatRoom.id}
         type={chatRoom.type}
         onLongPress={onLongPressMessage}
+        keyword={keyword}
       />
     ),
     [lastSentByUser, readersByMessageId, members, chatRoom.type],
@@ -690,11 +707,6 @@ const SearchMsgScreen = ({ route }: any) => {
   // Image and Video
   const openViewer = async (messageId: string) => {
     const imageMessages = messages.filter(m => m.type === 'image');
-    // const keys = imageMessages.map(_ => _.mediaURL);
-    // const promiseItems = imageMessages.map(
-    //   async _ => await getSignedUrl(_.mediaURL),
-    // );
-    // const uris = await Promise.all(promiseItems);
     const keys = imageMessages.map(_ => _.id);
     const uris = imageMessages.map(_ => _.mediaURL);
     const allImages = uris.map(m => ({ uri: m }));
@@ -724,15 +736,15 @@ const SearchMsgScreen = ({ route }: any) => {
                 backgroundColor: colors.background,
                 paddingHorizontal: 26,
                 borderRadius: 5,
-                flex: 1
+                flex: 1,
               }}
               allowClear
               prefix={<SearchNormal1 color={colors.text} size={26} />}
               placeholder="Tìm tin nhắn văn bản"
-              placeholderTextColor={colors.gray}
+              placeholderTextColor={colors.gray3}
               color={colors.background}
-              value={'email'}
-              onChangeText={() => { }}
+              value={keyword}
+              onChangeText={setKeyword}
             />
           }
         >
@@ -791,44 +803,22 @@ const SearchMsgScreen = ({ route }: any) => {
             )}
           </SectionComponent>
 
-          {msgReply && (
-            <SectionComponent
-              styles={{
-                padding: 10,
-                backgroundColor: colors.gray,
-              }}
-            >
-              <RowComponent
-                justify="space-between"
-                styles={{ alignItems: 'flex-start' }}
-              >
-                <View
-                  style={{
-                    width: '80%',
-                  }}
-                >
-                  <TextComponent
-                    text={`Đang trả lời ${msgReply.senderId === user?.id
-                      ? 'chính bạn'
-                      : convertInfoUserFromID(msgReply.senderId, users)
-                        ?.displayName
-                      }`}
-                  />
-                  <TextComponent
-                    numberOfLine={1}
-                    text={msgReply.text}
-                    color={colors.gray3}
-                  />
-                </View>
-                <CloseSquare
-                  onPress={() => setMsgReply(null)}
-                  size={sizes.extraTitle}
-                  color={colors.textBold}
-                  variant="Bold"
-                />
-              </RowComponent>
-            </SectionComponent>
-          )}
+          <SectionComponent
+            styles={{
+              padding: 10,
+            }}
+          >
+            {keyword !== '' && (
+              <TextComponent
+                text={`Tìm thấy ${messageMatchCount}/${totalMessageMatch} tin nhắn trùng khớp`}
+                color={colors.background}
+                textAlign="center"
+                styles={{
+                  fontStyle: 'italic',
+                }}
+              />
+            )}
+          </SectionComponent>
 
           <ImageViewing
             imageIndex={imageIndex}
@@ -839,6 +829,7 @@ const SearchMsgScreen = ({ route }: any) => {
           />
           <GlobalPopover
             {...popover}
+            isSearch={true}
             onClose={closePopover}
             onDelete={(message: MessageModel) =>
               handleDeleteMsg({
@@ -848,21 +839,11 @@ const SearchMsgScreen = ({ route }: any) => {
                 closePopover,
               })
             }
-            onReply={(message: MessageModel) => {
-              setMsgReply({
-                messageId: message.id,
-                senderId: message.senderId,
-                type: message.type,
-                text:
-                  message.type === 'text' ? message.text : `[${message.type}]`,
-              });
-              closePopover();
-            }}
+            onReply={undefined}
             onReact={(message: MessageModel) => {
-              // setTimeout(() => setVisibleForwardUser(true), 1000);
-              setVisibleForwardUser(true)
+              setVisibleForwardUser(true);
               setMsgForward(message);
-              setTimeout(() => closePopover(), 1000)
+              setTimeout(() => closePopover(), 1000);
             }}
             onRecall={(message: MessageModel) =>
               handleRecallMsg({
@@ -891,14 +872,14 @@ const SearchMsgScreen = ({ route }: any) => {
         </Container>
       </KeyboardAvoidingView>
 
-      {showPicker && (
+      {/* {showPicker && (
         <EmojiSelector
           onEmojiSelected={emoji => {
             setValue(prev => prev + emoji);
             setShowPicker(false);
           }}
         />
-      )}
+      )} */}
 
       <ForwardUserModal
         visible={visibleForwardUser}
@@ -913,7 +894,6 @@ const SearchMsgScreen = ({ route }: any) => {
           });
         }}
       />
-
     </SafeAreaView>
   );
 };

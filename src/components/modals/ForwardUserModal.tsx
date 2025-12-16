@@ -25,7 +25,7 @@ const ForwardUserModal = (props: Props) => {
   const userCurrent = auth.currentUser;
 
   useEffect(() => {
-    if (!userCurrent) return;
+    if (!userCurrent?.uid) return;
 
     let isMounted = true; // flag để cleanup
 
@@ -87,7 +87,7 @@ const ForwardUserModal = (props: Props) => {
     return () => {
       isMounted = false;
     };
-  }, [userCurrent]);
+  }, [userCurrent?.uid]);
 
   return (
     <Modal
