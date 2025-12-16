@@ -12,16 +12,8 @@ import {
   updateDoc,
 } from '@react-native-firebase/firestore';
 import {
-  Call,
   CloseSquare,
-  EmojiNormal,
-  Image,
-  Microphone2,
-  SearchNormal1,
-  Send2,
-  Setting2,
-  Trash,
-  Video,
+  SearchNormal1
 } from 'iconsax-react-native';
 import React, {
   useCallback,
@@ -39,12 +31,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { EmojiPopup } from 'react-native-emoji-popup';
 import EmojiSelector from 'react-native-emoji-selector';
 import 'react-native-get-random-values';
-import { Asset } from 'react-native-image-picker';
 import ImageViewing from 'react-native-image-viewing';
-import Sound, { RecordBackType } from 'react-native-nitro-sound';
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -58,8 +47,7 @@ import {
   MessageContentComponent,
   RowComponent,
   SectionComponent,
-  SpaceComponent,
-  TextComponent,
+  TextComponent
 } from '../../components';
 import { ForwardUserModal } from '../../components/modals';
 import {
@@ -73,21 +61,13 @@ import {
   q_messagesASC,
   q_readStatus,
 } from '../../constants/firebase/query';
-import { fontFamillies } from '../../constants/fontFamilies';
 import {
-  compress,
-  createVideoThumbnail,
   extractFileKey,
-  getUploadUrl,
   handleAddEmoji,
   handleDeleteMsg,
   handleRecallMsg,
   loadMessagesFromBatchIds,
-  mimeToExt,
-  pickImage,
-  preloadSignedUrls,
-  requestAudioPermission,
-  uploadBinaryToR2S3,
+  preloadSignedUrls
 } from '../../constants/functions';
 import {
   delay,
@@ -95,13 +75,12 @@ import {
   shouldShowBlockTime,
   shouldShowSmallTime,
 } from '../../constants/handleTimeData';
-import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
 import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
 
-const MessageDetailScreen = ({ route, navigation }: any) => {
+const SearchMsgScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
   const { users } = useUsersStore();
@@ -116,17 +95,12 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerImages, setViewerImages] = useState<any>([]);
   const [imageIndex, setImageIndex] = useState(0);
-  const [isRecord, setIsRecord] = useState(false);
-  const [duration, setDuration] = useState(0);
   const messages = [
     ...(messagesByRoom[chatRoom.id] || []),
     ...(pendingMessages[chatRoom.id] || []),
   ];
   const flatListRef = useRef<FlatList>(null);
   const {
-    addPendingMessage,
-    updatePendingStatus,
-    removePendingMessage,
     setMessagesForRoom,
   } = useChatStore.getState();
   const [readStatus, setReadStatus] = useState<Record<string, ReadStatusModel>>(
@@ -472,263 +446,6 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     }, 0);
     setLoadedCount(prev => prev + next.length);
   };
-  const handleSendMessage = async ({
-    typeMsg = 'text',
-    key,
-    messId,
-    localURI = '',
-    asset,
-    thumbnaiKey,
-  }: {
-    typeMsg?: string;
-    key?: string;
-    messId?: string;
-    localURI?: string;
-    asset?: Asset;
-    thumbnaiKey?: string;
-  }) => {
-    if (user) {
-      const messageId = messId ?? uuidv4();
-      // ------------------------------------
-      let chatRoomId = '';
-
-      if (type === 'private' && friend) {
-        chatRoomId = makeContactId(user.id as string, friend.id);
-      } else {
-        chatRoomId = chatRoom.id;
-      }
-
-      const text = typeMsg === 'text' ? value : '';
-      const mediaURL =
-        typeMsg === 'image' || typeMsg == 'video' || typeMsg == 'audio'
-          ? (key as string)
-          : '';
-      const thumbKey = typeMsg === 'video' ? (thumbnaiKey as string) : '';
-
-      // Thêm tin nhắn ở local
-      if (!['image', 'video', 'audio'].includes(typeMsg)) {
-        addPendingMessage(chatRoomId, {
-          id: messageId,
-          senderId: user.id,
-          type: 'text',
-          text,
-          mediaURL: '',
-          localURL: '',
-          batchId: '',
-          reactionCounts: {},
-          deleted: false,
-          deletedAt: null,
-          deletedBy: null,
-
-          replyTo: msgReply,
-          forwardedFrom: msgForward,
-
-          thumbKey: '',
-          duration: 0,
-          height: 0,
-          width: 0,
-
-          createAt: serverTimestamp(),
-          status: 'pending',
-        });
-      }
-      // Xử lý phía firebase
-      try {
-        const docSnap = await getDoc(doc(db, 'chatRooms', chatRoomId));
-
-        if (docSnap.exists()) {
-          const docSnapBatch = await getDoc(
-            doc(
-              db,
-              `chatRooms/${chatRoomId}/batches`,
-              docSnap.data()?.lastBatchId,
-            ),
-          );
-          let batchInfo = {
-            id: docSnapBatch.id,
-            messageCount: docSnapBatch.data()?.messageCount,
-          };
-
-          //check xem batch nay qua ngay moi hoac day chua
-          if (shouldCreateNewBatch(batchInfo)) {
-            // Tạo batchInfo (chứa batchId) tiếp theo
-            batchInfo = createNewBatch(batchInfo);
-            // Tạo batch mới
-            await setDoc(
-              doc(db, `chatRooms/${chatRoomId}/batches`, batchInfo.id),
-              {
-                id: batchInfo.id,
-                messageCount: 0,
-                preBatchId: docSnapBatch.id || null,
-                nextBatchId: null,
-              },
-              { merge: true },
-            );
-            // update lại nextBatchId cho batch cũ
-            await updateDoc(
-              doc(db, `chatRooms/${chatRoomId}/batches`, docSnapBatch.id),
-              {
-                nextBatchId: batchInfo.id,
-              },
-            );
-          }
-
-          // Thêm tin nhắn vào subCollection messages
-          await setDoc(
-            doc(
-              db,
-              `chatRooms/${chatRoomId}/batches/${batchInfo.id}/messages`,
-              messageId,
-            ),
-            {
-              senderId: user.id,
-              type: typeMsg,
-              text,
-              localURL: '',
-              mediaURL,
-              batchId: batchInfo.id,
-              reactionCounts: {},
-              deleted: false,
-              deletedAt: null,
-              deletedBy: null,
-              replyTo: msgReply,
-              forwardedFrom: msgForward,
-
-              thumbKey,
-              duration: asset ? (asset.duration as number) : 0,
-              height: asset ? (asset.height as number) : 0,
-              width: asset ? (asset.width as number) : 0,
-
-              status: 'sent',
-              createAt: serverTimestamp(),
-            },
-            { merge: true },
-          );
-
-          // Cập nhật trạng thái
-          updatePendingStatus(chatRoomId, messageId, 'sent');
-          // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-          removePendingMessage(chatRoomId, messageId);
-        } else {
-          const batchInfo = createNewBatch(null);
-
-          await setDoc(
-            doc(db, 'chatRooms', chatRoomId),
-            {
-              type: 'private',
-              name: '',
-              avatarURL: '',
-              description: '',
-              createdBy: user.id,
-              createAt: serverTimestamp(),
-              lastMessageId: messageId,
-              lastMessageText: value,
-              lastMessageAt: serverTimestamp(),
-              lastSenderId: user.id,
-
-              lastBatchId: batchInfo.id,
-              memberCount: 2,
-              memberIds: [user.id, friend.id],
-            },
-            { merge: true },
-          );
-
-          // Tạo members subcollection cho batch/id
-          const members = [
-            {
-              id: user.id,
-              role: 'admin',
-              joinedAt: serverTimestamp(),
-              nickName: user.displayName,
-              photoURL: user.photoURL,
-            },
-            {
-              id: friend?.id,
-              role: 'member',
-              joinedAt: serverTimestamp(),
-              nickName: friend?.displayName,
-              photoURL: friend?.photoURL,
-            },
-          ];
-
-          const promiseMember = members.map(_ => {
-            setDoc(doc(db, `chatRooms/${chatRoomId}/members`, _.id), _, {
-              merge: true,
-            });
-            // Thêm readStatus subcollection cho chatRoom
-            setDoc(
-              doc(db, `chatRooms/${chatRoomId}/readStatus`, _.id),
-              {
-                lastReadMessageId: _.id === user.id ? messageId : null,
-                lastReadAt: _.id === user.id ? serverTimestamp() : null,
-              },
-              {
-                merge: true,
-              },
-            );
-            // // Thêm unreadCounts subcollection cho chatRoom bằng CF rồi
-          });
-          await Promise.all(promiseMember);
-
-          // Tạo batch đầu tiên
-          await setDoc(
-            doc(db, `chatRooms/${chatRoomId}/batches`, batchInfo.id),
-            {
-              id: batchInfo.id,
-              messageCount: 0,
-              preBatchId: null,
-              nextBatchId: null,
-            },
-            { merge: true },
-          );
-
-          // Tạo messages subcollection cho batch/id
-          await setDoc(
-            doc(
-              db,
-              `chatRooms/${chatRoomId}/batches/${batchInfo.id}/messages`,
-              messageId,
-            ),
-            {
-              senderId: user?.id,
-              type: typeMsg,
-              text,
-              localURL: '',
-              mediaURL,
-              batchId: batchInfo.id,
-              reactionCounts: {},
-              deleted: false,
-              deletedAt: null,
-              deletedBy: null,
-              replyTo: msgReply,
-              forwardedFrom: msgForward,
-
-              thumbKey,
-              duration: asset ? (asset.duration as number) : 0,
-              height: asset ? (asset.height as number) : 0,
-              width: asset ? (asset.width as number) : 0,
-
-              status: 'sent',
-              createAt: serverTimestamp(),
-            },
-            { merge: true },
-          );
-
-          // Cập nhật trạng thái
-          updatePendingStatus(chatRoomId, messageId, 'sent');
-          // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-          removePendingMessage(chatRoomId, messageId);
-        }
-      } catch (error) {
-        updatePendingStatus(chatRoomId, messageId, 'failed');
-        console.log(error);
-      }
-      setValue('');
-      setMsgReply(null);
-      // ⬇️ Sau khi gửi xong, cuộn xuống dưới cùng
-      flatListRef.current?.scrollToEnd({ animated: true });
-    }
-  };
   const handleForwardMsg = async ({
     chatRoomId,
     friend,
@@ -971,99 +688,6 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   };
 
   // Image and Video
-
-  const handleOpenImage = async () => {
-    const picked: any = await pickImage();
-    if (!picked) return;
-
-    try {
-      await Promise.all(
-        picked.map(async (asset: any) => {
-          const messId = uuidv4();
-          const ext = mimeToExt(asset.type);
-
-          let typeMsg = 'image';
-          if (asset.type.startsWith('video/')) typeMsg = 'video';
-          if (asset.type.startsWith('audio/')) typeMsg = 'audio';
-
-          let chatRoomId = '';
-
-          if (type === 'private' && friend) {
-            chatRoomId = makeContactId(user?.id as string, friend.id);
-          } else {
-            chatRoomId = chatRoom.id;
-          }
-
-          addPendingMessage(chatRoomId, {
-            id: messId,
-            senderId: user?.id as string,
-            type: typeMsg,
-            text: '',
-            mediaURL: '',
-            localURL: asset.uri,
-            batchId: '',
-            reactionCounts: {},
-            deleted: false,
-            deletedAt: null,
-            deletedBy: null,
-            replyTo: msgReply,
-            forwardedFrom: msgForward,
-
-            thumbKey: '',
-            duration:
-              asset && typeMsg === 'video' ? (asset.duration as number) : 0,
-            height: asset && typeMsg === 'video' ? (asset.height as number) : 0,
-            width: asset && typeMsg === 'video' ? (asset.width as number) : 0,
-
-            createAt: serverTimestamp(),
-            status: 'pending',
-          });
-
-          flatListRef.current?.scrollToEnd({ animated: true });
-
-          let isCompressUri: string = asset.uri;
-          let thumbKey: string = '';
-
-          if (typeMsg === 'video') {
-            isCompressUri = await compress(asset.uri);
-            const thumb: any = await createVideoThumbnail(asset);
-
-            const extThumb = mimeToExt(thumb.mime);
-            const { fileKey: thumbFileKey, uploadUrl: thumbUploadUrl } =
-              await getUploadUrl(
-                extThumb,
-                thumb.mime,
-                true,
-                chatRoom.id,
-                messId,
-              );
-            await uploadBinaryToR2S3(thumbUploadUrl, thumb.path, thumb.mime);
-            thumbKey = thumbFileKey;
-          }
-
-          const { fileKey, uploadUrl } = await getUploadUrl(
-            ext,
-            asset.type,
-            false,
-            chatRoom.id,
-            messId,
-          );
-          await uploadBinaryToR2S3(uploadUrl, isCompressUri, asset.type);
-
-          handleSendMessage({
-            typeMsg,
-            key: fileKey,
-            messId,
-            localURI: isCompressUri,
-            asset: typeMsg === 'image' ? undefined : asset,
-            thumbnaiKey: thumbKey,
-          });
-        }),
-      );
-    } catch (err) {
-      console.log('Upload error:', err);
-    }
-  };
   const openViewer = async (messageId: string) => {
     const imageMessages = messages.filter(m => m.type === 'image');
     // const keys = imageMessages.map(_ => _.mediaURL);
@@ -1081,95 +705,6 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     setViewerVisible(true);
   };
 
-  // Recording
-
-  const handleOpenRecord = async () => {
-    setIsRecord(true);
-    setValue('Chuẩn bị ghi');
-    await onStartRecord();
-  };
-  const onStartRecord = async () => {
-    const ok = await requestAudioPermission();
-    if (!ok) return;
-    // Set up recording progress listener
-    Sound.addRecordBackListener((e: RecordBackType) => {
-      console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-        } giây`;
-      setValue(`Đã ghi: ${timeRecord}`);
-      setDuration(Math.floor(e.currentPosition / 1000)); // giây
-      // setRecordSecs(e.currentPosition);
-      // setRecordTime(Sound.mmssss(Math.floor(e.currentPosition)));
-    });
-
-    const result = await Sound.startRecorder();
-    // console.log('Recording started:', result);
-  };
-  const onStopRecord = async (actionRecord: string) => {
-    const result = await Sound.stopRecorder();
-    Sound.removeRecordBackListener();
-
-    if (actionRecord === 'send') {
-      const messId = uuidv4();
-      let chatRoomId = '';
-
-      if (type === 'private' && friend) {
-        chatRoomId = makeContactId(user?.id as string, friend.id);
-      } else {
-        chatRoomId = chatRoom.id;
-      }
-
-      addPendingMessage(chatRoomId, {
-        id: messId,
-        senderId: user?.id as string,
-        type: 'audio',
-        text: '',
-        mediaURL: '',
-        localURL: result,
-        batchId: '',
-        reactionCounts: {},
-        deleted: false,
-        deletedAt: null,
-        deletedBy: null,
-        replyTo: msgReply,
-        forwardedFrom: msgForward,
-
-        thumbKey: '',
-        duration,
-        height: 0,
-        width: 0,
-
-        createAt: serverTimestamp(),
-        status: 'pending',
-      });
-
-      flatListRef.current?.scrollToEnd({ animated: true });
-      setValue('');
-
-      const { fileKey, uploadUrl } = await getUploadUrl(
-        'mp4',
-        'audio/mp4',
-        false,
-        chatRoom.id,
-        messId,
-      );
-
-      await uploadBinaryToR2S3(uploadUrl, result, 'audio/mp4');
-
-      handleSendMessage({
-        typeMsg: 'audio',
-        key: fileKey,
-        messId,
-        localURI: result,
-        asset: { duration, height: 0, width: 0 },
-        thumbnaiKey: '',
-      });
-    }
-
-    setIsRecord(false);
-    setValue('');
-  };
-
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1184,68 +719,21 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           bg={colors.primaryLight}
           back
           title={
-            <RowComponent
+            <InputComponent
               styles={{
-                flex: 1,
-                flexDirection: 'column',
-                alignItems: 'flex-start',
+                backgroundColor: colors.background,
+                paddingHorizontal: 26,
+                borderRadius: 5,
+                flex: 1
               }}
-              onPress={() => { }}
-            >
-              <TextComponent
-                text={type === 'private' ? friend?.displayName : chatRoom.name}
-                color={colors.background}
-                size={sizes.bigText}
-                font={fontFamillies.poppinsBold}
-                numberOfLine={1}
-              />
-              {type === 'group' && (
-                <TextComponent
-                  text={`${chatRoom.memberCount} thành viên`}
-                  color={colors.background}
-                  size={sizes.smallText}
-                />
-              )}
-            </RowComponent>
-          }
-          right={
-            <RowComponent>
-              <SpaceComponent width={16} />
-              <SearchNormal1
-                size={sizes.bigTitle}
-                color={colors.background}
-                onPress={() => navigation.navigate('SearchMsgScreen', {
-                  type: chatRoom.type,
-                  friend: chatRoom.type === 'private' ? friend : null,
-                  chatRoom,
-                  members,
-                })}
-              />
-              {type === 'private' && (
-                <>
-                  <SpaceComponent width={16} />
-                  <Call
-                    size={sizes.bigTitle}
-                    color={colors.background}
-                    onPress={() => { }}
-                  />
-                </>
-              )}
-              <SpaceComponent width={16} />
-              <Video
-                size={sizes.bigTitle}
-                color={colors.background}
-                onPress={() => { }}
-                variant="Bold"
-              />
-              <SpaceComponent width={16} />
-              <Setting2
-                size={sizes.bigTitle}
-                color={colors.background}
-                onPress={() => { }}
-                variant="Bold"
-              />
-            </RowComponent>
+              allowClear
+              prefix={<SearchNormal1 color={colors.text} size={26} />}
+              placeholder="Tìm tin nhắn văn bản"
+              placeholderTextColor={colors.gray}
+              color={colors.background}
+              value={'email'}
+              onChangeText={() => { }}
+            />
           }
         >
           <SectionComponent
@@ -1263,24 +751,14 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               data={enhancedMessages}
               keyExtractor={item => item.id}
               renderItem={renderItem}
-              // extraData={lastSentByUser}
               ref={flatListRef}
               onScroll={handleScroll}
               scrollEventThrottle={16}
               maintainVisibleContentPosition={{
                 minIndexForVisible: 0,
-                // autoscrollToTopThreshold: 20,
               }}
               onContentSizeChange={() => {
-                // scroll xuống dưới cùng khi vào phòng chat
                 if (initialLoad) {
-                  // setTimeout(() => {
-                  //   flatListRef.current?.scrollToEnd({ animated: false });
-                  //   setIsAtBottom(true);
-                  //   setTimeout(() => {
-                  //     setInitialLoad(false);
-                  //   }, 5000); // 30–50ms là đủ
-                  // }, 30); // 30–50ms là đủ
                   handleInitialScroll();
                 }
               }}
@@ -1352,86 +830,6 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             </SectionComponent>
           )}
 
-          <SectionComponent
-            styles={{
-              padding: 10,
-            }}
-          >
-            <RowComponent>
-              {isRecord ? (
-                <Trash
-                  onPress={() => onStopRecord('remove')}
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                />
-              ) : Platform.OS === 'ios' ? (
-                <EmojiNormal
-                  onPress={() => setShowPicker(!showPicker)}
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                />
-              ) : (
-                <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
-                  <EmojiNormal
-                    size={sizes.extraTitle}
-                    color={colors.background}
-                    variant="Bold"
-                  />
-                </EmojiPopup>
-              )}
-              <SpaceComponent width={16} />
-              <InputComponent
-                styles={{
-                  backgroundColor: colors.background,
-                  // paddingHorizontal: 10,
-                  borderRadius: 5,
-                  flex: 1,
-                }}
-                placeholder="Nhập tin nhắn"
-                placeholderTextColor={colors.gray2}
-                color={colors.background}
-                value={value}
-                onChangeText={setValue}
-                // onSubmitEditing={handleSendMessage}
-                multible
-                autoFocus={true}
-              />
-              <SpaceComponent width={16} />
-              {value === '' ? (
-                <>
-                  <Microphone2
-                    onPress={handleOpenRecord}
-                    size={sizes.extraTitle}
-                    color={colors.background}
-                    variant="Bold"
-                  />
-                  <SpaceComponent width={16} />
-                  <Image
-                    onPress={handleOpenImage}
-                    size={sizes.extraTitle}
-                    color={colors.background}
-                    variant="Bold"
-                  />
-                </>
-              ) : isRecord ? (
-                <Send2
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                  onPress={() => onStopRecord('send')}
-                />
-              ) : (
-                <Send2
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                  onPress={() => handleSendMessage({})}
-                />
-              )}
-            </RowComponent>
-          </SectionComponent>
           <ImageViewing
             imageIndex={imageIndex}
             visible={viewerVisible}
@@ -1520,4 +918,4 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   );
 };
 
-export default MessageDetailScreen;
+export default SearchMsgScreen;
