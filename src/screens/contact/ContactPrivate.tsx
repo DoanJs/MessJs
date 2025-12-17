@@ -21,7 +21,6 @@ const ContactPrivate = () => {
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
-    fromUser: false,
     friend: null,
   });
   const users = usePendingRequestUsersStore(s => s.users);

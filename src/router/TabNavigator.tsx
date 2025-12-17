@@ -1,9 +1,9 @@
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Message, Profile2User, User } from 'iconsax-react-native';
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ContactNavigator, MessageNavigator, ProfileNavigator } from '.';
-import { Message, Profile2User, User } from 'iconsax-react-native';
 import { TextComponent } from '../components';
 import { colors } from '../constants/colors';
 import { fontFamillies } from '../constants/fontFamilies';

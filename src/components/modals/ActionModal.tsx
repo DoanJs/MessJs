@@ -36,7 +36,6 @@ interface Props {
   infoModal: {
     visibleModal: boolean;
     status: string;
-    fromUser: boolean;
     friend: UserModel | null;
   };
   setInfoModal: any;
@@ -46,7 +45,7 @@ interface Props {
 export default function ActionModal(props: Props) {
   const { visible, onClose, infoModal, setInfoModal } = props;
   const userCurrent = auth.currentUser;
-  const { friend, status, fromUser } = infoModal;
+  const { friend, status } = infoModal;
   const [loading, setLoading] = useState(false);
 
   const showActions = () => {

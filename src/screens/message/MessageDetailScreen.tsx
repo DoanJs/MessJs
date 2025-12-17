@@ -52,6 +52,7 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../../firebase.config';
 import {
+  ButtonComponent,
   Container,
   GlobalPopover,
   InputComponent,
@@ -61,7 +62,7 @@ import {
   SpaceComponent,
   TextComponent,
 } from '../../components';
-import { ForwardUserModal } from '../../components/modals';
+import { ActionModal, ForwardUserModal } from '../../components/modals';
 import {
   createNewBatch,
   shouldCreateNewBatch,
@@ -87,6 +88,7 @@ import {
   pickImage,
   preloadSignedUrls,
   requestAudioPermission,
+  unblockUser,
   uploadBinaryToR2S3,
 } from '../../constants/functions';
 import {
@@ -99,7 +101,8 @@ import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
-import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
+import { useBlockStore, useChatStore, useUsersStore, useUserStore } from '../../zustand';
+import { useFriendState } from '../../hooks/useFriendState';
 
 const MessageDetailScreen = ({ route, navigation }: any) => {
   const insets = useSafeAreaInsets();
@@ -146,9 +149,42 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const [msgReply, setMsgReply] = useState<MsgReplyModel | null>(null);
   const [msgForward, setMsgForward] = useState<any>(null);
   const [visibleForwardUser, setVisibleForwardUser] = useState(false);
+  const userBlockByMe = useBlockStore(s => s.blockedByMe)
+  const userBlockMe = useBlockStore(s => s.blockedMe)
+  const [loadingUnblock, setLoadingUnblock] = useState(false);
+  const friendState = useFriendState(friend.id as string);
+  const [infoModal, setInfoModal] = useState({
+    visibleModal: false,
+    status: '',
+    friend: null,
+  });
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
+
+  //Lắng nghe xem người khác chặn mình
+  useEffect(() => {
+    if (!user?.id || !friend.id) return;
+
+    // 2️⃣ Người khác chặn mình
+    const unsubBlockedMe = onSnapshot(
+      doc(db, `blocks/${friend.id}/blocked/${user.id}`),
+      snap => {
+        const map: Record<string, true> = {};
+
+        if (snap.exists()) {
+          map[friend.id] = true;
+        }
+
+        useBlockStore.getState().setBlockedMe(map);
+      },
+    );
+
+    // Cleanup listener khi component unmount
+    return () => {
+      unsubBlockedMe();
+    };
+  }, [user?.id, friend.id]);
 
   const onLongPressMessage = ({ msg, rect }: any) => {
     setPopover({ visible: true, rect, message: msg });
@@ -1169,6 +1205,18 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     setIsRecord(false);
     setValue('');
   };
+  const handleUnblock = async () => {
+    setLoadingUnblock(true)
+
+    try {
+      await unblockUser(friend.id)
+      setLoadingUnblock(false)
+    } catch (error) {
+      setLoadingUnblock(false)
+      console.log(error)
+    }
+
+  }
 
   return (
     <SafeAreaView
@@ -1242,7 +1290,13 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               <Setting2
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() =>
+                  setInfoModal({
+                    visibleModal: true,
+                    status: friendState,
+                    friend,
+                  })
+                }
                 variant="Bold"
               />
             </RowComponent>
@@ -1357,80 +1411,103 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               padding: 10,
             }}
           >
-            <RowComponent>
-              {isRecord ? (
-                <Trash
-                  onPress={() => onStopRecord('remove')}
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                />
-              ) : Platform.OS === 'ios' ? (
-                <EmojiNormal
-                  onPress={() => setShowPicker(!showPicker)}
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                />
-              ) : (
-                <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
-                  <EmojiNormal
-                    size={sizes.extraTitle}
+            {
+              userBlockByMe[friend.id] || userBlockMe[friend.id] ?
+                <View>
+                  <TextComponent
+                    text={`${userBlockByMe[friend.id] ? 'Bạn đã chặn ' + friend.displayName : friend.displayName + ' đã chặn bạn'}`}
+                    textAlign='center' color={colors.red} styles={{
+                      fontStyle: 'italic'
+                    }} />
+                  <SpaceComponent height={10} />
+                  {
+                    userBlockByMe[friend.id] &&
+                    <ButtonComponent
+                      text='Bỏ chặn'
+                      textStyles={{ color: colors.red }}
+                      onPress={handleUnblock}
+                      styles={{ backgroundColor: colors.background }}
+                      isLoading={loadingUnblock}
+                    />
+                  }
+                </View>
+                :
+                <RowComponent>
+                  {isRecord ? (
+                    <Trash
+                      onPress={() => onStopRecord('remove')}
+                      size={sizes.extraTitle}
+                      color={colors.background}
+                      variant="Bold"
+                    />
+                  ) : Platform.OS === 'ios' ? (
+                    <EmojiNormal
+                      onPress={() => setShowPicker(!showPicker)}
+                      size={sizes.extraTitle}
+                      color={colors.background}
+                      variant="Bold"
+                    />
+                  ) : (
+                    <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
+                      <EmojiNormal
+                        size={sizes.extraTitle}
+                        color={colors.background}
+                        variant="Bold"
+                      />
+                    </EmojiPopup>
+                  )}
+                  <SpaceComponent width={16} />
+                  <InputComponent
+                    styles={{
+                      backgroundColor: colors.background,
+                      // paddingHorizontal: 10,
+                      borderRadius: 5,
+                      flex: 1,
+                    }}
+                    placeholder="Nhập tin nhắn"
+                    placeholderTextColor={colors.gray2}
                     color={colors.background}
-                    variant="Bold"
-                  />
-                </EmojiPopup>
-              )}
-              <SpaceComponent width={16} />
-              <InputComponent
-                styles={{
-                  backgroundColor: colors.background,
-                  // paddingHorizontal: 10,
-                  borderRadius: 5,
-                  flex: 1,
-                }}
-                placeholder="Nhập tin nhắn"
-                placeholderTextColor={colors.gray2}
-                color={colors.background}
-                value={value}
-                onChangeText={setValue}
-                // onSubmitEditing={handleSendMessage}
-                multible
-                autoFocus={true}
-              />
-              <SpaceComponent width={16} />
-              {value === '' ? (
-                <>
-                  <Microphone2
-                    onPress={handleOpenRecord}
-                    size={sizes.extraTitle}
-                    color={colors.background}
-                    variant="Bold"
+                    value={value}
+                    onChangeText={setValue}
+                    // onSubmitEditing={handleSendMessage}
+                    multible
+                    autoFocus={true}
                   />
                   <SpaceComponent width={16} />
-                  <Image
-                    onPress={handleOpenImage}
-                    size={sizes.extraTitle}
-                    color={colors.background}
-                    variant="Bold"
-                  />
-                </>
-              ) : isRecord ? (
-                <Send2
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                  onPress={() => onStopRecord('send')}
-                />
-              ) : (
-                <Send2
-                  size={sizes.extraTitle}
-                  color={colors.background}
-                  variant="Bold"
-                  onPress={() => handleSendMessage({})}
-                />
-              )}
-            </RowComponent>
+                  {value === '' ? (
+                    <>
+                      <Microphone2
+                        onPress={handleOpenRecord}
+                        size={sizes.extraTitle}
+                        color={colors.background}
+                        variant="Bold"
+                      />
+                      <SpaceComponent width={16} />
+                      <Image
+                        onPress={handleOpenImage}
+                        size={sizes.extraTitle}
+                        color={colors.background}
+                        variant="Bold"
+                      />
+                    </>
+                  ) : isRecord ? (
+                    <Send2
+                      size={sizes.extraTitle}
+                      color={colors.background}
+                      variant="Bold"
+                      onPress={() => onStopRecord('send')}
+                    />
+                  ) : (
+                    <Send2
+                      size={sizes.extraTitle}
+                      color={colors.background}
+                      variant="Bold"
+                      onPress={() => handleSendMessage({})}
+                    />
+                  )}
+                </RowComponent>
+
+            }
           </SectionComponent>
           <ImageViewing
             imageIndex={imageIndex}
@@ -1514,6 +1591,13 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             data: msgForward,
           });
         }}
+      />
+
+      <ActionModal
+        visible={infoModal.visibleModal}
+        setInfoModal={setInfoModal}
+        infoModal={infoModal}
+        onClose={() => setInfoModal({ ...infoModal, visibleModal: false })}
       />
 
     </SafeAreaView>

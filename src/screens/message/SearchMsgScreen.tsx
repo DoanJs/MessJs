@@ -11,7 +11,7 @@ import {
   setDoc,
   updateDoc,
 } from '@react-native-firebase/firestore';
-import { CloseSquare, SearchNormal1 } from 'iconsax-react-native';
+import { SearchNormal1 } from 'iconsax-react-native';
 import React, {
   useCallback,
   useEffect,
@@ -25,11 +25,9 @@ import {
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
-  Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import EmojiSelector from 'react-native-emoji-selector';
 import 'react-native-get-random-values';
 import ImageViewing from 'react-native-image-viewing';
 import {
@@ -39,13 +37,14 @@ import {
 import { v4 as uuidv4 } from 'uuid';
 import { db } from '../../../firebase.config';
 import {
+  ButtonComponent,
   Container,
   GlobalPopover,
   InputComponent,
   MessageContentComponent,
-  RowComponent,
   SectionComponent,
-  TextComponent,
+  SpaceComponent,
+  TextComponent
 } from '../../components';
 import { ForwardUserModal } from '../../components/modals';
 import {
@@ -53,7 +52,6 @@ import {
   shouldCreateNewBatch,
 } from '../../constants/checkNewBatch';
 import { colors } from '../../constants/colors';
-import { convertInfoUserFromID } from '../../constants/convertData';
 import {
   q_chatRoomId,
   q_messagesASC,
@@ -67,6 +65,7 @@ import {
   handleRecallMsg,
   loadMessagesFromBatchIds,
   preloadSignedUrls,
+  unblockUser,
 } from '../../constants/functions';
 import {
   delay,
@@ -75,8 +74,8 @@ import {
   shouldShowSmallTime,
 } from '../../constants/handleTimeData';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
-import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
-import { useChatStore, useUsersStore, useUserStore } from '../../zustand';
+import { MessageModel, ReadStatusModel } from '../../models';
+import { useBlockStore, useChatStore, useUsersStore, useUserStore } from '../../zustand';
 
 const SearchMsgScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -118,6 +117,9 @@ const SearchMsgScreen = ({ route }: any) => {
   const [visibleForwardUser, setVisibleForwardUser] = useState(false);
   const [messageMatchCount, setMessageMatchCount] = useState(0);
   const [totalMessageMatch, setTotalMessageMatch] = useState(0);
+  const userBlockByMe = useBlockStore(s => s.blockedByMe)
+  const userBlockMe = useBlockStore(s => s.blockedMe)
+  const [loadingUnblock, setLoadingUnblock] = useState(false);
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
@@ -717,6 +719,19 @@ const SearchMsgScreen = ({ route }: any) => {
     setViewerVisible(true);
   };
 
+  const handleUnblock = async () => {
+    setLoadingUnblock(true)
+
+    try {
+      await unblockUser(friend.id)
+      setLoadingUnblock(false)
+    } catch (error) {
+      setLoadingUnblock(false)
+      console.log(error)
+    }
+
+  }
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -808,6 +823,28 @@ const SearchMsgScreen = ({ route }: any) => {
               padding: 10,
             }}
           >
+            {
+              (userBlockByMe[friend.id] || userBlockMe[friend.id]) &&
+              <View>
+                <TextComponent
+                  text={`${userBlockByMe[friend.id] ? 'Bạn đã chặn ' + friend.displayName : friend.displayName + ' đã chặn bạn'}`}
+                  textAlign='center' color={colors.red} styles={{
+                    fontStyle: 'italic'
+                  }} />
+                <SpaceComponent height={10} />
+                {
+                  userBlockByMe[friend.id] &&
+                  <ButtonComponent
+                    text='Bỏ chặn'
+                    textStyles={{ color: colors.red }}
+                    onPress={handleUnblock}
+                    styles={{ backgroundColor: colors.background }}
+                    isLoading={loadingUnblock}
+                  />
+                }
+              </View>
+            }
+            <SpaceComponent height={10}/>
             {keyword !== '' && (
               <TextComponent
                 text={`Tìm thấy ${messageMatchCount}/${totalMessageMatch} tin nhắn trùng khớp`}
@@ -871,15 +908,6 @@ const SearchMsgScreen = ({ route }: any) => {
           />
         </Container>
       </KeyboardAvoidingView>
-
-      {/* {showPicker && (
-        <EmojiSelector
-          onEmojiSelected={emoji => {
-            setValue(prev => prev + emoji);
-            setShowPicker(false);
-          }}
-        />
-      )} */}
 
       <ForwardUserModal
         visible={visibleForwardUser}

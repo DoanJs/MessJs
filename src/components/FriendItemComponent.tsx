@@ -31,8 +31,8 @@ const FriendItemComponent = (props: Props) => {
   const navigation: any = useNavigation();
   const { user } = useUserStore();
   const friendState = useFriendState(friend.id as string);
-  const setBlockedMe = useBlockStore(s => s.setBlockedMe);
 
+  //Lắng nghe xem người khác chặn mình
   useEffect(() => {
     if (!user?.id || !friend.id) return;
 
@@ -46,7 +46,7 @@ const FriendItemComponent = (props: Props) => {
           map[friend.id] = true;
         }
 
-        setBlockedMe(map);
+        useBlockStore.getState().setBlockedMe(map);
       },
     );
 
@@ -54,7 +54,7 @@ const FriendItemComponent = (props: Props) => {
     return () => {
       unsubBlockedMe();
     };
-  }, [user?.id]);
+  }, [user?.id, friend.id]);
 
   const onNavigateDetail = () => {
     try {
@@ -138,7 +138,6 @@ const FriendItemComponent = (props: Props) => {
             setInfoModal({
               visibleModal: true,
               status: friendState,
-              fromUser: 'friendRequest?.from === user?.id',
               friend,
             })
           }
