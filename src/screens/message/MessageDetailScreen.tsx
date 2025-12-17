@@ -1,5 +1,6 @@
 import {
   collection,
+  deleteDoc,
   doc,
   documentId,
   getDoc,
@@ -16,6 +17,7 @@ import {
   CloseSquare,
   EmojiNormal,
   Image,
+  Logout,
   Microphone2,
   SearchNormal1,
   Send2,
@@ -31,6 +33,7 @@ import React, {
   useState,
 } from 'react';
 import {
+  Alert,
   FlatList,
   KeyboardAvoidingView,
   NativeScrollEvent,
@@ -62,7 +65,7 @@ import {
   SpaceComponent,
   TextComponent,
 } from '../../components';
-import { ActionModal, ForwardUserModal } from '../../components/modals';
+import { ActionModal, ForwardUserModal, LeaveRoomModal } from '../../components/modals';
 import {
   createNewBatch,
   shouldCreateNewBatch,
@@ -152,19 +155,21 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const userBlockByMe = useBlockStore(s => s.blockedByMe)
   const userBlockMe = useBlockStore(s => s.blockedMe)
   const [loadingUnblock, setLoadingUnblock] = useState(false);
-  const friendState = useFriendState(friend.id as string);
+  const friendState = useFriendState(friend?.id as string);
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
     friend: null,
   });
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+
 
   // Kích hoạt hook realtime
   useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
 
   //Lắng nghe xem người khác chặn mình
   useEffect(() => {
-    if (!user?.id || !friend.id) return;
+    if (!user?.id || !friend?.id) return;
 
     // 2️⃣ Người khác chặn mình
     const unsubBlockedMe = onSnapshot(
@@ -184,7 +189,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     return () => {
       unsubBlockedMe();
     };
-  }, [user?.id, friend.id]);
+  }, [user?.id, friend?.id]);
 
   const onLongPressMessage = ({ msg, rect }: any) => {
     setPopover({ visible: true, rect, message: msg });
@@ -1217,6 +1222,14 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     }
 
   }
+  const leaveRoom = async () => {
+    // ví dụ Firestore
+    await deleteDoc(
+      doc(db, `chatRooms/${chatRoom.id}/members/${user?.id}`)
+    );
+
+    navigation.goBack();
+  };
 
   return (
     <SafeAreaView
@@ -1238,7 +1251,12 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                 flexDirection: 'column',
                 alignItems: 'flex-start',
               }}
-              onPress={() => { }}
+              onPress={() => navigation.navigate('RoomSettingScreen', {
+                type: chatRoom.type,
+                friend: chatRoom.type === 'private' ? friend : null,
+                chatRoom,
+                members,
+              })}
             >
               <TextComponent
                 text={type === 'private' ? friend?.displayName : chatRoom.name}
@@ -1287,18 +1305,29 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                 variant="Bold"
               />
               <SpaceComponent width={16} />
-              <Setting2
-                size={sizes.bigTitle}
-                color={colors.background}
-                onPress={() =>
-                  setInfoModal({
-                    visibleModal: true,
-                    status: friendState,
-                    friend,
-                  })
-                }
-                variant="Bold"
-              />
+              {
+                chatRoom.type === 'group' ?
+                  <Logout
+                    size={sizes.bigTitle}
+                    color={colors.background}
+                    onPress={() => setShowLeaveModal(true)}
+                    variant="Bold"
+                  />
+                  :
+                  <Setting2
+                    size={sizes.bigTitle}
+                    color={colors.background}
+                    onPress={() =>
+                      setInfoModal({
+                        visibleModal: true,
+                        status: friendState,
+                        friend,
+                      })
+                    }
+                    variant="Bold"
+                  />
+
+              }
             </RowComponent>
           }
         >
@@ -1412,7 +1441,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             }}
           >
             {
-              userBlockByMe[friend.id] || userBlockMe[friend.id] ?
+              userBlockByMe[friend?.id] || userBlockMe[friend?.id] ?
                 <View>
                   <TextComponent
                     text={`${userBlockByMe[friend.id] ? 'Bạn đã chặn ' + friend.displayName : friend.displayName + ' đã chặn bạn'}`}
@@ -1592,12 +1621,17 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           });
         }}
       />
-
       <ActionModal
         visible={infoModal.visibleModal}
         setInfoModal={setInfoModal}
         infoModal={infoModal}
         onClose={() => setInfoModal({ ...infoModal, visibleModal: false })}
+      />
+      <LeaveRoomModal
+        visible={showLeaveModal}
+        roomName={chatRoom.name}
+        onClose={() => setShowLeaveModal(false)}
+        onConfirm={leaveRoom}
       />
 
     </SafeAreaView>

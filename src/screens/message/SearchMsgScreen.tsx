@@ -824,7 +824,7 @@ const SearchMsgScreen = ({ route }: any) => {
             }}
           >
             {
-              (userBlockByMe[friend.id] || userBlockMe[friend.id]) &&
+              (userBlockByMe[friend?.id] || userBlockMe[friend?.id]) &&
               <View>
                 <TextComponent
                   text={`${userBlockByMe[friend.id] ? 'Bạn đã chặn ' + friend.displayName : friend.displayName + ' đã chặn bạn'}`}

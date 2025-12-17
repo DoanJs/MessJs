@@ -7,6 +7,7 @@ import AddFriendScreen from './message/AddFriendScreen';
 import AddGroupScreen from './message/AddGroupScreen';
 import MessageDetailScreen from './message/MessageDetailScreen';
 import MessageScreen from './message/MessageScreen';
+import RoomSettingScreen from './message/RoomSettingScreen';
 import SearchMsgScreen from './message/SearchMsgScreen';
 import SearchScreen from './message/SearchScreen';
 import ProfileScreen from './profile/ProfileScreen';
@@ -19,6 +20,6 @@ export {
   MessageDetailScreen,
   MessageScreen,
   ProfileScreen,
-  Register, SearchMsgScreen, SearchScreen
+  Register, SearchMsgScreen, SearchScreen, RoomSettingScreen
 };
 
