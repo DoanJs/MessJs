@@ -5,6 +5,7 @@ import { Image, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { auth, db } from '../../../firebase.config'
 import { Container, RowComponent, SectionComponent, SpaceComponent, SpinnerComponent, TextComponent } from '../../components'
+import { RenameGroupModal } from '../../components/modals'
 import { colors } from '../../constants/colors'
 import { fontFamillies } from '../../constants/fontFamilies'
 import { sizes } from '../../constants/sizes'
@@ -14,6 +15,7 @@ const RoomSettingScreen = ({ route }: any) => {
   const { type, friend, chatRoom } = route.params;
   const userCurrent = auth.currentUser
   const [members, setMembers] = useState<Record<string, UserModel>>({});
+  const [loadingRenameModal, setLoadingRenameModal] = useState(false);
 
   useEffect(() => {
     if (!chatRoom.id) return
@@ -98,7 +100,7 @@ const RoomSettingScreen = ({ route }: any) => {
                 <>
                   <SpaceComponent width={16} />
                   <Edit2
-                    onPress={() => { }}
+                    onPress={() => setLoadingRenameModal(true)}
                     size={16} color={colors.background} variant="Bold" />
                 </>
               }
@@ -111,19 +113,19 @@ const RoomSettingScreen = ({ route }: any) => {
           }}>
             {[
               {
-                icon: <SearchNormal1 size={sizes.smallTitle} color={colors.textBold} variant='Bold' />,
+                icon: <SearchNormal1 size={sizes.smallTitle} color={colors.textBold} />,
                 title: 'Tìm tin nhắn'
               },
               {
-                icon: <UserAdd size={sizes.smallTitle} color={colors.textBold} variant='Bold' />,
+                icon: <UserAdd size={sizes.smallTitle} color={colors.textBold} />,
                 title: 'Thêm thành viên'
               },
               {
-                icon: <Colorfilter size={sizes.smallTitle} color={colors.textBold} variant='Bold' />,
+                icon: <Colorfilter size={sizes.smallTitle} color={colors.textBold} />,
                 title: 'Đổi hình nền'
               },
               {
-                icon: <Notification size={sizes.smallTitle} color={colors.textBold} variant='Bold' />,
+                icon: <Notification size={sizes.smallTitle} color={colors.textBold} />,
                 title: 'Bật thông báo'
               }
             ].map((_, index) => {
@@ -224,6 +226,16 @@ const RoomSettingScreen = ({ route }: any) => {
 
         <SpinnerComponent loading={false} />
       </Container>
+
+      <RenameGroupModal
+        visible={loadingRenameModal}
+        infoModal={{
+          visibleModal: loadingRenameModal,
+          name: chatRoom.name,
+          chatRoomId: chatRoom.id
+        }}
+        onClose={() => setLoadingRenameModal(false)}
+      />
 
     </SafeAreaView>
 

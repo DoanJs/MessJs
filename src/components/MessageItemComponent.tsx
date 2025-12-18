@@ -35,6 +35,7 @@ const MessageItemComponent = (props: Props) => {
   const [members, setMembers] = useState([]);
   const [now, setNow] = useState(Date.now());
 
+
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 60 * 1000);
     return () => clearInterval(timer);
