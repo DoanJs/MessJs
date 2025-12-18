@@ -1,5 +1,5 @@
 import { signOut } from '@react-native-firebase/auth';
-import { ArrowRight2, Camera, Logout, UserSquare } from 'iconsax-react-native';
+import { ArrowRight2, Camera, LogoutCurve, UserSquare } from 'iconsax-react-native';
 import React, { useState } from 'react';
 import { Image, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -119,7 +119,7 @@ const ProfileScreen = () => {
           </RowComponent>
           <SpaceComponent height={16} />
           <RowComponent onPress={handleLogout}>
-            <Logout size={sizes.title} color={colors.textBold} />
+            <LogoutCurve size={sizes.title} color={colors.textBold} />
             <SpaceComponent width={16} />
             <TextComponent
               text="Sign out"
@@ -128,7 +128,7 @@ const ProfileScreen = () => {
             />
           </RowComponent>
         </SectionComponent>
-        
+
         <SpinnerComponent loading={isLoading} />
       </Container>
 

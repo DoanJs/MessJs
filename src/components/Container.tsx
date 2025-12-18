@@ -6,8 +6,10 @@ import {
   SafeAreaView,
   ScrollView,
   StatusBar,
+  StyleProp,
   StyleSheet,
   View,
+  ViewStyle,
 } from 'react-native';
 import { RowComponent } from '.';
 import { colors } from '../constants/colors';
@@ -23,11 +25,12 @@ type Props = {
   isScroll?: boolean;
   bg?: string;
   uri?: string;
+  headerStyle?: StyleProp<ViewStyle>
 };
 
 const Container = (props: Props) => {
   const navigation: any = useNavigation();
-  const { children, title, back, left, right, center, isScroll, bg } = props;
+  const { children, title, back, left, right, center, isScroll, bg , headerStyle} = props;
   const localStyle = StyleSheet.create({
     header: {
       paddingHorizontal: 16,
@@ -45,7 +48,7 @@ const Container = (props: Props) => {
       ]}
     >
       {(back || left || right || title) && (
-        <RowComponent styles={[localStyle.header]}>
+        <RowComponent styles={[localStyle.header, headerStyle]}>
           {back && (
             <ArrowLeft
               size={26}
