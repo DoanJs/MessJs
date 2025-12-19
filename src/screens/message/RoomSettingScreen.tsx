@@ -1,41 +1,43 @@
-import { doc, getDoc } from '@react-native-firebase/firestore'
 import { ArrowRight2, Camera, Colorfilter, Edit2, Image as ImageIcon, LogoutCurve, Notification, Profile2User, SearchNormal1, UserAdd } from 'iconsax-react-native'
-import React, { useEffect, useState } from 'react'
-import { Image, View } from 'react-native'
+import React, { useState } from 'react'
+import { ActivityIndicator, Image, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { auth, db } from '../../../firebase.config'
 import { Container, RowComponent, SectionComponent, SpaceComponent, SpinnerComponent, TextComponent } from '../../components'
-import { RenameGroupModal } from '../../components/modals'
+import { AddMemberModal, RenameGroupModal } from '../../components/modals'
 import { colors } from '../../constants/colors'
 import { fontFamillies } from '../../constants/fontFamilies'
 import { sizes } from '../../constants/sizes'
-import { UserModel } from '../../models'
+import { useChatRoom } from '../../hooks/useChatRoom'
+import { useRoomMembers } from '../../hooks/useRoomMembers'
 
-const RoomSettingScreen = ({ route }: any) => {
-  const { type, friend, chatRoom } = route.params;
-  const userCurrent = auth.currentUser
-  const [members, setMembers] = useState<Record<string, UserModel>>({});
+const RoomSettingScreen = ({ route, navigation }: any) => {
+  const { friend, chatRoomId } = route.params;
+  // const [members, setMembers] = useState<Record<string, UserModel>>({});
+  const room = useChatRoom(chatRoomId)
+  const members = useRoomMembers(room?.memberIds)
   const [loadingRenameModal, setLoadingRenameModal] = useState(false);
-
-  useEffect(() => {
-    if (!chatRoom.id) return
-    handleMemberIds()
-
-  }, [chatRoom.id])
-
-  const handleMemberIds = async () => {
-    const needFetchIds = chatRoom.memberIds.filter((id: string) => id !== userCurrent?.uid);
-    const snaps = await Promise.all(
-      needFetchIds.map((uid: string) => getDoc(doc(db, 'users', uid)))
-    );
-
-    const data: Record<string, UserModel> = {};
-    snaps.filter(s => s.exists()).forEach((doc: any) => (data[doc.id] = doc.data()));
-
-    setMembers(data)
-  }
+  const [loadingAddMember, setLoadingAddMember] = useState(false);
 
   console.log(members)
+  // useEffect(() => {
+  //   if (!chatRoomId) return
+  //   handleMemberIds()
+
+  // }, [chatRoomId])
+
+  // const handleMemberIds = async () => {
+  //   const needFetchIds = room && room.memberIds.filter((id: string) => id !== userCurrent?.uid);
+  //   const snaps = await Promise.all(
+  //     needFetchIds.map((uid: string) => getDoc(doc(db, 'users', uid)))
+  //   );
+
+  //   const data: Record<string, UserModel> = {};
+  //   snaps.filter(s => s.exists()).forEach((doc: any) => (data[doc.id] = doc.data()));
+
+  //   setMembers(data)
+  // }
+
+  if (!room) return <ActivityIndicator />
 
   return (
     <SafeAreaView
@@ -89,14 +91,15 @@ const RoomSettingScreen = ({ route }: any) => {
                 <Camera size={16} color={colors.background} variant="Bold" />
               </View>
             </View>
+
             <RowComponent>
               <TextComponent
-                text={friend?.displayName ?? chatRoom?.name ?? ''}
+                text={friend?.displayName ?? room.name ?? ''}
                 font={fontFamillies.poppinsSemiBold}
                 size={sizes.bigText}
               />
               {
-                chatRoom.type === 'group' &&
+                room.type === 'group' &&
                 <>
                   <SpaceComponent width={16} />
                   <Edit2
@@ -113,25 +116,37 @@ const RoomSettingScreen = ({ route }: any) => {
           }}>
             {[
               {
-                icon: <SearchNormal1 size={sizes.smallTitle} color={colors.textBold} />,
-                title: 'Tìm tin nhắn'
+                icon: <SearchNormal1
+                  size={sizes.smallTitle}
+                  color={colors.textBold}
+                />,
+                title: 'Tìm tin nhắn',
+                onPress: () => navigation.navigate('SearchMsgScreen', {
+                  type: room.type,
+                  friend: room.type === 'private' ? friend : null,
+                  chatRoom: room,
+                  members,
+                })
               },
               {
                 icon: <UserAdd size={sizes.smallTitle} color={colors.textBold} />,
-                title: 'Thêm thành viên'
+                title: 'Thêm thành viên',
+                onPress: () => setLoadingAddMember(true)
               },
               {
                 icon: <Colorfilter size={sizes.smallTitle} color={colors.textBold} />,
-                title: 'Đổi hình nền'
+                title: 'Đổi hình nền',
+                onPress: () => { }
               },
               {
                 icon: <Notification size={sizes.smallTitle} color={colors.textBold} />,
-                title: 'Bật thông báo'
+                title: 'Bật thông báo',
+                onPress: () => { }
               }
             ].map((_, index) => {
-              if (chatRoom.type === 'private' && (_.title === 'Thêm thành viên' || _.title === 'Đổi hình nền')) return
+              if (room.type === 'private' && (_.title === 'Thêm thành viên' || _.title === 'Đổi hình nền')) return
               return <RowComponent
-                onPress={() => { }}
+                onPress={_.onPress}
                 key={index}
                 styles={{
                   justifyContent: 'flex-start',
@@ -185,7 +200,7 @@ const RoomSettingScreen = ({ route }: any) => {
             <ArrowRight2 size={sizes.title} color={colors.textBold} />
           </RowComponent>
           {
-            chatRoom.type === 'group' &&
+            room.type === 'group' &&
             <>
               <SpaceComponent height={16} />
 
@@ -211,7 +226,7 @@ const RoomSettingScreen = ({ route }: any) => {
           <SpaceComponent height={16} />
 
           {
-            chatRoom.type === 'group' &&
+            room.type === 'group' &&
             <RowComponent onPress={() => { }}>
               <LogoutCurve size={sizes.title} color={colors.textBold} />
               <SpaceComponent width={16} />
@@ -230,11 +245,17 @@ const RoomSettingScreen = ({ route }: any) => {
       <RenameGroupModal
         visible={loadingRenameModal}
         infoModal={{
-          visibleModal: loadingRenameModal,
-          name: chatRoom.name,
-          chatRoomId: chatRoom.id
+          name: room.name,
+          chatRoomId
         }}
         onClose={() => setLoadingRenameModal(false)}
+      />
+      <AddMemberModal
+        visible={loadingAddMember}
+        onClose={() => setLoadingAddMember(false)}
+        members={members}
+        roomId={chatRoomId}
+        onChange={() => { }}
       />
 
     </SafeAreaView>

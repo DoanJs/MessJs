@@ -114,6 +114,14 @@ export const unblockUser = async (targetId: string) => {
   const { result }: any = (await callable({ targetId })).data;
   return result;
 };
+export const addMemberToGroup = async ({ roomId, targetUid }: { roomId: string, targetUid: string }) => {
+  const callable = httpsCallable(functions, 'addMemberToGroup');
+  console.log('áodad')
+
+  const { success }: any = (await callable({ roomId, targetUid })).data;
+  return success;
+};
+
 export const uploadBinaryToR2S3 = async (
   uploadUrl: string,
   fileUri: string,

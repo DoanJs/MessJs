@@ -4,8 +4,8 @@ import {
   serverTimestamp,
 } from '@react-native-firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
-import { More } from 'iconsax-react-native';
-import React, { useEffect } from 'react';
+import { AddCircle, More } from 'iconsax-react-native';
+import React, { useEffect, useState } from 'react';
 import {
   AvatarComponent,
   RowComponent,
@@ -15,22 +15,27 @@ import {
 import { db } from '../../firebase.config';
 import { colors } from '../constants/colors';
 import { setDocData } from '../constants/firebase/setDocData';
+import { addMemberToGroup } from '../constants/functions';
 import { makeContactId } from '../constants/makeContactId';
 import { sizes } from '../constants/sizes';
 import { useFriendState } from '../hooks/useFriendState';
 import { UserModel } from '../models';
 import { useBlockStore, useUserStore } from '../zustand';
+import { ActivityIndicator } from 'react-native';
 
 interface Props {
   friend: UserModel;
   setInfoModal: any;
+  isMember?: boolean | undefined
+  roomId?: string
 }
 
 const FriendItemComponent = (props: Props) => {
-  const { friend, setInfoModal } = props;
+  const { friend, setInfoModal, isMember = undefined, roomId } = props;
   const navigation: any = useNavigation();
   const { user } = useUserStore();
   const friendState = useFriendState(friend.id as string);
+  const [loadingAddMember, setLoadingAddMember] = useState(false);
 
   //Lắng nghe xem người khác chặn mình
   useEffect(() => {
@@ -111,6 +116,16 @@ const FriendItemComponent = (props: Props) => {
 
     return result;
   };
+  const handleAddMemberGroup = async () => {
+    setLoadingAddMember(true)
+    try {
+      await addMemberToGroup({ roomId: roomId as string, targetUid: friend.id })
+      setLoadingAddMember(false)
+    } catch (error) {
+      setLoadingAddMember(false)
+      console.log(error)
+    }
+  }
 
   return (
     <RowComponent justify="space-between" styles={{ marginVertical: 10 }}>
@@ -119,30 +134,49 @@ const FriendItemComponent = (props: Props) => {
         <SpaceComponent width={10} />
         <TextComponent text={friend.displayName} numberOfLine={1} />
       </RowComponent>
-      <RowComponent styles={{ paddingHorizontal: 10 }}>
-        <TextComponent
-          text={showStatus()}
-          styles={{ fontStyle: 'italic' }}
-          color={
-            friendState === 'blocked_by_me' || friendState === 'blocked_me'
-              ? colors.red
-              : colors.textBold
-          }
-        />
-        <SpaceComponent width={10} />
-        <More
-          size={sizes.title}
-          variant="Bold"
-          color={colors.textBold}
-          onPress={() =>
-            setInfoModal({
-              visibleModal: true,
-              status: friendState,
-              friend,
-            })
-          }
-        />
-      </RowComponent>
+
+      {
+        setInfoModal &&
+        <RowComponent styles={{ paddingHorizontal: 10 }}>
+          <TextComponent
+            text={showStatus()}
+            styles={{ fontStyle: 'italic' }}
+            color={
+              friendState === 'blocked_by_me' || friendState === 'blocked_me'
+                ? colors.red
+                : colors.textBold
+            }
+          />
+          <SpaceComponent width={10} />
+          <More
+            size={sizes.title}
+            variant="Bold"
+            color={colors.textBold}
+            onPress={() =>
+              setInfoModal({
+                visibleModal: true,
+                status: friendState,
+                friend,
+              })
+            }
+          />
+        </RowComponent>
+      }
+      {isMember !== undefined && (
+        !isMember ?
+        (loadingAddMember ? <ActivityIndicator /> :
+          <AddCircle
+            size={sizes.title}
+            variant="Bold"
+            color={colors.textBold}
+            onPress={handleAddMemberGroup}
+          />)
+          :
+          <TextComponent text='Thành viên nhóm' color={colors.textBold} styles={{
+            fontStyle:'italic'
+          }}/>
+      )
+      }
     </RowComponent>
   );
 };

@@ -11,20 +11,20 @@ import Modal from 'react-native-modal';
 import { InputComponent, RowComponent, SpaceComponent } from '..';
 import { db } from '../../../firebase.config';
 import { colors } from '../../constants/colors';
+import { useNavigation } from '@react-navigation/native';
 
 interface Props {
   visible: boolean;
   infoModal: {
-    visibleModal: boolean;
     name: string;
     chatRoomId: string
   };
-  // setInfoModal: any;
   onClose: () => void;
 }
 
 export default function RenameGroupModal(props: Props) {
   const { visible, onClose, infoModal: { name, chatRoomId } } = props;
+  const navigation: any = useNavigation()
   const [loading, setLoading] = useState(false);
   const [disabled, setDisabled] = useState(true);
   const [value, setValue] = useState('');
@@ -57,7 +57,7 @@ export default function RenameGroupModal(props: Props) {
 
     onClose()
   }
-  
+
   return (
     <Modal
       isVisible={visible}
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
   disabled: {
     opacity: 0.7,
-    backgroundColor:'#333',
+    backgroundColor: '#333',
   },
   cancelText: {
     color: '#333',

@@ -63,6 +63,7 @@ import {
   RowComponent,
   SectionComponent,
   SpaceComponent,
+  SpinnerComponent,
   TextComponent,
 } from '../../components';
 import { ActionModal, ForwardUserModal, LeaveRoomModal } from '../../components/modals';
@@ -106,17 +107,22 @@ import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
 import { useBlockStore, useChatStore, useUsersStore, useUserStore } from '../../zustand';
 import { useFriendState } from '../../hooks/useFriendState';
+import { useChatRoom } from '../../hooks/useChatRoom';
 
 const MessageDetailScreen = ({ route, navigation }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
   const { users } = useUsersStore();
-  const { type, friend, chatRoom } = route.params;
+  const { type, friend, chatRoomId } = route.params;
+  const room = useChatRoom(chatRoomId)
+  // Kích hoạt hook realtime
+  const [isAtBottom, setIsAtBottom] = useState(true);
+  useChatRoomSync(chatRoomId, user?.id as string, isAtBottom);
+  
   const [members, setMembers] = useState(route.params.members);
   const [value, setValue] = useState('');
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
   const { messagesByRoom, pendingMessages } = useChatStore();
-  const [isAtBottom, setIsAtBottom] = useState(true);
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [viewerVisible, setViewerVisible] = useState(false);
@@ -125,8 +131,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const [isRecord, setIsRecord] = useState(false);
   const [duration, setDuration] = useState(0);
   const messages = [
-    ...(messagesByRoom[chatRoom.id] || []),
-    ...(pendingMessages[chatRoom.id] || []),
+    ...(messagesByRoom[chatRoomId] || []),
+    ...(pendingMessages[chatRoomId] || []),
   ];
   const flatListRef = useRef<FlatList>(null);
   const {
@@ -164,8 +170,6 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const [showLeaveModal, setShowLeaveModal] = useState(false);
 
 
-  // Kích hoạt hook realtime
-  useChatRoomSync(chatRoom?.id, user?.id as string, isAtBottom);
 
   //Lắng nghe xem người khác chặn mình
   useEffect(() => {
@@ -261,7 +265,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
         showAvatar: !next || next.senderId !== msg.senderId,
         showDisplayName: !prev || prev.senderId !== msg.senderId,
         onImagePressForItem: () => openViewer(msg.id),
-        chatRoomId: chatRoom.id,
+        chatRoomId,
         hiddenMsg:
           userMessageState && userMessageState[msg.id]
             ? userMessageState[msg.id].deleted
@@ -325,23 +329,23 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
         readers={readersByMessageId[item.id] ?? []}
         members={members}
         msg={item}
-        chatRoomId={chatRoom.id}
-        type={chatRoom.type}
+        chatRoomId={chatRoomId}
+        type={type}
         onLongPress={onLongPressMessage}
       />
     ),
-    [lastSentByUser, readersByMessageId, members, chatRoom.type],
+    [lastSentByUser, readersByMessageId, members, type],
   );
 
   useEffect(() => {
     // setLastBatchId
-    if (!chatRoom) return;
+    if (!chatRoomId) return;
 
     let cancelled = false; // <– flag để tránh setState sau khi unmount hoặc đổi phòng
 
     const getCurrentBatch = async () => {
       try {
-        const snapshot = await getDoc(q_chatRoomId(chatRoom.id));
+        const snapshot = await getDoc(q_chatRoomId(chatRoomId));
 
         if (!cancelled && snapshot.exists()) {
           setLastBatchId(snapshot.data()?.lastBatchId || null);
@@ -356,13 +360,13 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     return () => {
       cancelled = true; // <– khi chatRoom đổi hoặc component unmount
     };
-  }, [chatRoom]);
+  }, [chatRoomId]);
 
   useEffect(() => {
     // Lắng nghe thay đổi lastBatchId trong chatRoom
-    if (!chatRoom) return;
+    if (!chatRoomId) return;
 
-    const unsubRoom = onSnapshot(q_chatRoomId(chatRoom.id), snap => {
+    const unsubRoom = onSnapshot(q_chatRoomId(chatRoomId), snap => {
       const data = snap.data();
       if (!data) return;
 
@@ -373,7 +377,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
         ); // tự động chuyển sang batch mới
       }
     });
-    const unsubReadStatus = onSnapshot(q_readStatus(chatRoom.id), snapshot => {
+    const unsubReadStatus = onSnapshot(q_readStatus(chatRoomId), snapshot => {
       const data: Record<string, ReadStatusModel> = {};
       snapshot.forEach((doc: any) => (data[doc.id] = doc.data()));
       setReadStatus(data);
@@ -383,11 +387,11 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
       unsubRoom();
       unsubReadStatus();
     };
-  }, [chatRoom]);
+  }, [chatRoomId]);
 
   useEffect(() => {
     // load 3 batch đầu tiên vào ---> dạng prepend (false)
-    if (!chatRoom) return;
+    if (!chatRoomId) return;
 
     let isMounted = true; // flag để cleanup
 
@@ -395,7 +399,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
       try {
         // 1. Lấy batch ASC rồi reverse + slice
         const q_batches = query(
-          collection(db, `chatRooms/${chatRoom.id}/batches`),
+          collection(db, `chatRooms/${chatRoomId}/batches`),
           orderBy(documentId(), 'asc'),
         );
 
@@ -409,16 +413,16 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
         const top3 = batchIds.slice(0, 3);
 
         if (top3.length === 0) {
-          if (isMounted) setMessagesForRoom(chatRoom.id, [], true);
+          if (isMounted) setMessagesForRoom(chatRoomId, [], true);
           return;
         }
 
         // 2. Load message của top3 batch (song song)
-        let messages = await loadMessagesFromBatchIds(chatRoom.id, top3);
+        let messages = await loadMessagesFromBatchIds(chatRoomId, top3);
         if (!isMounted) return; // ❗ kiểm tra lại trước khi setState
         messages = await preloadSignedUrls(messages);
 
-        setMessagesForRoom(chatRoom.id, messages, true);
+        setMessagesForRoom(chatRoomId, messages, true);
       } catch (err) {
         console.log('load3Batch error', err);
       }
@@ -429,15 +433,15 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     return () => {
       isMounted = false;
     };
-  }, [chatRoom]);
+  }, [chatRoomId]);
 
   useEffect(() => {
     // listen myReaction
-    if (!chatRoom || !user) return;
+    if (!chatRoomId || !user) return;
 
     const userMessageStateRef = collection(
       db,
-      `chatRooms/${chatRoom.id}/userMessageState/${user.id}/messages`,
+      `chatRooms/${chatRoomId}/userMessageState/${user.id}/messages`,
     );
 
     const unsub = onSnapshot(userMessageStateRef, docSnap => {
@@ -451,15 +455,15 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     return () => {
       unsub();
     };
-  }, [chatRoom, user]);
+  }, [chatRoomId, user]);
 
   useEffect(() => {
     //listen new message in current Batch
-    if (!chatRoom || !lastBatchId) return;
+    if (!chatRoomId || !lastBatchId) return;
 
     // 🔥 Đăng ký lắng nghe realtime
     const unsubscribe = onSnapshot(
-      q_messagesASC({ chatRoomId: chatRoom.id, batchId: lastBatchId }),
+      q_messagesASC({ chatRoomId, batchId: lastBatchId }),
       async snapshot => {
         let msgs = snapshot.docs.map((doc: any) => {
           const data = doc.data();
@@ -477,7 +481,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
         });
         msgs = await preloadSignedUrls(msgs);
         // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ ---> dạng prepend (false)
-        setMessagesForRoom(chatRoom.id, msgs, false);
+        setMessagesForRoom(chatRoomId, msgs, false);
       },
     );
 
@@ -485,7 +489,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     return () => {
       unsubscribe();
     };
-  }, [chatRoom, lastBatchId]);
+  }, [chatRoomId, lastBatchId]);
 
   useEffect(() => {
     //loadMoreBatches when atTop
@@ -502,10 +506,10 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     const next = allBatchIds.slice(loadedCount, loadedCount + 2);
     console.log(next);
     setIsPrepending(true);
-    let moreMessages = await loadMessagesFromBatchIds(chatRoom.id, next);
+    let moreMessages = await loadMessagesFromBatchIds(chatRoomId, next);
     moreMessages = await preloadSignedUrls(moreMessages);
 
-    setMessagesForRoom(chatRoom.id, moreMessages, true);
+    setMessagesForRoom(chatRoomId, moreMessages, true);
 
     // ĐỢI render xong rồi mới tắt prepend
     setTimeout(() => {
@@ -531,12 +535,12 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     if (user) {
       const messageId = messId ?? uuidv4();
       // ------------------------------------
-      let chatRoomId = '';
+      let roomId = '';
 
       if (type === 'private' && friend) {
-        chatRoomId = makeContactId(user.id as string, friend.id);
+        roomId = makeContactId(user.id as string, friend.id);
       } else {
-        chatRoomId = chatRoom.id;
+        roomId = chatRoomId;
       }
 
       const text = typeMsg === 'text' ? value : '';
@@ -548,7 +552,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
 
       // Thêm tin nhắn ở local
       if (!['image', 'video', 'audio'].includes(typeMsg)) {
-        addPendingMessage(chatRoomId, {
+        addPendingMessage(roomId, {
           id: messageId,
           senderId: user.id,
           type: 'text',
@@ -575,13 +579,13 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
       }
       // Xử lý phía firebase
       try {
-        const docSnap = await getDoc(doc(db, 'chatRooms', chatRoomId));
+        const docSnap = await getDoc(doc(db, 'chatRooms', roomId));
 
         if (docSnap.exists()) {
           const docSnapBatch = await getDoc(
             doc(
               db,
-              `chatRooms/${chatRoomId}/batches`,
+              `chatRooms/${roomId}/batches`,
               docSnap.data()?.lastBatchId,
             ),
           );
@@ -596,7 +600,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             batchInfo = createNewBatch(batchInfo);
             // Tạo batch mới
             await setDoc(
-              doc(db, `chatRooms/${chatRoomId}/batches`, batchInfo.id),
+              doc(db, `chatRooms/${roomId}/batches`, batchInfo.id),
               {
                 id: batchInfo.id,
                 messageCount: 0,
@@ -607,7 +611,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             );
             // update lại nextBatchId cho batch cũ
             await updateDoc(
-              doc(db, `chatRooms/${chatRoomId}/batches`, docSnapBatch.id),
+              doc(db, `chatRooms/${roomId}/batches`, docSnapBatch.id),
               {
                 nextBatchId: batchInfo.id,
               },
@@ -618,7 +622,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           await setDoc(
             doc(
               db,
-              `chatRooms/${chatRoomId}/batches/${batchInfo.id}/messages`,
+              `chatRooms/${roomId}/batches/${batchInfo.id}/messages`,
               messageId,
             ),
             {
@@ -647,14 +651,14 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           );
 
           // Cập nhật trạng thái
-          updatePendingStatus(chatRoomId, messageId, 'sent');
+          updatePendingStatus(roomId, messageId, 'sent');
           // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-          removePendingMessage(chatRoomId, messageId);
+          removePendingMessage(roomId, messageId);
         } else {
           const batchInfo = createNewBatch(null);
 
           await setDoc(
-            doc(db, 'chatRooms', chatRoomId),
+            doc(db, 'chatRooms', roomId),
             {
               type: 'private',
               name: friend.displayName,
@@ -693,12 +697,12 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           ];
 
           const promiseMember = members.map(_ => {
-            setDoc(doc(db, `chatRooms/${chatRoomId}/members`, _.id), _, {
+            setDoc(doc(db, `chatRooms/${roomId}/members`, _.id), _, {
               merge: true,
             });
             // Thêm readStatus subcollection cho chatRoom
             setDoc(
-              doc(db, `chatRooms/${chatRoomId}/readStatus`, _.id),
+              doc(db, `chatRooms/${roomId}/readStatus`, _.id),
               {
                 lastReadMessageId: _.id === user.id ? messageId : null,
                 lastReadAt: _.id === user.id ? serverTimestamp() : null,
@@ -713,7 +717,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
 
           // Tạo batch đầu tiên
           await setDoc(
-            doc(db, `chatRooms/${chatRoomId}/batches`, batchInfo.id),
+            doc(db, `chatRooms/${roomId}/batches`, batchInfo.id),
             {
               id: batchInfo.id,
               messageCount: 0,
@@ -727,7 +731,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           await setDoc(
             doc(
               db,
-              `chatRooms/${chatRoomId}/batches/${batchInfo.id}/messages`,
+              `chatRooms/${roomId}/batches/${batchInfo.id}/messages`,
               messageId,
             ),
             {
@@ -756,12 +760,12 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           );
 
           // Cập nhật trạng thái
-          updatePendingStatus(chatRoomId, messageId, 'sent');
+          updatePendingStatus(roomId, messageId, 'sent');
           // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-          removePendingMessage(chatRoomId, messageId);
+          removePendingMessage(roomId, messageId);
         }
       } catch (error) {
-        updatePendingStatus(chatRoomId, messageId, 'failed');
+        updatePendingStatus(roomId, messageId, 'failed');
         console.log(error);
       }
       setValue('');
@@ -1027,15 +1031,15 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           if (asset.type.startsWith('video/')) typeMsg = 'video';
           if (asset.type.startsWith('audio/')) typeMsg = 'audio';
 
-          let chatRoomId = '';
+          let roomId = '';
 
           if (type === 'private' && friend) {
-            chatRoomId = makeContactId(user?.id as string, friend.id);
+            roomId = makeContactId(user?.id as string, friend.id);
           } else {
-            chatRoomId = chatRoom.id;
+            roomId = chatRoomId;
           }
 
-          addPendingMessage(chatRoomId, {
+          addPendingMessage(roomId, {
             id: messId,
             senderId: user?.id as string,
             type: typeMsg,
@@ -1075,7 +1079,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                 extThumb,
                 thumb.mime,
                 true,
-                chatRoom.id,
+                chatRoomId,
                 messId,
               );
             await uploadBinaryToR2S3(thumbUploadUrl, thumb.path, thumb.mime);
@@ -1086,7 +1090,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             ext,
             asset.type,
             false,
-            chatRoom.id,
+            chatRoomId,
             messId,
           );
           await uploadBinaryToR2S3(uploadUrl, isCompressUri, asset.type);
@@ -1152,15 +1156,15 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
 
     if (actionRecord === 'send') {
       const messId = uuidv4();
-      let chatRoomId = '';
+      let roomId = '';
 
       if (type === 'private' && friend) {
-        chatRoomId = makeContactId(user?.id as string, friend.id);
+        roomId = makeContactId(user?.id as string, friend.id);
       } else {
-        chatRoomId = chatRoom.id;
+        roomId = chatRoomId;
       }
 
-      addPendingMessage(chatRoomId, {
+      addPendingMessage(roomId, {
         id: messId,
         senderId: user?.id as string,
         type: 'audio',
@@ -1191,7 +1195,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
         'mp4',
         'audio/mp4',
         false,
-        chatRoom.id,
+        chatRoomId,
         messId,
       );
 
@@ -1225,12 +1229,14 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const leaveRoom = async () => {
     // ví dụ Firestore
     await deleteDoc(
-      doc(db, `chatRooms/${chatRoom.id}/members/${user?.id}`)
+      doc(db, `chatRooms/${chatRoomId}/members/${user?.id}`)
     );
 
     navigation.goBack();
   };
 
+  if (!room) return <SpinnerComponent loading={true} />
+console.log(room)
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1252,14 +1258,12 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                 alignItems: 'flex-start',
               }}
               onPress={() => navigation.navigate('RoomSettingScreen', {
-                type: chatRoom.type,
-                friend: chatRoom.type === 'private' ? friend : null,
-                chatRoom,
-                members,
+                friend: type === 'private' ? friend : null,
+                chatRoomId,
               })}
             >
               <TextComponent
-                text={type === 'private' ? friend?.displayName : chatRoom.name}
+                text={type === 'private' ? friend?.displayName : room.name}
                 color={colors.background}
                 size={sizes.bigText}
                 font={fontFamillies.poppinsBold}
@@ -1267,7 +1271,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               />
               {type === 'group' && (
                 <TextComponent
-                  text={`${chatRoom.memberCount} thành viên`}
+                  text={`${room.memberCount} thành viên`}
                   color={colors.background}
                   size={sizes.smallText}
                 />
@@ -1281,9 +1285,9 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                 size={sizes.bigTitle}
                 color={colors.background}
                 onPress={() => navigation.navigate('SearchMsgScreen', {
-                  type: chatRoom.type,
-                  friend: chatRoom.type === 'private' ? friend : null,
-                  chatRoom,
+                  type,
+                  friend: type === 'private' ? friend : null,
+                  chatRoom: room,
                   members,
                 })}
               />
@@ -1306,7 +1310,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               />
               <SpaceComponent width={16} />
               {
-                chatRoom.type === 'group' ?
+                type === 'group' ?
                   <Logout
                     size={sizes.bigTitle}
                     color={colors.background}
@@ -1551,7 +1555,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             onDelete={(message: MessageModel) =>
               handleDeleteMsg({
                 message,
-                chatRoomId: chatRoom?.id as string,
+                chatRoomId: room.id as string,
                 userId: user?.id as string,
                 closePopover,
               })
@@ -1575,7 +1579,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             onRecall={(message: MessageModel) =>
               handleRecallMsg({
                 message,
-                chatRoomId: chatRoom?.id as string,
+                chatRoomId: room.id as string,
                 userId: user?.id as string,
                 closePopover,
               })
@@ -1590,7 +1594,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               handleAddEmoji({
                 emoji,
                 message,
-                chatRoomId: chatRoom?.id as string,
+                chatRoomId: room.id as string,
                 userId: user?.id as string,
                 closePopover,
               })
@@ -1629,7 +1633,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
       />
       <LeaveRoomModal
         visible={showLeaveModal}
-        roomName={chatRoom.name}
+        roomName={room.name}
         onClose={() => setShowLeaveModal(false)}
         onConfirm={leaveRoom}
       />

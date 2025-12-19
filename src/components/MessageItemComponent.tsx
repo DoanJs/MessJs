@@ -101,7 +101,7 @@ const MessageItemComponent = (props: Props) => {
         navigation.navigate('MessageDetailScreen', {
           type: chatRoom.type,
           friend: chatRoom.type === 'private' ? friend : null,
-          chatRoom,
+          chatRoomId: chatRoom.id,
           members,
         })
       }
