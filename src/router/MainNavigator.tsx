@@ -1,6 +1,6 @@
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from '.';
-import { AddFriendScreen, AddGroupScreen, MessageDetailScreen, RoomSettingScreen, SearchMsgScreen, SearchScreen } from '../screens';
+import { AddFriendScreen, AddGroupScreen, MemberRoomScreen, MessageDetailScreen, RoomSettingScreen, SearchMsgScreen, SearchScreen } from '../screens';
 import { auth, db } from '../../firebase.config';
 import { useEffect } from 'react';
 import { collection, getDocs, onSnapshot, query, where } from '@react-native-firebase/firestore';
@@ -121,6 +121,7 @@ const MainNavigator = () => {
       <Stack.Screen name="AddFriendScreen" component={AddFriendScreen} />
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="RoomSettingScreen" component={RoomSettingScreen} />
+      <Stack.Screen name="MemberRoomScreen" component={MemberRoomScreen} />
     </Stack.Navigator>
   );
 };

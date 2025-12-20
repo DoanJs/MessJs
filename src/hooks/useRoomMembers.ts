@@ -1,54 +1,39 @@
 import {
   collection,
-  documentId,
   onSnapshot,
+  orderBy,
   query,
-  where,
-} from '@react-native-firebase/firestore'
-import { useEffect, useMemo, useState } from 'react'
-import { db } from '../../firebase.config'
+} from '@react-native-firebase/firestore';
+import { useEffect, useState } from 'react';
+import { db } from '../../firebase.config';
 
-export const useRoomMembers = (memberIds?: string[]) => {
-  const [members, setMembers] = useState<any[]>([])
-
-  const memberKey = useMemo(() => {
-    if (!memberIds || memberIds.length === 0) return ''
-    return [...memberIds].sort().join(',')
-  }, [memberIds])
+export const useRoomMembers = (roomId: string) => {
+  const [members, setMembers] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!memberKey) {
-      setMembers([])
-      return
-    }
+    if (!roomId) return;
 
-    const ids = memberKey.split(',')
+    const unsub = onSnapshot(
+      query(
+        collection(db, 'chatRooms', roomId, 'members'),
+        orderBy('joinedAt', 'asc'),
+      ),
+      snap => {
+        setMembers(
+          snap.docs.map((d: any) => ({
+            id: d.id,
+            ...d.data(),
+          })),
+        );
+      },
+    );
 
-    const chunks: string[][] = []
-    for (let i = 0; i < ids.length; i += 10) {
-      chunks.push(ids.slice(i, i + 10))
-    }
+    return unsub;
+  }, [roomId]);
 
-    const unsubs = chunks.map(chunk =>
-      onSnapshot(
-        query(
-          collection(db, 'users'),
-          where(documentId(), 'in', chunk)
-        ),
-        snap => {
-          setMembers(prev => {
-            const map = new Map(prev.map(u => [u.id, u]))
-            snap.docs.forEach((d: any) => {
-              map.set(d.id, { id: d.id, ...d.data() })
-            })
-            return Array.from(map.values())
-          })
-        }
-      )
-    )
-
-    return () => unsubs.forEach(u => u())
-  }, [memberKey])
-
-  return members
-}
+  return members.sort((a, b) => {
+    if (a.role === b.role) return 0;
+    if (a.role === 'admin') return -1;
+    return 1;
+  });
+};

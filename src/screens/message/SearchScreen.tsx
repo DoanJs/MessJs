@@ -4,7 +4,7 @@ import { FlatList, View } from 'react-native';
 import 'react-native-get-random-values';
 import {
   SafeAreaView,
-  useSafeAreaInsets
+  useSafeAreaInsets,
 } from 'react-native-safe-area-context';
 import { db } from '../../../firebase.config';
 import {
@@ -14,19 +14,22 @@ import {
   SearchComponent,
   SectionComponent,
   SpaceComponent,
-  TextComponent
+  TextComponent,
 } from '../../components';
 import { ActionModal } from '../../components/modals';
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { makeContactId } from '../../constants/makeContactId';
-import { ChatRoomModel, UserModel } from '../../models';
-import { useBadgeStore, useChatRoomStore, useFriendShipStore, useUsersStore, useUserStore } from '../../zustand';
+import {
+  useBadgeStore,
+  useChatRoomStore,
+  useFriendShipStore,
+  useUserStore,
+} from '../../zustand';
 
 const SearchScreen = ({ navigation }: any) => {
   const insets = useSafeAreaInsets();
-  const { user } = useUserStore()
-  const { users } = useUsersStore()
+  const { user } = useUserStore();
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
@@ -36,34 +39,35 @@ const SearchScreen = ({ navigation }: any) => {
   const { badges } = useBadgeStore();
   const { chatRooms } = useChatRoomStore();
   const friendList = useFriendShipStore(s => s.friendList);
-  const [chatRoomNews, setChatRoomNews] = useState<ChatRoomModel[]>([]);
-  const [friendListNews, setFriendListNews] = useState<UserModel[]>([]);
   const [dataNews, setDataNews] = useState<any[]>([]);
   const [dataSource, setDataSource] = useState<any[]>([]);
 
-
   useEffect(() => {
-    if (!chatRooms || !friendList) return
-    handleArray()
-  }, [chatRooms, friendList])
+    if (!chatRooms || !friendList) return;
+    handleArray();
+  }, [chatRooms, friendList]);
 
   const handleArray = async () => {
-    const chatRoomGroup = chatRooms.filter((_) => _.type === 'group') ?? []
-    const contactIds = friendList.map((_) => makeContactId(user?.id as string, _.id))
-    const chatRoomPrivate = chatRooms.filter((_) => _.type === 'private' && !contactIds.includes(_.id))
+    const chatRoomGroup = chatRooms.filter(_ => _.type === 'group') ?? [];
+    const contactIds = friendList.map(_ =>
+      makeContactId(user?.id as string, _.id),
+    );
+    const chatRoomPrivate = chatRooms.filter(
+      _ => _.type === 'private' && !contactIds.includes(_.id),
+    );
 
     const friendIds = Array.from(
       new Set(
         chatRoomPrivate
           .map(room => handleMemberIds(room.memberIds))
-          .filter((id): id is string => !!id && id !== user?.id)
-      )
+          .filter((id): id is string => !!id && id !== user?.id),
+      ),
     );
     const existingIds = new Set(friendList.map(f => f.id));
 
     const needFetchIds = friendIds.filter(id => !existingIds.has(id));
     const snaps = await Promise.all(
-      needFetchIds.map(uid => getDoc(doc(db, 'users', uid)))
+      needFetchIds.map(uid => getDoc(doc(db, 'users', uid))),
     );
 
     const users = snaps
@@ -72,18 +76,14 @@ const SearchScreen = ({ navigation }: any) => {
         uid: s.id,
         ...s.data(),
       }));
-    const data = [
-      ...friendList,
-      ...users,
-      ...chatRoomGroup,
-    ];
+    const data = [...friendList, ...users, ...chatRoomGroup];
 
     setDataNews(data);
     setDataSource(data);
-  }
+  };
   const handleMemberIds = (memberIds: string[]) => {
-    return memberIds.find((_) => _ !== user?.id)
-  }
+    return memberIds.find(_ => _ !== user?.id);
+  };
 
   return (
     <SafeAreaView
@@ -130,15 +130,19 @@ const SearchScreen = ({ navigation }: any) => {
               }}
               showsVerticalScrollIndicator={false}
               data={dataNews}
-              renderItem={({ item }) => (
-                item.type ?
+              renderItem={({ item }) =>
+                item.type ? (
                   <MessageItemComponent
                     chatRoom={item}
                     count={badges[item.id]} //truyền count vào để show ngoài badge
                   />
-                  :
-                  <FriendItemComponent friend={item} setInfoModal={setInfoModal} />
-              )}
+                ) : (
+                  <FriendItemComponent
+                    friend={item}
+                    setInfoModal={setInfoModal}
+                  />
+                )
+              }
             />
           </View>
         </SectionComponent>

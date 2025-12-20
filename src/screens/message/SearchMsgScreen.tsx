@@ -26,7 +26,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import 'react-native-get-random-values';
 import ImageViewing from 'react-native-image-viewing';
@@ -44,7 +44,7 @@ import {
   MessageContentComponent,
   SectionComponent,
   SpaceComponent,
-  TextComponent
+  TextComponent,
 } from '../../components';
 import { ForwardUserModal } from '../../components/modals';
 import {
@@ -75,7 +75,12 @@ import {
 } from '../../constants/handleTimeData';
 import { useChatRoomSync } from '../../hooks/useChatRoomSync';
 import { MessageModel, ReadStatusModel } from '../../models';
-import { useBlockStore, useChatStore, useUsersStore, useUserStore } from '../../zustand';
+import {
+  useBlockStore,
+  useChatStore,
+  useUsersStore,
+  useUserStore,
+} from '../../zustand';
 
 const SearchMsgScreen = ({ route }: any) => {
   const insets = useSafeAreaInsets();
@@ -117,8 +122,8 @@ const SearchMsgScreen = ({ route }: any) => {
   const [visibleForwardUser, setVisibleForwardUser] = useState(false);
   const [messageMatchCount, setMessageMatchCount] = useState(0);
   const [totalMessageMatch, setTotalMessageMatch] = useState(0);
-  const userBlockByMe = useBlockStore(s => s.blockedByMe)
-  const userBlockMe = useBlockStore(s => s.blockedMe)
+  const userBlockByMe = useBlockStore(s => s.blockedByMe);
+  const userBlockMe = useBlockStore(s => s.blockedMe);
   const [loadingUnblock, setLoadingUnblock] = useState(false);
 
   // Kích hoạt hook realtime
@@ -720,17 +725,16 @@ const SearchMsgScreen = ({ route }: any) => {
   };
 
   const handleUnblock = async () => {
-    setLoadingUnblock(true)
+    setLoadingUnblock(true);
 
     try {
-      await unblockUser(friend.id)
-      setLoadingUnblock(false)
+      await unblockUser(friend.id);
+      setLoadingUnblock(false);
     } catch (error) {
-      setLoadingUnblock(false)
-      console.log(error)
+      setLoadingUnblock(false);
+      console.log(error);
     }
-
-  }
+  };
 
   return (
     <SafeAreaView
@@ -823,28 +827,33 @@ const SearchMsgScreen = ({ route }: any) => {
               padding: 10,
             }}
           >
-            {
-              (userBlockByMe[friend?.id] || userBlockMe[friend?.id]) &&
+            {(userBlockByMe[friend?.id] || userBlockMe[friend?.id]) && (
               <View>
                 <TextComponent
-                  text={`${userBlockByMe[friend.id] ? 'Bạn đã chặn ' + friend.displayName : friend.displayName + ' đã chặn bạn'}`}
-                  textAlign='center' color={colors.red} styles={{
-                    fontStyle: 'italic'
-                  }} />
+                  text={`${
+                    userBlockByMe[friend.id]
+                      ? 'Bạn đã chặn ' + friend.displayName
+                      : friend.displayName + ' đã chặn bạn'
+                  }`}
+                  textAlign="center"
+                  color={colors.red}
+                  styles={{
+                    fontStyle: 'italic',
+                  }}
+                />
                 <SpaceComponent height={10} />
-                {
-                  userBlockByMe[friend.id] &&
+                {userBlockByMe[friend.id] && (
                   <ButtonComponent
-                    text='Bỏ chặn'
+                    text="Bỏ chặn"
                     textStyles={{ color: colors.red }}
                     onPress={handleUnblock}
                     styles={{ backgroundColor: colors.background }}
                     isLoading={loadingUnblock}
                   />
-                }
+                )}
               </View>
-            }
-            <SpaceComponent height={10}/>
+            )}
+            <SpaceComponent height={10} />
             {keyword !== '' && (
               <TextComponent
                 text={`Tìm thấy ${messageMatchCount}/${totalMessageMatch} tin nhắn trùng khớp`}

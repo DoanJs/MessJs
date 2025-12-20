@@ -1,30 +1,36 @@
-import { useNavigation } from '@react-navigation/native';
 import React from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  FlatList,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Modal from 'react-native-modal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FriendItemComponent, RowComponent, SpaceComponent, TextComponent } from '..';
+import {
+  FriendItemComponent,
+  RowComponent,
+  SpaceComponent,
+  TextComponent,
+} from '..';
 import { fontFamillies } from '../../constants/fontFamilies';
-import { useFriendShipStore } from '../../zustand';
-import { AddCircle } from 'iconsax-react-native';
-import { sizes } from '../../constants/sizes';
-import { colors } from '../../constants/colors';
 import { UserModel } from '../../models';
+import { useFriendShipStore } from '../../zustand';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
-  members: UserModel[]
-  roomId: string
+  members: UserModel[];
+  roomId: string;
   onChange: (val: string) => void;
 }
 
 export default function AddMemberModal(props: Props) {
-  const navigation: any = useNavigation();
   const insets = useSafeAreaInsets();
   const { visible, onClose, onChange, members, roomId } = props;
-  const friendList = useFriendShipStore(f => f.friendList)
-  const memberIds = members.map((_) => _.id)
+  const friendList = useFriendShipStore(f => f.friendList);
+  const memberIds = members.map(_ => _.id);
 
   return (
     <Modal
@@ -35,8 +41,11 @@ export default function AddMemberModal(props: Props) {
       style={styles.modal}
     >
       <View style={styles.modalBox}>
-        <RowComponent justify='space-between'>
-          <TextComponent text='Thêm thành viên vào nhóm' font={fontFamillies.poppinsBold} />
+        <RowComponent justify="space-between">
+          <TextComponent
+            text="Thêm thành viên vào nhóm"
+            font={fontFamillies.poppinsBold}
+          />
           <TouchableOpacity onPress={onClose}>
             <Text style={styles.closeBtn}>Đóng</Text>
           </TouchableOpacity>
@@ -57,7 +66,8 @@ export default function AddMemberModal(props: Props) {
                 setInfoModal={undefined}
                 isMember={memberIds.includes(item.id)}
                 roomId={roomId}
-              />)}
+              />
+            )}
           />
         </View>
       </View>

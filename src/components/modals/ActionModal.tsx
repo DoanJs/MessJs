@@ -1,5 +1,6 @@
 import {
   CloseCircle,
+  MedalStar,
   TickCircle,
   UserAdd,
   UserMinus,
@@ -40,10 +41,11 @@ interface Props {
   };
   setInfoModal: any;
   onClose: () => void;
+  isAdminGroup?: boolean;
 }
 
 export default function ActionModal(props: Props) {
-  const { visible, onClose, infoModal, setInfoModal } = props;
+  const { visible, onClose, infoModal, setInfoModal, isAdminGroup } = props;
   const userCurrent = auth.currentUser;
   const { friend, status } = infoModal;
   const [loading, setLoading] = useState(false);
@@ -60,7 +62,7 @@ export default function ActionModal(props: Props) {
       case 'blocked_by_me':
         actions = ['Bỏ chặn'];
         break;
-        
+
       case 'pending_in':
         actions = ['Đồng ý', 'Từ chối', 'Chặn'];
         break;
@@ -226,6 +228,17 @@ export default function ActionModal(props: Props) {
               <SpaceComponent height={16} />
             </Fragment>
           ))
+        )}
+        {isAdminGroup && (
+          <RowComponent>
+            <MedalStar
+              size={sizes.title}
+              color={colors.textBold}
+              variant="Bold"
+            />
+            <SpaceComponent width={16} />
+            <TextComponent text="Bổ nhiệm làm trưởng nhóm" />
+          </RowComponent>
         )}
       </View>
     </Modal>

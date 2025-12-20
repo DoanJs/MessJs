@@ -5,6 +5,7 @@ import Register from './auth/Register';
 import ContactScreen from './contact/ContactScreen';
 import AddFriendScreen from './message/AddFriendScreen';
 import AddGroupScreen from './message/AddGroupScreen';
+import MemberRoomScreen from './message/MemberRoomScreen';
 import MessageDetailScreen from './message/MessageDetailScreen';
 import MessageScreen from './message/MessageScreen';
 import RoomSettingScreen from './message/RoomSettingScreen';
@@ -13,13 +14,18 @@ import SearchScreen from './message/SearchScreen';
 import ProfileScreen from './profile/ProfileScreen';
 
 export {
-  AddFriendScreen, AddGroupScreen, AuthHomeScreen,
+  AddFriendScreen,
+  AddGroupScreen,
+  AuthHomeScreen,
   ContactScreen,
   ForgotPasswordScreen,
   Login,
+  MemberRoomScreen,
   MessageDetailScreen,
   MessageScreen,
   ProfileScreen,
-  Register, SearchMsgScreen, SearchScreen, RoomSettingScreen
+  Register,
+  RoomSettingScreen,
+  SearchMsgScreen,
+  SearchScreen,
 };
-

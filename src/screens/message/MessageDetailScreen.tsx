@@ -33,14 +33,13 @@ import React, {
   useState,
 } from 'react';
 import {
-  Alert,
   FlatList,
   KeyboardAvoidingView,
   NativeScrollEvent,
   NativeSyntheticEvent,
   Platform,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { EmojiPopup } from 'react-native-emoji-popup';
 import EmojiSelector from 'react-native-emoji-selector';
@@ -66,7 +65,11 @@ import {
   SpinnerComponent,
   TextComponent,
 } from '../../components';
-import { ActionModal, ForwardUserModal, LeaveRoomModal } from '../../components/modals';
+import {
+  ActionModal,
+  ForwardUserModal,
+  LeaveRoomModal,
+} from '../../components/modals';
 import {
   createNewBatch,
   shouldCreateNewBatch,
@@ -93,7 +96,7 @@ import {
   preloadSignedUrls,
   requestAudioPermission,
   unblockUser,
-  uploadBinaryToR2S3,
+  uploadBinaryToR2S3
 } from '../../constants/functions';
 import {
   delay,
@@ -103,22 +106,27 @@ import {
 } from '../../constants/handleTimeData';
 import { makeContactId } from '../../constants/makeContactId';
 import { sizes } from '../../constants/sizes';
-import { useChatRoomSync } from '../../hooks/useChatRoomSync';
-import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
-import { useBlockStore, useChatStore, useUsersStore, useUserStore } from '../../zustand';
-import { useFriendState } from '../../hooks/useFriendState';
 import { useChatRoom } from '../../hooks/useChatRoom';
+import { useChatRoomSync } from '../../hooks/useChatRoomSync';
+import { useFriendState } from '../../hooks/useFriendState';
+import { MessageModel, MsgReplyModel, ReadStatusModel } from '../../models';
+import {
+  useBlockStore,
+  useChatStore,
+  useUsersStore,
+  useUserStore,
+} from '../../zustand';
 
 const MessageDetailScreen = ({ route, navigation }: any) => {
   const insets = useSafeAreaInsets();
   const { user } = useUserStore();
   const { users } = useUsersStore();
   const { type, friend, chatRoomId } = route.params;
-  const room = useChatRoom(chatRoomId)
+  const {room} = useChatRoom(chatRoomId);
   // Kích hoạt hook realtime
   const [isAtBottom, setIsAtBottom] = useState(true);
   useChatRoomSync(chatRoomId, user?.id as string, isAtBottom);
-  
+
   const [members, setMembers] = useState(route.params.members);
   const [value, setValue] = useState('');
   const [lastBatchId, setLastBatchId] = useState<string | null>(null);
@@ -133,7 +141,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const messages = [
     ...(messagesByRoom[chatRoomId] || []),
     ...(pendingMessages[chatRoomId] || []),
-  ];
+  ]
   const flatListRef = useRef<FlatList>(null);
   const {
     addPendingMessage,
@@ -158,8 +166,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const [msgReply, setMsgReply] = useState<MsgReplyModel | null>(null);
   const [msgForward, setMsgForward] = useState<any>(null);
   const [visibleForwardUser, setVisibleForwardUser] = useState(false);
-  const userBlockByMe = useBlockStore(s => s.blockedByMe)
-  const userBlockMe = useBlockStore(s => s.blockedMe)
+  const userBlockByMe = useBlockStore(s => s.blockedByMe);
+  const userBlockMe = useBlockStore(s => s.blockedMe);
   const [loadingUnblock, setLoadingUnblock] = useState(false);
   const friendState = useFriendState(friend?.id as string);
   const [infoModal, setInfoModal] = useState({
@@ -168,8 +176,6 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     friend: null,
   });
   const [showLeaveModal, setShowLeaveModal] = useState(false);
-
-
 
   //Lắng nghe xem người khác chặn mình
   useEffect(() => {
@@ -583,11 +589,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
 
         if (docSnap.exists()) {
           const docSnapBatch = await getDoc(
-            doc(
-              db,
-              `chatRooms/${roomId}/batches`,
-              docSnap.data()?.lastBatchId,
-            ),
+            doc(db, `chatRooms/${roomId}/batches`, docSnap.data()?.lastBatchId),
           );
           let batchInfo = {
             id: docSnapBatch.id,
@@ -1139,8 +1141,9 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-        } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
+        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+      } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -1215,28 +1218,25 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     setValue('');
   };
   const handleUnblock = async () => {
-    setLoadingUnblock(true)
+    setLoadingUnblock(true);
 
     try {
-      await unblockUser(friend.id)
-      setLoadingUnblock(false)
+      await unblockUser(friend.id);
+      setLoadingUnblock(false);
     } catch (error) {
-      setLoadingUnblock(false)
-      console.log(error)
+      setLoadingUnblock(false);
+      console.log(error);
     }
-
-  }
+  };
   const leaveRoom = async () => {
     // ví dụ Firestore
-    await deleteDoc(
-      doc(db, `chatRooms/${chatRoomId}/members/${user?.id}`)
-    );
+    await deleteDoc(doc(db, `chatRooms/${chatRoomId}/members/${user?.id}`));
 
     navigation.goBack();
   };
 
-  if (!room) return <SpinnerComponent loading={true} />
-console.log(room)
+  if (!room) return <SpinnerComponent loading={true} />;
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.primaryLight }}
@@ -1257,10 +1257,12 @@ console.log(room)
                 flexDirection: 'column',
                 alignItems: 'flex-start',
               }}
-              onPress={() => navigation.navigate('RoomSettingScreen', {
-                friend: type === 'private' ? friend : null,
-                chatRoomId,
-              })}
+              onPress={() =>
+                navigation.navigate('RoomSettingScreen', {
+                  friend: type === 'private' ? friend : null,
+                  chatRoomId,
+                })
+              }
             >
               <TextComponent
                 text={type === 'private' ? friend?.displayName : room.name}
@@ -1284,12 +1286,14 @@ console.log(room)
               <SearchNormal1
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => navigation.navigate('SearchMsgScreen', {
-                  type,
-                  friend: type === 'private' ? friend : null,
-                  chatRoom: room,
-                  members,
-                })}
+                onPress={() =>
+                  navigation.navigate('SearchMsgScreen', {
+                    type,
+                    friend: type === 'private' ? friend : null,
+                    chatRoom: room,
+                    members,
+                  })
+                }
               />
               {type === 'private' && (
                 <>
@@ -1297,7 +1301,7 @@ console.log(room)
                   <Call
                     size={sizes.bigTitle}
                     color={colors.background}
-                    onPress={() => { }}
+                    onPress={() => {}}
                   />
                 </>
               )}
@@ -1305,33 +1309,31 @@ console.log(room)
               <Video
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => { }}
+                onPress={() => {}}
                 variant="Bold"
               />
               <SpaceComponent width={16} />
-              {
-                type === 'group' ?
-                  <Logout
-                    size={sizes.bigTitle}
-                    color={colors.background}
-                    onPress={() => setShowLeaveModal(true)}
-                    variant="Bold"
-                  />
-                  :
-                  <Setting2
-                    size={sizes.bigTitle}
-                    color={colors.background}
-                    onPress={() =>
-                      setInfoModal({
-                        visibleModal: true,
-                        status: friendState,
-                        friend,
-                      })
-                    }
-                    variant="Bold"
-                  />
-
-              }
+              {type === 'group' ? (
+                <Logout
+                  size={sizes.bigTitle}
+                  color={colors.background}
+                  onPress={() => setShowLeaveModal(true)}
+                  variant="Bold"
+                />
+              ) : (
+                <Setting2
+                  size={sizes.bigTitle}
+                  color={colors.background}
+                  onPress={() =>
+                    setInfoModal({
+                      visibleModal: true,
+                      status: friendState,
+                      friend,
+                    })
+                  }
+                  variant="Bold"
+                />
+              )}
             </RowComponent>
           }
         >
@@ -1354,10 +1356,14 @@ console.log(room)
               ref={flatListRef}
               onScroll={handleScroll}
               scrollEventThrottle={16}
-              maintainVisibleContentPosition={{
-                minIndexForVisible: 0,
-                // autoscrollToTopThreshold: 20,
-              }}
+              maintainVisibleContentPosition={
+                enhancedMessages.length === 0
+                  ? undefined
+                  : {
+                      minIndexForVisible: 0,
+                      // autoscrollToTopThreshold: 20,
+                    }
+              }
               onContentSizeChange={() => {
                 // scroll xuống dưới cùng khi vào phòng chat
                 if (initialLoad) {
@@ -1417,11 +1423,12 @@ console.log(room)
                   }}
                 >
                   <TextComponent
-                    text={`Đang trả lời ${msgReply.senderId === user?.id
-                      ? 'chính bạn'
-                      : convertInfoUserFromID(msgReply.senderId, users)
-                        ?.displayName
-                      }`}
+                    text={`Đang trả lời ${
+                      msgReply.senderId === user?.id
+                        ? 'chính bạn'
+                        : convertInfoUserFromID(msgReply.senderId, users)
+                            ?.displayName
+                    }`}
                   />
                   <TextComponent
                     numberOfLine={1}
@@ -1444,103 +1451,109 @@ console.log(room)
               padding: 10,
             }}
           >
-            {
-              userBlockByMe[friend?.id] || userBlockMe[friend?.id] ?
-                <View>
-                  <TextComponent
-                    text={`${userBlockByMe[friend.id] ? 'Bạn đã chặn ' + friend.displayName : friend.displayName + ' đã chặn bạn'}`}
-                    textAlign='center' color={colors.red} styles={{
-                      fontStyle: 'italic'
-                    }} />
-                  <SpaceComponent height={10} />
-                  {
-                    userBlockByMe[friend.id] &&
-                    <ButtonComponent
-                      text='Bỏ chặn'
-                      textStyles={{ color: colors.red }}
-                      onPress={handleUnblock}
-                      styles={{ backgroundColor: colors.background }}
-                      isLoading={loadingUnblock}
-                    />
-                  }
-                </View>
-                :
-                <RowComponent>
-                  {isRecord ? (
-                    <Trash
-                      onPress={() => onStopRecord('remove')}
-                      size={sizes.extraTitle}
-                      color={colors.background}
-                      variant="Bold"
-                    />
-                  ) : Platform.OS === 'ios' ? (
-                    <EmojiNormal
-                      onPress={() => setShowPicker(!showPicker)}
-                      size={sizes.extraTitle}
-                      color={colors.background}
-                      variant="Bold"
-                    />
-                  ) : (
-                    <EmojiPopup onEmojiSelected={emoji => setValue(m => m + emoji)}>
-                      <EmojiNormal
-                        size={sizes.extraTitle}
-                        color={colors.background}
-                        variant="Bold"
-                      />
-                    </EmojiPopup>
-                  )}
-                  <SpaceComponent width={16} />
-                  <InputComponent
-                    styles={{
-                      backgroundColor: colors.background,
-                      // paddingHorizontal: 10,
-                      borderRadius: 5,
-                      flex: 1,
-                    }}
-                    placeholder="Nhập tin nhắn"
-                    placeholderTextColor={colors.gray2}
-                    color={colors.background}
-                    value={value}
-                    onChangeText={setValue}
-                    // onSubmitEditing={handleSendMessage}
-                    multible
-                    autoFocus={true}
+            {userBlockByMe[friend?.id] || userBlockMe[friend?.id] ? (
+              <View>
+                <TextComponent
+                  text={`${
+                    userBlockByMe[friend.id]
+                      ? 'Bạn đã chặn ' + friend.displayName
+                      : friend.displayName + ' đã chặn bạn'
+                  }`}
+                  textAlign="center"
+                  color={colors.red}
+                  styles={{
+                    fontStyle: 'italic',
+                  }}
+                />
+                <SpaceComponent height={10} />
+                {userBlockByMe[friend.id] && (
+                  <ButtonComponent
+                    text="Bỏ chặn"
+                    textStyles={{ color: colors.red }}
+                    onPress={handleUnblock}
+                    styles={{ backgroundColor: colors.background }}
+                    isLoading={loadingUnblock}
                   />
-                  <SpaceComponent width={16} />
-                  {value === '' ? (
-                    <>
-                      <Microphone2
-                        onPress={handleOpenRecord}
-                        size={sizes.extraTitle}
-                        color={colors.background}
-                        variant="Bold"
-                      />
-                      <SpaceComponent width={16} />
-                      <Image
-                        onPress={handleOpenImage}
-                        size={sizes.extraTitle}
-                        color={colors.background}
-                        variant="Bold"
-                      />
-                    </>
-                  ) : isRecord ? (
-                    <Send2
+                )}
+              </View>
+            ) : (
+              <RowComponent>
+                {isRecord ? (
+                  <Trash
+                    onPress={() => onStopRecord('remove')}
+                    size={sizes.extraTitle}
+                    color={colors.background}
+                    variant="Bold"
+                  />
+                ) : Platform.OS === 'ios' ? (
+                  <EmojiNormal
+                    onPress={() => setShowPicker(!showPicker)}
+                    size={sizes.extraTitle}
+                    color={colors.background}
+                    variant="Bold"
+                  />
+                ) : (
+                  <EmojiPopup
+                    onEmojiSelected={emoji => setValue(m => m + emoji)}
+                  >
+                    <EmojiNormal
                       size={sizes.extraTitle}
                       color={colors.background}
                       variant="Bold"
-                      onPress={() => onStopRecord('send')}
                     />
-                  ) : (
-                    <Send2
+                  </EmojiPopup>
+                )}
+                <SpaceComponent width={16} />
+                <InputComponent
+                  styles={{
+                    backgroundColor: colors.background,
+                    // paddingHorizontal: 10,
+                    borderRadius: 5,
+                    flex: 1,
+                  }}
+                  placeholder="Nhập tin nhắn"
+                  placeholderTextColor={colors.gray2}
+                  color={colors.background}
+                  value={value}
+                  onChangeText={setValue}
+                  // onSubmitEditing={handleSendMessage}
+                  multible
+                  autoFocus={true}
+                />
+                <SpaceComponent width={16} />
+                {value === '' ? (
+                  <>
+                    <Microphone2
+                      onPress={handleOpenRecord}
                       size={sizes.extraTitle}
                       color={colors.background}
                       variant="Bold"
-                      onPress={() => handleSendMessage({})}
                     />
-                  )}
-                </RowComponent>
-
-            }
+                    <SpaceComponent width={16} />
+                    <Image
+                      onPress={handleOpenImage}
+                      size={sizes.extraTitle}
+                      color={colors.background}
+                      variant="Bold"
+                    />
+                  </>
+                ) : isRecord ? (
+                  <Send2
+                    size={sizes.extraTitle}
+                    color={colors.background}
+                    variant="Bold"
+                    onPress={() => onStopRecord('send')}
+                  />
+                ) : (
+                  <Send2
+                    size={sizes.extraTitle}
+                    color={colors.background}
+                    variant="Bold"
+                    onPress={() => handleSendMessage({})}
+                  />
+                )}
+              </RowComponent>
+            )}
           </SectionComponent>
           <ImageViewing
             imageIndex={imageIndex}
@@ -1572,9 +1585,9 @@ console.log(room)
             }}
             onReact={(message: MessageModel) => {
               // setTimeout(() => setVisibleForwardUser(true), 1000);
-              setVisibleForwardUser(true)
+              setVisibleForwardUser(true);
               setMsgForward(message);
-              setTimeout(() => closePopover(), 1000)
+              setTimeout(() => closePopover(), 1000);
             }}
             onRecall={(message: MessageModel) =>
               handleRecallMsg({
@@ -1637,7 +1650,6 @@ console.log(room)
         onClose={() => setShowLeaveModal(false)}
         onConfirm={leaveRoom}
       />
-
     </SafeAreaView>
   );
 };

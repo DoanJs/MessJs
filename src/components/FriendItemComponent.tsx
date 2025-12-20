@@ -21,17 +21,18 @@ import { sizes } from '../constants/sizes';
 import { useFriendState } from '../hooks/useFriendState';
 import { UserModel } from '../models';
 import { useBlockStore, useUserStore } from '../zustand';
-import { ActivityIndicator } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 interface Props {
   friend: UserModel;
   setInfoModal: any;
-  isMember?: boolean | undefined
-  roomId?: string
+  isMember?: boolean | undefined;
+  roomId?: string;
+  myRole?: 'admin' | 'member' | null;
 }
 
 const FriendItemComponent = (props: Props) => {
-  const { friend, setInfoModal, isMember = undefined, roomId } = props;
+  const { friend, setInfoModal, isMember = undefined, roomId, myRole } = props;
   const navigation: any = useNavigation();
   const { user } = useUserStore();
   const friendState = useFriendState(friend.id as string);
@@ -77,9 +78,7 @@ const FriendItemComponent = (props: Props) => {
         navigation.navigate('MessageDetailScreen', {
           type: 'private',
           friend,
-          chatRoom: {
-            id: makeContactId(user?.id as string, friend.id),
-          },
+          chatRoomId: makeContactId(user?.id as string, friend.id),
           members: [],
         });
       });
@@ -117,26 +116,38 @@ const FriendItemComponent = (props: Props) => {
     return result;
   };
   const handleAddMemberGroup = async () => {
-    setLoadingAddMember(true)
+    setLoadingAddMember(true);
     try {
-      await addMemberToGroup({ roomId: roomId as string, targetUid: friend.id })
-      setLoadingAddMember(false)
+      await addMemberToGroup({
+        roomId: roomId as string,
+        targetUid: friend.id,
+      });
+      setLoadingAddMember(false);
     } catch (error) {
-      setLoadingAddMember(false)
-      console.log(error)
+      setLoadingAddMember(false);
+      console.log(error);
     }
-  }
+  };
 
   return (
     <RowComponent justify="space-between" styles={{ marginVertical: 10 }}>
       <RowComponent onPress={onNavigateDetail} styles={{ flex: 1 }}>
         <AvatarComponent size={sizes.header} uri={friend.photoURL} />
         <SpaceComponent width={10} />
-        <TextComponent text={friend.displayName} numberOfLine={1} />
+        <View>
+          <TextComponent text={friend.displayName} numberOfLine={1} />
+          {myRole && (
+            <TextComponent
+              text={myRole === 'admin' ? 'Trưởng nhóm' : 'Thành viên'}
+              numberOfLine={1}
+              color={colors.textBold}
+              size={sizes.smallText}
+            />
+          )}
+        </View>
       </RowComponent>
 
-      {
-        setInfoModal &&
+      {setInfoModal && (
         <RowComponent styles={{ paddingHorizontal: 10 }}>
           <TextComponent
             text={showStatus()}
@@ -161,22 +172,34 @@ const FriendItemComponent = (props: Props) => {
             }
           />
         </RowComponent>
-      }
-      {isMember !== undefined && (
-        !isMember ?
-        (loadingAddMember ? <ActivityIndicator /> :
-          <AddCircle
-            size={sizes.title}
-            variant="Bold"
+      )}
+      {isMember !== undefined &&
+        (!isMember ? (
+          loadingAddMember ? (
+            <ActivityIndicator />
+          ) : (
+            <AddCircle
+              size={sizes.title}
+              variant="Bold"
+              color={colors.textBold}
+              onPress={handleAddMemberGroup}
+            />
+          )
+        ) : (
+          <TextComponent
+            text="Thành viên nhóm"
             color={colors.textBold}
-            onPress={handleAddMemberGroup}
-          />)
-          :
-          <TextComponent text='Thành viên nhóm' color={colors.textBold} styles={{
-            fontStyle:'italic'
-          }}/>
-      )
-      }
+            styles={{
+              fontStyle: 'italic',
+            }}
+          />
+        ))}
+
+      {/* {myRole === 'admin' ? (
+        <TextComponent text="Trưởng nhóm" />
+      ) : (
+        <TextComponent text="Được thêm bởi ..." />
+      )} */}
     </RowComponent>
   );
 };

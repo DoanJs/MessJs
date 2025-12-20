@@ -7,6 +7,7 @@ import {
   query,
   serverTimestamp,
   setDoc,
+  Timestamp,
   updateDoc,
 } from '@react-native-firebase/firestore';
 import { httpsCallable } from '@react-native-firebase/functions';
@@ -114,11 +115,22 @@ export const unblockUser = async (targetId: string) => {
   const { result }: any = (await callable({ targetId })).data;
   return result;
 };
-export const addMemberToGroup = async ({ roomId, targetUid }: { roomId: string, targetUid: string }) => {
+export const addMemberToGroup = async ({
+  roomId,
+  targetUid,
+}: {
+  roomId: string;
+  targetUid: string;
+}) => {
   const callable = httpsCallable(functions, 'addMemberToGroup');
-  console.log('áodad')
 
   const { success }: any = (await callable({ roomId, targetUid })).data;
+  return success;
+};
+export const leaveGroup = async (roomId: string) => {
+  const callable = httpsCallable(functions, 'leaveGroup');
+
+  const { success }: any = (await callable({ roomId })).data;
   return success;
 };
 
