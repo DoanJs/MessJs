@@ -197,7 +197,7 @@ const RoomSettingScreen = ({ route, navigation }: any) => {
                     _.title === 'Đổi hình nền')) ||
                 (room.type === 'group' &&
                   myRole &&
-                  (myRole === 'member') &&
+                  myRole === 'member' &&
                   _.title === 'Thêm thành viên')
               )
                 return;
@@ -250,7 +250,13 @@ const RoomSettingScreen = ({ route, navigation }: any) => {
           <SpaceComponent height={16} />
 
           <RowComponent justify="space-between" onPress={() => {}}>
-            <RowComponent>
+            <RowComponent
+              onPress={() =>
+                navigation.navigate('MediaRoomScreen', {
+                  chatRoomId,
+                })
+              }
+            >
               <ImageIcon
                 size={sizes.title}
                 variant="Bold"

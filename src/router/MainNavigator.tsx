@@ -7,6 +7,7 @@ import { collection, getDocs, onSnapshot, query, where } from '@react-native-fir
 import { useBlockStore, useFriendRequestStore, useFriendShipStore, usePendingRequestUsersStore } from '../zustand';
 import { UserModel } from '../models';
 import { chunk } from '../constants/functions';
+import MediaRoomScreen from '../screens/message/MediaRoomScreen';
 
 const MainNavigator = () => {
   const Stack = createNativeStackNavigator();
@@ -122,6 +123,7 @@ const MainNavigator = () => {
       <Stack.Screen name="SearchScreen" component={SearchScreen} />
       <Stack.Screen name="RoomSettingScreen" component={RoomSettingScreen} />
       <Stack.Screen name="MemberRoomScreen" component={MemberRoomScreen} />
+      <Stack.Screen name="MediaRoomScreen" component={MediaRoomScreen} />
     </Stack.Navigator>
   );
 };
