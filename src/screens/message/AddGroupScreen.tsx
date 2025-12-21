@@ -65,7 +65,7 @@ const AddGroupScreen = ({ navigation }: any) => {
           doc(db, `chatRooms/${id}/members`, _.id),
           {
             id: _.id,
-            role: _.id === user.id ? 'admin' : 'member',
+            role: _.id === user.id ? 'owner' : 'member',
             joinedAt: serverTimestamp(),
             nickName: _.displayName,
             photoURL: _.photoURL,
@@ -99,10 +99,11 @@ const AddGroupScreen = ({ navigation }: any) => {
         },
         { merge: true },
       );
-
+      
       navigation.replace('MessageDetailScreen', {
         type: 'group',
         friend: null,
+        chatRoomId: id,
         chatRoom: {
           id,
           type: 'group',

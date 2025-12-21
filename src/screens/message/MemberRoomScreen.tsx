@@ -19,30 +19,17 @@ import { ActionModal } from '../../components/modals';
 
 const MemberRoomScreen = ({ route }: any) => {
   const { chatRoomId } = route.params;
-  const members = useRoomMembers(chatRoomId);
+  const {members, userRole} = useRoomMembers(chatRoomId);
   const [infoModal, setInfoModal] = useState({
     visibleModal: false,
     status: '',
     fromUser: false,
     friend: null,
+
+    friendRole: null,
+    userRole: null,
+    roomId: null
   });
-
-  // const [loadingRenameModal, setLoadingRenameModal] = useState(false);
-  // const [loadingAddMember, setLoadingAddMember] = useState(false);
-  // const [loadingLeaveGroup, setLoadingLeaveGroup] = useState(false);
-
-  // const handleLeaveGroup = async () => {
-  //   setLoadingLeaveGroup(true);
-  //   try {
-  //     await leaveGroup(chatRoomId);
-  //     setLoadingLeaveGroup(false);
-
-  //     navigation.navigate('Main');
-  //   } catch (error) {
-  //     setLoadingLeaveGroup(false);
-  //     console.log(error);
-  //   }
-  // };
 
   if (!chatRoomId) return <ActivityIndicator />;
 
@@ -108,7 +95,10 @@ const MemberRoomScreen = ({ route }: any) => {
                   ...item,
                   displayName: item.nickName,
                 }}
-                myRole={item.role}
+
+                friendRole={item.role}
+                userRole={userRole}
+                roomId={chatRoomId}
               />
             )}
           />
@@ -122,7 +112,6 @@ const MemberRoomScreen = ({ route }: any) => {
         setInfoModal={setInfoModal}
         infoModal={infoModal}
         onClose={() => setInfoModal({ ...infoModal, visibleModal: false })}
-        isAdminGroup={true}
       />
     </SafeAreaView>
   );

@@ -1,5 +1,6 @@
 import {
   CloseCircle,
+  Medal,
   MedalStar,
   TickCircle,
   UserAdd,
@@ -24,6 +25,8 @@ import {
   blockUser,
   cancelFriendRequest,
   declineFriendRequest,
+  demoteAdmin,
+  promoteToAdmin,
   sendFriendRequest,
   unblockUser,
   unfriend,
@@ -38,16 +41,24 @@ interface Props {
     visibleModal: boolean;
     status: string;
     friend: UserModel | null;
+
+    friendRole?: string | null;
+    userRole?: string | null;
+    roomId?: string | null;
   };
   setInfoModal: any;
   onClose: () => void;
-  isAdminGroup?: boolean;
 }
 
 export default function ActionModal(props: Props) {
-  const { visible, onClose, infoModal, setInfoModal, isAdminGroup } = props;
+  const {
+    visible,
+    onClose,
+    infoModal,
+    setInfoModal,
+  } = props;
   const userCurrent = auth.currentUser;
-  const { friend, status } = infoModal;
+  const { friend, status, friendRole, userRole, roomId } = infoModal;
   const [loading, setLoading] = useState(false);
 
   const showActions = () => {
@@ -187,6 +198,18 @@ export default function ActionModal(props: Props) {
         case 'Bỏ chặn':
           result = await unblockUser(friend.id);
           break;
+        case 'Bổ nhiệm làm phó nhóm':
+          result = await promoteToAdmin({
+            roomId: roomId as string,
+            targetUid: friend.id,
+          });
+          break;
+        case 'Thu hồi phó nhóm':
+          result = await demoteAdmin({
+            roomId: roomId as string,
+            targetUid: friend.id,
+          });
+          break;
 
         default:
           break;
@@ -218,27 +241,52 @@ export default function ActionModal(props: Props) {
         {loading ? (
           <ActivityIndicator />
         ) : (
-          showActions().map((_, index) => (
-            <Fragment key={index}>
-              <RowComponent onPress={() => handleAction(_)}>
-                {showIconAction(_)}
+          <>
+            {showActions().map((_, index) => (
+              <Fragment key={index}>
+                <RowComponent onPress={() => handleAction(_)}>
+                  {showIconAction(_)}
+                  <SpaceComponent width={16} />
+                  <TextComponent text={_} />
+                </RowComponent>
+                <SpaceComponent height={16} />
+              </Fragment>
+            ))}
+            {userRole && userRole === 'owner' && friendRole && (
+              <RowComponent
+                onPress={() =>
+                  handleAction(
+                    friendRole === 'member'
+                      ? 'Bổ nhiệm làm phó nhóm'
+                      : 'Thu hồi phó nhóm',
+                  )
+                }
+              >
+                {friendRole === 'member' ? (
+                  <MedalStar
+                    size={sizes.title}
+                    color={colors.textBold}
+                    variant="Bold"
+                  />
+                ) : (
+                  <Medal
+                    size={sizes.title}
+                    color={colors.textBold}
+                    variant="Bold"
+                  />
+                )}
+
                 <SpaceComponent width={16} />
-                <TextComponent text={_} />
+                <TextComponent
+                  text={`${
+                    friendRole === 'member'
+                      ? 'Bổ nhiệm làm phó nhóm'
+                      : 'Thu hồi phó nhóm'
+                  }`}
+                />
               </RowComponent>
-              <SpaceComponent height={16} />
-            </Fragment>
-          ))
-        )}
-        {isAdminGroup && (
-          <RowComponent>
-            <MedalStar
-              size={sizes.title}
-              color={colors.textBold}
-              variant="Bold"
-            />
-            <SpaceComponent width={16} />
-            <TextComponent text="Bổ nhiệm làm trưởng nhóm" />
-          </RowComponent>
+            )}
+          </>
         )}
       </View>
     </Modal>

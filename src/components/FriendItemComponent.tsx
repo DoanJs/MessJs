@@ -6,6 +6,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { AddCircle, More } from 'iconsax-react-native';
 import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import {
   AvatarComponent,
   RowComponent,
@@ -21,22 +22,32 @@ import { sizes } from '../constants/sizes';
 import { useFriendState } from '../hooks/useFriendState';
 import { UserModel } from '../models';
 import { useBlockStore, useUserStore } from '../zustand';
-import { ActivityIndicator, View } from 'react-native';
 
 interface Props {
   friend: UserModel;
   setInfoModal: any;
   isMember?: boolean | undefined;
   roomId?: string;
-  myRole?: 'admin' | 'member' | null;
+  friendRole?: 'owner' | 'admin' | 'member' | null;
+  userRole?: 'owner' | 'admin' | 'member' | null;
 }
 
 const FriendItemComponent = (props: Props) => {
-  const { friend, setInfoModal, isMember = undefined, roomId, myRole } = props;
+  const {
+    friend,
+    setInfoModal,
+    isMember = undefined,
+    roomId,
+    friendRole,
+    userRole,
+  } = props;
   const navigation: any = useNavigation();
   const { user } = useUserStore();
   const friendState = useFriendState(friend.id as string);
   const [loadingAddMember, setLoadingAddMember] = useState(false);
+
+  console.log(roomId)
+
 
   //Lắng nghe xem người khác chặn mình
   useEffect(() => {
@@ -136,9 +147,15 @@ const FriendItemComponent = (props: Props) => {
         <SpaceComponent width={10} />
         <View>
           <TextComponent text={friend.displayName} numberOfLine={1} />
-          {myRole && (
+          {friendRole && (
             <TextComponent
-              text={myRole === 'admin' ? 'Trưởng nhóm' : 'Thành viên'}
+              text={
+                friendRole === 'owner'
+                  ? 'Trưởng nhóm'
+                  : friendRole === 'admin'
+                  ? 'Phó nhóm'
+                  : 'Thành viên'
+              }
               numberOfLine={1}
               color={colors.textBold}
               size={sizes.smallText}
@@ -147,32 +164,43 @@ const FriendItemComponent = (props: Props) => {
         </View>
       </RowComponent>
 
-      {setInfoModal && (
-        <RowComponent styles={{ paddingHorizontal: 10 }}>
+      {setInfoModal &&
+        (user?.id !== friend.id ? (
+          <RowComponent styles={{ paddingHorizontal: 10 }}>
+            <TextComponent
+              text={showStatus()}
+              styles={{ fontStyle: 'italic' }}
+              color={
+                friendState === 'blocked_by_me' || friendState === 'blocked_me'
+                  ? colors.red
+                  : colors.textBold
+              }
+            />
+            <SpaceComponent width={10} />
+            <More
+              size={sizes.title}
+              variant="Bold"
+              color={colors.textBold}
+              onPress={() =>
+                setInfoModal({
+                  visibleModal: true,
+                  status: friendState,
+                  friend,
+                  
+                  friendRole,
+                  userRole,
+                  roomId
+                })
+              }
+            />
+          </RowComponent>
+        ) : (
           <TextComponent
-            text={showStatus()}
-            styles={{ fontStyle: 'italic' }}
-            color={
-              friendState === 'blocked_by_me' || friendState === 'blocked_me'
-                ? colors.red
-                : colors.textBold
-            }
-          />
-          <SpaceComponent width={10} />
-          <More
-            size={sizes.title}
-            variant="Bold"
+            text="Bạn"
             color={colors.textBold}
-            onPress={() =>
-              setInfoModal({
-                visibleModal: true,
-                status: friendState,
-                friend,
-              })
-            }
+            styles={{ fontStyle: 'italic' }}
           />
-        </RowComponent>
-      )}
+        ))}
       {isMember !== undefined &&
         (!isMember ? (
           loadingAddMember ? (
@@ -194,12 +222,6 @@ const FriendItemComponent = (props: Props) => {
             }}
           />
         ))}
-
-      {/* {myRole === 'admin' ? (
-        <TextComponent text="Trưởng nhóm" />
-      ) : (
-        <TextComponent text="Được thêm bởi ..." />
-      )} */}
     </RowComponent>
   );
 };

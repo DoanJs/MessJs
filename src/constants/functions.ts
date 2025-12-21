@@ -133,6 +133,18 @@ export const leaveGroup = async (roomId: string) => {
   const { success }: any = (await callable({ roomId })).data;
   return success;
 };
+export const promoteToAdmin = async ({roomId, targetUid}: {roomId: string, targetUid: string}) => {
+  const callable = httpsCallable(functions, 'promoteToAdmin');
+
+  const { success }: any = (await callable({ roomId, targetUid })).data;
+  return success;
+};
+export const demoteAdmin = async({roomId, targetUid}: {roomId: string, targetUid: string}) => {
+  const callable = httpsCallable(functions, 'demoteAdmin');
+
+  const { success }: any = (await callable({ roomId, targetUid })).data;
+  return success;
+};
 
 export const uploadBinaryToR2S3 = async (
   uploadUrl: string,

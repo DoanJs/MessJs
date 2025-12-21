@@ -197,7 +197,7 @@ const RoomSettingScreen = ({ route, navigation }: any) => {
                     _.title === 'Đổi hình nền')) ||
                 (room.type === 'group' &&
                   myRole &&
-                  myRole !== 'admin' &&
+                  (myRole === 'member') &&
                   _.title === 'Thêm thành viên')
               )
                 return;
