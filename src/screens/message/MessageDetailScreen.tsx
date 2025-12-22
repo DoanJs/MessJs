@@ -1235,7 +1235,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     navigation.goBack();
   };
 
-  if (!room) return <SpinnerComponent loading={true} />;
+  if (!chatRoomId) return <SpinnerComponent loading={true} />;
 
   return (
     <SafeAreaView
@@ -1265,7 +1265,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               }
             >
               <TextComponent
-                text={type === 'private' ? friend?.displayName : room.name}
+                text={type === 'private' ? friend?.displayName : room?.name}
                 color={colors.background}
                 size={sizes.bigText}
                 font={fontFamillies.poppinsBold}
@@ -1273,7 +1273,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               />
               {type === 'group' && (
                 <TextComponent
-                  text={`${room.memberCount} thành viên`}
+                  text={`${room?.memberCount} thành viên`}
                   color={colors.background}
                   size={sizes.smallText}
                 />
@@ -1568,7 +1568,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             onDelete={(message: MessageModel) =>
               handleDeleteMsg({
                 message,
-                chatRoomId: room.id as string,
+                chatRoomId: room?.id as string,
                 userId: user?.id as string,
                 closePopover,
               })
@@ -1592,7 +1592,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             onRecall={(message: MessageModel) =>
               handleRecallMsg({
                 message,
-                chatRoomId: room.id as string,
+                chatRoomId: room?.id as string,
                 userId: user?.id as string,
                 closePopover,
               })
@@ -1607,7 +1607,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               handleAddEmoji({
                 emoji,
                 message,
-                chatRoomId: room.id as string,
+                chatRoomId: room?.id as string,
                 userId: user?.id as string,
                 closePopover,
               })
@@ -1646,7 +1646,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
       />
       <LeaveRoomModal
         visible={showLeaveModal}
-        roomName={room.name}
+        roomName={room?.name}
         onClose={() => setShowLeaveModal(false)}
         onConfirm={leaveRoom}
       />

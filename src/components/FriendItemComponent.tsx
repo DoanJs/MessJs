@@ -46,9 +46,6 @@ const FriendItemComponent = (props: Props) => {
   const friendState = useFriendState(friend.id as string);
   const [loadingAddMember, setLoadingAddMember] = useState(false);
 
-  console.log(roomId)
-
-
   //Lắng nghe xem người khác chặn mình
   useEffect(() => {
     if (!user?.id || !friend.id) return;
@@ -86,12 +83,18 @@ const FriendItemComponent = (props: Props) => {
           lastContactAt: serverTimestamp(),
         },
       }).then(() => {
-        navigation.navigate('MessageDetailScreen', {
-          type: 'private',
-          friend,
-          chatRoomId: makeContactId(user?.id as string, friend.id),
-          members: [],
-        });
+        if (friend.id === user?.id) {
+          navigation.navigate('Main', {
+            screen: 'Profile',
+          });
+        } else {
+          navigation.navigate('MessageDetailScreen', {
+            type: 'private',
+            friend,
+            chatRoomId: makeContactId(user?.id as string, friend.id),
+            members: [],
+          });
+        }
       });
     } catch (error) {
       console.log(error);
@@ -186,10 +189,10 @@ const FriendItemComponent = (props: Props) => {
                   visibleModal: true,
                   status: friendState,
                   friend,
-                  
+
                   friendRole,
                   userRole,
-                  roomId
+                  roomId,
                 })
               }
             />
