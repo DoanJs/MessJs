@@ -84,8 +84,6 @@ const MessageContentComponent = React.memo((props: Props) => {
     };
   }, [chatRoomId, batchId, msg.id, user?.id]);
 
-  
-
   const showContent = () => {
     let result: ReactNode;
     switch (msg.type) {
