@@ -1,6 +1,5 @@
 import {
   collection,
-  deleteDoc,
   doc,
   documentId,
   getDoc,
@@ -39,7 +38,7 @@ import {
   NativeSyntheticEvent,
   Platform,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { EmojiPopup } from 'react-native-emoji-popup';
 import EmojiSelector from 'react-native-emoji-selector';
@@ -90,13 +89,14 @@ import {
   handleAddEmoji,
   handleDeleteMsg,
   handleRecallMsg,
+  leaveGroup,
   loadMessagesFromBatchIds,
   mimeToExt,
   pickImage,
   preloadSignedUrls,
   requestAudioPermission,
   unblockUser,
-  uploadBinaryToR2S3
+  uploadBinaryToR2S3,
 } from '../../constants/functions';
 import {
   delay,
@@ -122,7 +122,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const { user } = useUserStore();
   const { users } = useUsersStore();
   const { type, friend, chatRoomId } = route.params;
-  const {room} = useChatRoom(chatRoomId);
+  const { room } = useChatRoom(chatRoomId);
   // Kích hoạt hook realtime
   const [isAtBottom, setIsAtBottom] = useState(true);
   useChatRoomSync(chatRoomId, user?.id as string, isAtBottom);
@@ -141,7 +141,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
   const messages = [
     ...(messagesByRoom[chatRoomId] || []),
     ...(pendingMessages[chatRoomId] || []),
-  ]
+  ];
   const flatListRef = useRef<FlatList>(null);
   const {
     addPendingMessage,
@@ -1229,10 +1229,13 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     }
   };
   const leaveRoom = async () => {
-    // ví dụ Firestore
-    await deleteDoc(doc(db, `chatRooms/${chatRoomId}/members/${user?.id}`));
+    try {
+      await leaveGroup(chatRoomId);
 
-    navigation.goBack();
+      navigation.navigate('Main');
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   if (!chatRoomId) return <SpinnerComponent loading={true} />;
