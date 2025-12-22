@@ -133,13 +133,13 @@ export const leaveGroup = async (roomId: string) => {
   const { success }: any = (await callable({ roomId })).data;
   return success;
 };
-export const promoteToAdmin = async ({roomId, targetUid}: {roomId: string, targetUid: string}) => {
+export const promoteToAdmin = async ({ roomId, targetUid }: { roomId: string, targetUid: string }) => {
   const callable = httpsCallable(functions, 'promoteToAdmin');
 
   const { success }: any = (await callable({ roomId, targetUid })).data;
   return success;
 };
-export const demoteAdmin = async({roomId, targetUid}: {roomId: string, targetUid: string}) => {
+export const demoteAdmin = async ({ roomId, targetUid }: { roomId: string, targetUid: string }) => {
   const callable = httpsCallable(functions, 'demoteAdmin');
 
   const { success }: any = (await callable({ roomId, targetUid })).data;
@@ -341,6 +341,7 @@ export const handleDeleteMsg = async ({
   closePopover: () => void;
 }) => {
   // thêm trạng thái tin nhắn vào chatRoomId
+
   await setDoc(
     doc(
       db,

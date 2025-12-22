@@ -1,14 +1,15 @@
 import { collection, onSnapshot, orderBy, query } from '@react-native-firebase/firestore';
 import { Image as ImageIcon } from 'iconsax-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   ScrollView,
   TouchableOpacity,
 } from 'react-native';
+import ImageViewing from 'react-native-image-viewing';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { db } from '../../../firebase.config';
+import { auth, db } from '../../../firebase.config';
 import {
   Container,
   RowComponent,
@@ -18,17 +19,26 @@ import {
 } from '../../components';
 import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
-import { sizes } from '../../constants/sizes';
 import { getSignedUrl } from '../../constants/functions';
-import ImageViewing from 'react-native-image-viewing';
+import { sizes } from '../../constants/sizes';
+import { MessageModel } from '../../models';
+import { useChatStore } from '../../zustand/useChatStore';
 
 const MediaRoomScreen = ({ route }: any) => {
   const { chatRoomId } = route.params;
+  const userCurrent = auth.currentUser
+  const { messagesByRoom, pendingMessages } = useChatStore();
+  const [userMessageState, setUserMessageState] = useState<any>();
+  const messages = [
+    ...(messagesByRoom[chatRoomId] || []),
+    ...(pendingMessages[chatRoomId] || []),
+  ]
   const [type, setType] = useState('image');
   const [media, setMedia] = useState<any[]>([]);
   const [imageIndex, setImageIndex] = useState(0);
   const [viewerVisible, setViewerVisible] = useState(false);
   const [viewerImages, setViewerImages] = useState<any>([]);
+
 
   useEffect(() => {
     if (!chatRoomId) return;
@@ -60,6 +70,40 @@ const MediaRoomScreen = ({ route }: any) => {
     preloadSignedUrls();
   }, [media]);
 
+  useEffect(() => {
+    // listen myReaction
+    if (!chatRoomId || !userCurrent) return;
+
+    const userMessageStateRef = collection(
+      db,
+      `chatRooms/${chatRoomId}/userMessageState/${userCurrent.uid}/messages`,
+    );
+
+    const unsub = onSnapshot(userMessageStateRef, docSnap => {
+      let state: any = {};
+      docSnap.forEach((doc: any) => {
+        state[doc.id] = doc.data(); // messageId → { deleted: true }
+      });
+      setUserMessageState(state);
+    });
+
+    return () => {
+      unsub();
+    };
+  }, [chatRoomId, userCurrent?.uid]);
+
+  const enhancedMessages = useMemo(() => {
+    return messages.map((msg, index) => {
+      return {
+        ...msg,
+        hiddenMsg:
+          userMessageState && userMessageState[msg.id]
+            ? userMessageState[msg.id].deleted
+            : false,
+      };
+    });
+  }, [messages]);
+
   const preloadSignedUrls = async () => {
     const results = await Promise.all(
       media.map(async item => {
@@ -76,17 +120,11 @@ const MediaRoomScreen = ({ route }: any) => {
         };
       }),
     );
-
-    setMedia(results);
+    setMedia(results)
   };
-
   const openViewer = async (mediaId: string) => {
     const imageMessages = media.filter(m => m.type === 'image');
-    // const keys = imageMessages.map(_ => _.mediaURL);
-    // const promiseItems = imageMessages.map(
-    //   async _ => await getSignedUrl(_.mediaURL),
-    // );
-    // const uris = await Promise.all(promiseItems);
+
     const keys = imageMessages.map(_ => _.id);
     const uris = imageMessages.map(_ => _.mediaURL);
     const allImages = uris.map(m => ({ uri: m }));
@@ -96,6 +134,15 @@ const MediaRoomScreen = ({ route }: any) => {
     setViewerImages(allImages);
     setViewerVisible(true);
   };
+  const showData = () => {
+    let hideMsgIds: any[] = []
+    enhancedMessages.map((_) => {
+      if(_.deleted || _.hiddenMsg){
+        hideMsgIds.push(_.id)
+      }
+    })
+    return media.filter((_) => !hideMsgIds.includes(_.id))
+  }
 
   if (!chatRoomId) return <ActivityIndicator />;
 
@@ -117,7 +164,7 @@ const MediaRoomScreen = ({ route }: any) => {
             />
             <SpaceComponent width={16} />
             <TextComponent
-              text="Ảnh, file, link nhóm"
+              text="Ảnh, video, file, link nhóm"
               color={colors.background}
               font={fontFamillies.poppinsBold}
             />
@@ -146,7 +193,6 @@ const MediaRoomScreen = ({ route }: any) => {
           >
             {[
               { type: 'image', title: 'Ảnh' },
-              { type: 'video', title: 'video' },
               { type: 'File', title: 'File' },
               { type: 'Link', title: 'Link' }
             ].map((_, index) => (
@@ -177,8 +223,10 @@ const MediaRoomScreen = ({ route }: any) => {
                 styles={{ flexWrap: 'wrap', alignItems: 'flex-start' }}
                 justify="flex-start"
               >
-                {media.map((_, index) => (
-                  <TouchableOpacity
+                {showData().map((_, index) => {
+                  if (_.deleted) return
+
+                  return <TouchableOpacity
                     onPress={() => openViewer(_.id)}
                     key={index}
                     style={{
@@ -199,7 +247,7 @@ const MediaRoomScreen = ({ route }: any) => {
                       }}
                     />
                   </TouchableOpacity>
-                ))}
+                })}
               </RowComponent>
             </ScrollView>
           }
@@ -227,3 +275,7 @@ const MediaRoomScreen = ({ route }: any) => {
 };
 
 export default MediaRoomScreen;
+function handleReplyStatus(msg: MessageModel): any {
+  throw new Error('Function not implemented.');
+}
+
