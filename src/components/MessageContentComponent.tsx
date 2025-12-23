@@ -127,7 +127,7 @@ const MessageContentComponent = React.memo((props: Props) => {
       case 'image':
         result = (
           <TouchableOpacity
-            style={{ flex: 1, width: '100%', marginVertical: 10 }}
+            style={{ flex: 1, width: '100%', marginVertical: 2 }}
             onPress={msg.onImagePressForItem}
           >
             <Image
@@ -149,7 +149,7 @@ const MessageContentComponent = React.memo((props: Props) => {
       case 'video':
         result = (
           <TouchableOpacity
-            style={{ flex: 1, width: '100%', marginVertical: 10 }}
+            style={{ flex: 1, width: '100%', marginVertical: 2 }}
           >
             <VideoPlayer
               videoUrl={msg.status === 'pending' ? msg.localURL : msg.mediaURL}

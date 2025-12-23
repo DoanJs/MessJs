@@ -21,7 +21,6 @@ import { colors } from '../../constants/colors';
 import { fontFamillies } from '../../constants/fontFamilies';
 import { getSignedUrl } from '../../constants/functions';
 import { sizes } from '../../constants/sizes';
-import { MessageModel } from '../../models';
 import { useChatStore } from '../../zustand/useChatStore';
 
 const MediaRoomScreen = ({ route }: any) => {
@@ -261,21 +260,9 @@ const MediaRoomScreen = ({ route }: any) => {
           animationType="fade"
         />
 
-        {/* <SpinnerComponent loading={false} /> */}
       </Container>
-
-      {/* <ActionModal
-        visible={infoModal.visibleModal}
-        setInfoModal={setInfoModal}
-        infoModal={infoModal}
-        onClose={() => setInfoModal({ ...infoModal, visibleModal: false })}
-      /> */}
     </SafeAreaView>
   );
 };
 
 export default MediaRoomScreen;
-function handleReplyStatus(msg: MessageModel): any {
-  throw new Error('Function not implemented.');
-}
-
