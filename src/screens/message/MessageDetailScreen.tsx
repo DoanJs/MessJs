@@ -663,7 +663,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             doc(db, 'chatRooms', roomId),
             {
               type: 'private',
-              name: friend.displayName,
+              name: "",
               avatarURL: '',
               description: '',
               createdBy: user.id,
@@ -873,7 +873,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             doc(db, 'chatRooms', chatRoomId),
             {
               type,
-              name: friend.displayName,
+              name: "",
               avatarURL: '',
               description: '',
               createdBy: user.id,
