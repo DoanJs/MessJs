@@ -10,6 +10,7 @@ import { name as appName } from './app.json';
 import { messaging } from './firebase.config';
 moment.locale('vi'); // đặt ngôn ngữ mặc định
 
+// Hàm này để xử lý data khi app k chạy nền hoặc đã killed
 setBackgroundMessageHandler(messaging, async remoteMessage => {
   console.log('📩 Background message:', remoteMessage);
   // ❌ KHÔNG navigate ở đây

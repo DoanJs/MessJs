@@ -2,6 +2,7 @@ import {
   collection,
   deleteDoc,
   doc,
+  getDoc,
   getDocs,
   orderBy,
   query,
@@ -133,13 +134,25 @@ export const leaveGroup = async (roomId: string) => {
   const { success }: any = (await callable({ roomId })).data;
   return success;
 };
-export const promoteToAdmin = async ({ roomId, targetUid }: { roomId: string, targetUid: string }) => {
+export const promoteToAdmin = async ({
+  roomId,
+  targetUid,
+}: {
+  roomId: string;
+  targetUid: string;
+}) => {
   const callable = httpsCallable(functions, 'promoteToAdmin');
 
   const { success }: any = (await callable({ roomId, targetUid })).data;
   return success;
 };
-export const demoteAdmin = async ({ roomId, targetUid }: { roomId: string, targetUid: string }) => {
+export const demoteAdmin = async ({
+  roomId,
+  targetUid,
+}: {
+  roomId: string;
+  targetUid: string;
+}) => {
   const callable = httpsCallable(functions, 'demoteAdmin');
 
   const { success }: any = (await callable({ roomId, targetUid })).data;
@@ -433,4 +446,28 @@ export const countKeywordInText = (text: string, keyword: string) => {
   const matches = text.match(regex);
 
   return matches ? matches.length : 0;
+};
+export const getUserById = async (uid: string) => {
+  if (!uid) return null;
+
+  const ref = doc(db, 'users', uid);
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) return null;
+
+  return {
+    id: snap.id,
+    ...snap.data(),
+  };
+};
+export const getRoomMembers = async (chatRoomId: string) => {
+  if (!chatRoomId) return [];
+
+  const ref = collection(db, `chatRooms/${chatRoomId}/members`);
+  const snap = await getDocs(ref);
+
+  return snap.docs.map((doc: any) => ({
+    id: doc.id,
+    ...doc.data(),
+  }));
 };

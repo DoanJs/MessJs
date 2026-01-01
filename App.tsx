@@ -1,4 +1,4 @@
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance, EventType } from '@notifee/react-native';
 import {
   getInitialNotification,
   onMessage,
@@ -15,52 +15,15 @@ import {
 } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { auth, messaging, onAuthStateChanged } from './firebase.config';
-import { navigationRef } from './navigationRef';
+import { navigate, navigationRef } from './navigationRef';
+import { getRoomMembers, getUserById } from './src/constants/functions';
 import { AuthNavigator, MainNavigator } from './src/router';
 
 function App() {
   const isDarkMode = useColorScheme() === 'dark';
   const [isLoading, setIsLoading] = useState(false);
 
-  // ================= 3 LISTENER 4 STATUS =================
-  useEffect(() => {
-    const unsub = onMessage(messaging, async remoteMessage => {
-      console.log('📩 Foreground message:', remoteMessage);
-
-      const { title, body } = remoteMessage.notification || {};
-
-      // 👉 Tự show notification
-      await notifee.displayNotification({
-        title,
-        body,
-        android: {
-          channelId: 'default',
-          pressAction: { id: 'default' },
-        },
-      });
-    });
-
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    const unsub = onNotificationOpenedApp(messaging, remoteMessage => {
-      console.log('🔔 Opened from background:', remoteMessage);
-      //  handleNavigate(remoteMessage);
-    });
-
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    getInitialNotification(messaging).then(remoteMessage => {
-      if (remoteMessage) {
-        console.log('🚀 Opened from quit state:', remoteMessage);
-        // handleNavigate(remoteMessage);
-      }
-    });
-  }, []);
-
+  // đăng ký notifee
   useEffect(() => {
     if (Platform.OS === 'android') {
       notifee.createChannel({
@@ -72,6 +35,75 @@ function App() {
     }
   }, []);
 
+  // ================= 3 LISTENER 4 STATUS =================
+  // Khi app đang mở
+  useEffect(() => {
+    const unsub = onMessage(messaging, async remoteMessage => {
+      console.log('📩 Foreground message:', remoteMessage);
+
+      const { title, body } = remoteMessage.notification || {};
+      // 👉 Tự show notification
+      await notifee.displayNotification({
+        title,
+        body,
+        android: {
+          channelId: 'default',
+          pressAction: { id: 'default' },
+        },
+        data: remoteMessage.data, // ⭐ rất quan trọng
+      });
+    });
+
+    return unsub;
+  }, []);
+  useEffect(() => {
+    return notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === EventType.PRESS) {
+        const { type, roomType, chatRoomId, targetId } =
+          detail.notification?.data || {};
+
+        if (type === 'chat') {
+          handleNavigateMessageDetail({ type, roomType, chatRoomId, targetId });
+        }
+      }
+    });
+  }, []);
+
+  // Khi app chạy nền
+  useEffect(() => {
+    const unsub = onNotificationOpenedApp(messaging, remoteMessage => {
+      if (!remoteMessage) return;
+
+      console.log('🔔 Opened from background:', remoteMessage);
+      const { type, roomType, chatRoomId, targetId } =
+        remoteMessage?.data || {};
+
+      if (type === 'chat') {
+        handleNavigateMessageDetail({ type, roomType, chatRoomId, targetId });
+      }
+    });
+
+    return unsub;
+  }, []);
+
+  // Khi app killed
+  useEffect(() => {
+    getInitialNotification(messaging).then(remoteMessage => {
+      if (!remoteMessage) return;
+      console.log('🚀 Opened from quit state:', remoteMessage);
+
+      const { type, roomType, chatRoomId, targetId } =
+        remoteMessage?.data || {};
+
+      if (type === 'chat') {
+        // Delay nhỏ để NavigationContainer sẵn sàng
+        setTimeout(() => {
+          handleNavigateMessageDetail({ type, roomType, chatRoomId, targetId });
+        }, 500);
+      }
+    });
+  }, []);
+
   useEffect(() => {
     onAuthStateChanged(auth, user => {
       if (user) {
@@ -81,6 +113,27 @@ function App() {
       }
     });
   }, [isLoading]);
+
+  const handleNavigateMessageDetail = async (data: any) => {
+    if (!data || data.type !== 'chat') return;
+
+    const { chatRoomId, roomType, targetId } = data;
+
+    let friend = null;
+
+    if (roomType === 'private') {
+      friend = await getUserById(targetId);
+    }
+
+    const members = await getRoomMembers(chatRoomId);
+
+    navigate('MessageDetailScreen', {
+      type: roomType,
+      friend,
+      chatRoomId,
+      members,
+    });
+  };
 
   return (
     <SafeAreaProvider>
