@@ -44,7 +44,8 @@ const functions = getFunctions(app, 'asia-southeast1');
 
 GoogleSignin.configure({
   webClientId:
-    '465303174037-nh9lg3upnppj6ncrnch1i19avilm5v4f.apps.googleusercontent.com',
+    // '465303174037-nh9lg3upnppj6ncrnch1i19avilm5v4f.apps.googleusercontent.com',
+    '978637318783-c5q7i90dcm43qr24nc5o63jlr0i5bqae.apps.googleusercontent.com'
 });
 
 const signInWithGoogle = async () => {

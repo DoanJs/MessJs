@@ -14,11 +14,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "978637318783-99t43c6sjfdat1ebq8p3uqdrh70gd63p.apps.googleusercontent.com",
+          "client_id": "978637318783-05cosha9i82g8irlb6gp455id6ab79oc.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.messjs",
-            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+            "certificate_hash": "ca2cd0f6ad7ff962915cf1537e8f2c40e696eba7"
           }
         },
         {
@@ -37,6 +37,13 @@
             {
               "client_id": "978637318783-c5q7i90dcm43qr24nc5o63jlr0i5bqae.apps.googleusercontent.com",
               "client_type": 3
+            },
+            {
+              "client_id": "978637318783-u1e9lg2lqp7bm77pan88urljq71j6qm6.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "org.reactjs.native.example.MessJs"
+              }
             }
           ]
         }

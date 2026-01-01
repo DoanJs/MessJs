@@ -663,7 +663,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             doc(db, 'chatRooms', roomId),
             {
               type: 'private',
-              name: "",
+              name: '',
               avatarURL: '',
               description: '',
               createdBy: user.id,
@@ -873,7 +873,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             doc(db, 'chatRooms', chatRoomId),
             {
               type,
-              name: "",
+              name: '',
               avatarURL: '',
               description: '',
               createdBy: user.id,
@@ -1248,7 +1248,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
+        // keyboardVerticalOffset={0}
+        keyboardVerticalOffset={insets.top + 56} // 56 = height header
       >
         <Container
           bg={colors.primaryLight}
@@ -1350,6 +1351,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             <FlatList
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{
+                // paddingBottom: initialLoad ? 0 : insets.bottom + 80,
                 paddingBottom: initialLoad ? 0 : insets.bottom + 80,
               }}
               data={enhancedMessages}
