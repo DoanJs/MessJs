@@ -65,7 +65,8 @@ const Register = ({ navigation }: any) => {
               lastOnlineAt: serverTimestamp(),
               friendCount: 0,
               blockeds: [],
-              fcmToken: '',
+              fcmTokens: [],
+              mutedRooms: []
             },
           });
         })

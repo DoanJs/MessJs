@@ -9,6 +9,8 @@ export interface UserModel {
   status: string; //"online" | "offline"
   lastOnlineAt: TimeAtModel;
   friendCount: number;
-  blockeds: [];
-  fcmToken: string;
+  blockeds: string[];
+
+  fcmTokens: string[];
+  mutedRooms: string[]
 }

@@ -120,6 +120,7 @@ const MessageScreen = ({navigation}: any) => {
     return () => unsubList.forEach(u => u());
   }, [chatRooms, userCurrent]);
 
+
   return (
     <SafeAreaView
       style={{ flex: 1, backgroundColor: colors.background }}

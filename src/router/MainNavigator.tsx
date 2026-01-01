@@ -1,17 +1,75 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  collection,
+  getDocs,
+  onSnapshot,
+  query,
+  where,
+} from '@react-native-firebase/firestore';
+import { getToken, onTokenRefresh } from '@react-native-firebase/messaging';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { TabNavigator } from '.';
-import { AddFriendScreen, AddGroupScreen, MemberRoomScreen, MessageDetailScreen, RoomSettingScreen, SearchMsgScreen, SearchScreen } from '../screens';
-import { auth, db } from '../../firebase.config';
 import { useEffect } from 'react';
-import { collection, getDocs, onSnapshot, query, where } from '@react-native-firebase/firestore';
-import { useBlockStore, useFriendRequestStore, useFriendShipStore, usePendingRequestUsersStore } from '../zustand';
-import { UserModel } from '../models';
+import { TabNavigator } from '.';
+import { auth, db, messaging } from '../../firebase.config';
 import { chunk } from '../constants/functions';
+import { UserModel } from '../models';
+import {
+  AddFriendScreen,
+  AddGroupScreen,
+  MemberRoomScreen,
+  MessageDetailScreen,
+  RoomSettingScreen,
+  SearchMsgScreen,
+  SearchScreen,
+} from '../screens';
 import MediaRoomScreen from '../screens/message/MediaRoomScreen';
+import { requestNotificationPermission } from '../services/notificationPermission';
+import { saveFcmToken } from '../services/saveFcmToken';
+import {
+  useBlockStore,
+  useFriendRequestStore,
+  useFriendShipStore,
+  usePendingRequestUsersStore,
+} from '../zustand';
+const ASKED_KEY = 'asked_notification_permission';
 
 const MainNavigator = () => {
   const Stack = createNativeStackNavigator();
-  const userCurrent = auth.currentUser
+  const userCurrent = auth.currentUser;
+
+  // ================= 1️⃣ XIN QUYỀN + GET TOKEN (1 LẦN) =================
+  useEffect(() => {
+    const run = async () => {
+      const asked = await AsyncStorage.getItem(ASKED_KEY);
+      if (asked) return;
+
+      const granted = await requestNotificationPermission();
+      if (!granted) return;
+
+      const token = await getToken(messaging);
+
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+
+      await saveFcmToken(uid, token);
+      await AsyncStorage.setItem(ASKED_KEY, 'true');
+    };
+
+    run();
+  }, []);
+
+  // ================= 2️⃣ TOKEN REFRESH LISTENER =================
+  useEffect(() => {
+    const unsubscribe = onTokenRefresh(messaging, async token => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+
+      await saveFcmToken(uid, token);
+      console.log('🔁 Token refreshed & saved');
+    });
+
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     if (!userCurrent?.uid) return;
@@ -74,10 +132,9 @@ const MainNavigator = () => {
 
     return () => {
       unsubBlockedByMe();
-      unsubFriendShips()
-      unsubFrienRequest()
+      unsubFriendShips();
+      unsubFrienRequest();
     };
-
   }, [userCurrent?.uid]);
 
   const syncPendingRequestUsers = async (
@@ -95,10 +152,7 @@ const MainNavigator = () => {
     const users: Record<string, UserModel> = {};
 
     for (const group of chunks) {
-      const q = query(
-        collection(db, 'users'),
-        where('id', 'in', group),
-      );
+      const q = query(collection(db, 'users'), where('id', 'in', group));
 
       const snap = await getDocs(q);
 
@@ -108,15 +162,16 @@ const MainNavigator = () => {
       });
     }
 
-    usePendingRequestUsersStore
-      .getState()
-      .setUsers(users);
+    usePendingRequestUsersStore.getState().setUsers(users);
   };
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Main" component={TabNavigator} />
-      <Stack.Screen name="MessageDetailScreen" component={MessageDetailScreen} />
+      <Stack.Screen
+        name="MessageDetailScreen"
+        component={MessageDetailScreen}
+      />
       <Stack.Screen name="SearchMsgScreen" component={SearchMsgScreen} />
       <Stack.Screen name="AddGroupScreen" component={AddGroupScreen} />
       <Stack.Screen name="AddFriendScreen" component={AddFriendScreen} />

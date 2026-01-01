@@ -21,14 +21,14 @@ import {
   updateDoc,
 } from '@react-native-firebase/firestore';
 import { getFunctions } from '@react-native-firebase/functions';
-// import {
+import {
 //   AuthorizationStatus,
 //   getInitialNotification,
-//   getMessaging,
+  getMessaging,
 //   getToken,
 //   onMessage,
 //   requestPermission,
-// } from '@react-native-firebase/messaging';
+} from '@react-native-firebase/messaging';
 import {
   GoogleSignin,
   SignInResponse,
@@ -39,7 +39,7 @@ import {
 const auth = getAuth();
 const db = getFirestore();
 const app = getApp();
-// const messaging = getMessaging(app);
+const messaging = getMessaging(app);
 const functions = getFunctions(app, 'asia-southeast1');
 
 GoogleSignin.configure({
@@ -180,7 +180,7 @@ export {
   db,
   //   getFCMToken,
   //   listenForegroundMessages,
-  //   messaging,
+    messaging,
   onAuthStateChanged,
   //   requestUserPermission,
   signInWithEmailAndPassword,

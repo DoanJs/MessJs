@@ -1811,6 +1811,11 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
+"@notifee/react-native@^9.1.8":
+  version "9.1.8"
+  resolved "https://registry.yarnpkg.com/@notifee/react-native/-/react-native-9.1.8.tgz#3d55cb3fbcc21f9e35931e366afdf64b294da891"
+  integrity sha512-Az/dueoPerJsbbjRxu8a558wKY+gONUrfoy3Hs++5OqbeMsR0dYe6P+4oN6twrLFyzAhEA1tEoZRvQTFDRmvQg==
+
 "@pkgjs/parseargs@^0.11.0":
   version "0.11.0"
   resolved "https://registry.yarnpkg.com/@pkgjs/parseargs/-/parseargs-0.11.0.tgz#a77ea742fab25775145434eb1d2328cf5013ac33"
@@ -2058,6 +2063,11 @@
   version "23.5.0"
   resolved "https://registry.yarnpkg.com/@react-native-firebase/functions/-/functions-23.5.0.tgz#b34d75a7f31bbec8be24b9d78261f23035886756"
   integrity sha512-aHdn6IBYkEyJ8k8syYolvYrOzzkPJDfIlH0FiF5LtNyU6XOlc5GxflLWa0MllYB9RUpVpisLv8XAWQee3y3Jsg==
+
+"@react-native-firebase/messaging@^23.7.0":
+  version "23.7.0"
+  resolved "https://registry.yarnpkg.com/@react-native-firebase/messaging/-/messaging-23.7.0.tgz#fd5eafbe728cf81015acf1ac4b676e2ab411884a"
+  integrity sha512-MFrV2WMnKzsmfkFNY8XLqBlV0FS1VCJC1HAMbXEBjJblVlVLOM+kap08SyHh1qqoXdfaf0mtzGQtpya/kHaAqg==
 
 "@react-native-google-signin/google-signin@^16.0.0":
   version "16.0.0"

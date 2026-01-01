@@ -100,16 +100,67 @@ export const useChatStore = create<ChatState>()(
         });
 
         // Khi Firestore có tin nhắn mới → xoá các pending trùng ID
+        // ----cách 1
         const pending = get().pendingMessages[roomId] || [];
-        const filteredPending = pending.filter(
-          p => !messages.some(m => m.id === p.id),
-        );
-        set(state => ({
-          pendingMessages: {
-            ...state.pendingMessages,
-            [roomId]: filteredPending,
-          },
-        }));
+        // console.log('pending: ', pending)
+
+        // const filteredPending = pending.filter(
+        //   p => !messages.some(m => m.id === p.id),
+        // );
+        // console.log('filteredPending: ', filteredPending)
+
+        // set(state => ({
+        //   pendingMessages: {
+        //     ...state.pendingMessages,
+        //     [roomId]: filteredPending,
+        //   },
+        // }));
+
+        if (pending && pending.length > 0) {
+          const filteredPending = pending.filter(
+            p => !messages.some(m => m.id === p.id),
+          );
+
+          // 🔥 CHỈ set state khi pending THAY ĐỔI
+          if (filteredPending.length !== pending.length) {
+            set(state => ({
+              pendingMessages: {
+                ...state.pendingMessages,
+                [roomId]: filteredPending,
+              },
+            }));
+          }
+        }
+        // cách 2
+        // const pending = get().pendingMessages[roomId];
+
+        // if (pending && pending.length > 0) {
+        //   let hasChange = false;
+
+        //   const updatedPending = pending.map(p => {
+        //     const serverMsg = messages.find(m => m.id === p.id);
+
+        //     if (serverMsg) {
+        //       hasChange = true;
+        //       return {
+        //         ...p,
+        //         ...serverMsg,
+        //         status: 'sent', // 🔥 UPDATE, KHÔNG XOÁ
+        //       };
+        //     }
+
+        //     return p;
+        //   });
+
+        //   if (hasChange) {
+        //     set(state => ({
+        //       pendingMessages: {
+        //         ...state.pendingMessages,
+        //         [roomId]: updatedPending,
+        //       },
+        //     }));
+        //   }
+        // }
       },
 
       addPendingMessage: (roomId, message) => {
