@@ -368,8 +368,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     };
   }, [chatRoomId]);
 
+  // Lắng nghe thay đổi lastBatchId trong chatRoom
   useEffect(() => {
-    // Lắng nghe thay đổi lastBatchId trong chatRoom
     if (!chatRoomId) return;
 
     const unsubRoom = onSnapshot(q_chatRoomId(chatRoomId), snap => {
@@ -395,8 +395,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     };
   }, [chatRoomId]);
 
+  // load 3 batch đầu tiên vào ---> dạng prepend (false)
   useEffect(() => {
-    // load 3 batch đầu tiên vào ---> dạng prepend (false)
     if (!chatRoomId) return;
 
     let isMounted = true; // flag để cleanup
@@ -441,8 +441,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     };
   }, [chatRoomId]);
 
+  // listen myReaction
   useEffect(() => {
-    // listen myReaction
     if (!chatRoomId || !user) return;
 
     const userMessageStateRef = collection(
@@ -463,8 +463,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     };
   }, [chatRoomId, user]);
 
+  //listen new message in current Batch
   useEffect(() => {
-    //listen new message in current Batch
     if (!chatRoomId || !lastBatchId) return;
 
     // 🔥 Đăng ký lắng nghe realtime
@@ -486,8 +486,14 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           };
         });
         msgs = await preloadSignedUrls(msgs);
+
         // ⚡ nối thêm tin nhắn mới, tránh mất tin batch cũ ---> dạng prepend (false)
+        // 1️⃣ cập nhật messages chính
         setMessagesForRoom(chatRoomId, msgs, false);
+        // 2️⃣ 🔥 CLEANUP PENDING Ở ĐÂY
+        msgs.forEach((m: any) => {
+          removePendingMessage(chatRoomId, m.id);
+        });
       },
     );
 
@@ -557,32 +563,56 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
       const thumbKey = typeMsg === 'video' ? (thumbnaiKey as string) : '';
 
       // Thêm tin nhắn ở local
-      if (!['image', 'video', 'audio'].includes(typeMsg)) {
-        addPendingMessage(roomId, {
-          id: messageId,
-          senderId: user.id,
-          type: 'text',
-          text,
-          mediaURL: '',
-          localURL: '',
-          batchId: '',
-          reactionCounts: {},
-          deleted: false,
-          deletedAt: null,
-          deletedBy: null,
+      // if (!['image', 'video', 'audio'].includes(typeMsg)) {
+      //   addPendingMessage(roomId, {
+      //     id: messageId,
+      //     senderId: user.id,
+      //     type: 'text',
+      //     text,
+      //     mediaURL: '',
+      //     localURL: '',
+      //     batchId: '',
+      //     reactionCounts: {},
+      //     deleted: false,
+      //     deletedAt: null,
+      //     deletedBy: null,
 
-          replyTo: msgReply,
-          forwardedFrom: msgForward,
+      //     replyTo: msgReply,
+      //     forwardedFrom: msgForward,
 
-          thumbKey: '',
-          duration: 0,
-          height: 0,
-          width: 0,
+      //     thumbKey: '',
+      //     duration: 0,
+      //     height: 0,
+      //     width: 0,
 
-          createAt: serverTimestamp(),
-          status: 'pending',
-        });
-      }
+      //     createAt: serverTimestamp(),
+      //     status: 'pending',
+      //   });
+      // }
+      addPendingMessage(roomId, {
+        id: messageId,
+        senderId: user.id,
+        type: typeMsg,
+        text,
+        mediaURL,
+        localURL: '',
+        batchId: '',
+        reactionCounts: {},
+        deleted: false,
+        deletedAt: null,
+        deletedBy: null,
+
+        replyTo: msgReply,
+        forwardedFrom: msgForward,
+
+        thumbKey,
+        duration: 0,
+        height: 0,
+        width: 0,
+
+        createAt: Date.now(),
+        status: 'pending',
+      });
       // Xử lý phía firebase
       try {
         const docSnap = await getDoc(doc(db, 'chatRooms', roomId));
@@ -655,7 +685,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           // Cập nhật trạng thái
           updatePendingStatus(roomId, messageId, 'sent');
           // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-          removePendingMessage(roomId, messageId);
+          // removePendingMessage(roomId, messageId);
         } else {
           const batchInfo = createNewBatch(null);
 
@@ -764,7 +794,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
           // Cập nhật trạng thái
           updatePendingStatus(roomId, messageId, 'sent');
           // // Xoá khỏi persist vì Firestore sẽ gửi về qua onSnapshot
-          removePendingMessage(roomId, messageId);
+          // removePendingMessage(roomId, messageId);
         }
       } catch (error) {
         updatePendingStatus(roomId, messageId, 'failed');
@@ -1141,9 +1171,8 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
     // Set up recording progress listener
     Sound.addRecordBackListener((e: RecordBackType) => {
       console.log('Recording progress:', e.currentPosition, e.currentMetering);
-      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${
-        e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
-      } giây`;
+      const timeRecord = `${Math.floor(e.currentPosition / 1000)},${e.currentPosition - Math.floor(e.currentPosition / 1000) * 1000
+        } giây`;
       setValue(`Đã ghi: ${timeRecord}`);
       setDuration(Math.floor(e.currentPosition / 1000)); // giây
       // setRecordSecs(e.currentPosition);
@@ -1305,7 +1334,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                   <Call
                     size={sizes.bigTitle}
                     color={colors.background}
-                    onPress={() => {}}
+                    onPress={() => { }}
                   />
                 </>
               )}
@@ -1313,7 +1342,7 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
               <Video
                 size={sizes.bigTitle}
                 color={colors.background}
-                onPress={() => {}}
+                onPress={() => { }}
                 variant="Bold"
               />
               <SpaceComponent width={16} />
@@ -1365,9 +1394,9 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                 enhancedMessages.length === 0
                   ? undefined
                   : {
-                      minIndexForVisible: 0,
-                      // autoscrollToTopThreshold: 20,
-                    }
+                    minIndexForVisible: 0,
+                    // autoscrollToTopThreshold: 20,
+                  }
               }
               onContentSizeChange={() => {
                 // scroll xuống dưới cùng khi vào phòng chat
@@ -1428,12 +1457,11 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
                   }}
                 >
                   <TextComponent
-                    text={`Đang trả lời ${
-                      msgReply.senderId === user?.id
-                        ? 'chính bạn'
-                        : convertInfoUserFromID(msgReply.senderId, users)
-                            ?.displayName
-                    }`}
+                    text={`Đang trả lời ${msgReply.senderId === user?.id
+                      ? 'chính bạn'
+                      : convertInfoUserFromID(msgReply.senderId, users)
+                        ?.displayName
+                      }`}
                   />
                   <TextComponent
                     numberOfLine={1}
@@ -1459,11 +1487,10 @@ const MessageDetailScreen = ({ route, navigation }: any) => {
             {userBlockByMe[friend?.id] || userBlockMe[friend?.id] ? (
               <View>
                 <TextComponent
-                  text={`${
-                    userBlockByMe[friend.id]
-                      ? 'Bạn đã chặn ' + friend.displayName
-                      : friend.displayName + ' đã chặn bạn'
-                  }`}
+                  text={`${userBlockByMe[friend.id]
+                    ? 'Bạn đã chặn ' + friend.displayName
+                    : friend.displayName + ' đã chặn bạn'
+                    }`}
                   textAlign="center"
                   color={colors.red}
                   styles={{

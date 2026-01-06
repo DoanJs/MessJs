@@ -12,7 +12,7 @@ export interface MessageModel {
   duration: number
   width: number
   height: number
-  createAt: TimeAtModel | FieldValue;
+  createAt: TimeAtModel | FieldValue | Number;
   status: string; //"pending" | "sent" | "fail"
   batchId: string;
   reactionCounts: Record<string, number>
